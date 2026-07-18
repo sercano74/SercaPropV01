@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>⭐ Mis favoritas</h1>
+    <p>Propiedades que te interesan</p>
+</div>
+<div class="card-grid">
+    {% for prop in favoritas %}
+    <div class="property-card-modern">
+        <div class="card-body">
+            <div class="card-title">{{ prop.get_tipo_prop_display }} - {{ prop.calle }} #{{ prop.numero_calle }}</div>
+            <div class="card-price">{{ prop.get_tipo_moneda_display }} {{ prop.precio|floatformat:0 }}</div>
+            <div class="card-details">
+                <span>🛏️ {{ prop.numero_dormitorios }}</span>
+                <span>🚿 {{ prop.numero_banos }}</span>
+                {% if prop.m_construidos %}<span>📐 {{ prop.m_construidos }} m²</span>{% endif %}
+            </div>
+            {% if prop.comuna %}<div class="card-location">📍 {{ prop.comuna }}</div>{% endif %}
+            <a href="{% url 'detalle_propiedad' prop.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver detalle →</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state-modern" style="grid-column:1/-1;">
+        <h3>No hay propiedades</h3>
+        <p>Aún no tienes propiedades marcadas como favoritas.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

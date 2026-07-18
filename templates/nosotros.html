@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern" style="background:linear-gradient(135deg, #FF385C 0%, #E31C5F 100%);">
+    <h1>🏢 Sobre Nosotros</h1>
+    <p>Conoce al equipo de {{ site_name }}</p>
+</div>
+
+<div class="card-modern" style="max-width:800px;margin:0 auto 32px;">
+    <div class="card-modern-body">
+        <h3 class="card-modern-title" style="font-size:1.3rem;margin-bottom:12px;">Nuestra Historia</h3>
+        <div class="card-modern-text" style="margin-bottom:8px;">{{ site_name }} nace con la visión de transformar el corretaje de propiedades en Chile, ofreciendo una plataforma moderna que conecta a dueños, corredores y arrendatarios de forma transparente y eficiente.</div>
+        <div class="card-modern-text">Especializados en venta, arriendo tradicional y Short Rental Time (SRT), trabajamos con propiedades de todo tipo: casas, departamentos, terrenos, locales comerciales y más.</div>
+    </div>
+</div>
+
+<h2 style="text-align:center;margin-bottom:24px;font-weight:700;font-size:1.5rem;">👥 Nuestro Equipo</h2>
+
+<div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr));">
+    {% for f in funcionarios %}
+    <div class="card-modern" style="text-align:center;">
+        {% if f.imagen %}
+            <img src="{{ f.imagen.url }}" alt="{{ f.nombre_completo }}" class="card-modern-img" style="aspect-ratio:1;">
+        {% else %}
+            <div class="card-modern-img" style="aspect-ratio:1;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;">👤</div>
+        {% endif %}
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.05rem;">{{ f.nombre_completo }}</div>
+            <div class="card-modern-subtitle" style="margin-bottom:8px;">{{ f.cargo }}</div>
+            <div class="card-modern-text" style="font-size:0.85rem;">{{ f.curriculo|truncatewords:30 }}</div>
+            <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;font-size:1.3rem;">
+                {% if f.linkedin %}<a href="{{ f.linkedin }}" target="_blank" style="color:var(--ds-text-secondary);">💼</a>{% endif %}
+                {% if f.twitter %}<a href="{{ f.twitter }}" target="_blank" style="color:var(--ds-text-secondary);">🐦</a>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state-modern" style="grid-column:1/-1;">
+        <div class="empty-icon">👥</div>
+        <h3>Próximamente</h3>
+        <p>Conocerás a nuestro equipo.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

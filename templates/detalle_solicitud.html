@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Solicitud #{{ solicitud.id }}{% endblock %}
+{% block content %}
+
+<style>
+.solicitud-step {
+    display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border-radius: 9999px; font-size: 0.8rem; font-weight: 600;
+    border: 2px solid var(--ds-border); background: var(--ds-bg);
+    color: var(--ds-text-secondary); white-space: nowrap;
+}
+.solicitud-step.active {
+    background: var(--ds-primary); color: white; border-color: var(--ds-primary);
+}
+.solicitud-step.done {
+    background: var(--ds-success); color: white; border-color: var(--ds-success);
+}
+.stepper {
+    display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+    margin-bottom: 24px;
+}
+.obs-item {
+    border-left: 3px solid var(--ds-border); padding: 12px 16px; margin-bottom: 8px;
+    background: var(--ds-bg-secondary); border-radius: 0 8px 8px 0;
+}
+.obs-item.autor-usuario { border-left-color: var(--ds-primary); }
+.obs-item.autor-gerente { border-left-color: var(--ds-warning); }
+.obs-item.autor-corredor { border-left-color: var(--ds-success); }
+</style>
+
+<div class="card-modern" style="max-width:900px;margin:0 auto;padding:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <h2 style="margin:0;">📋 Solicitud #{{ solicitud.id }}</h2>
+        <span class="badge-modern 
+            {% if solicitud.estado == 'publicada' %}badge-modern-success
+            {% elif solicitud.estado == 'pago_objetado' or solicitud.estado == 'rechazada' or solicitud.estado == 'cancelada' %}badge-modern-error
+            {% else %}badge-modern-primary{% endif %}">
+            {{ solicitud.get_estado_display }}
+        </span>
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepper">
+        <div class="solicitud-step {% if solicitud.paso_actual >= 1 %}done{% elif solicitud.paso_actual == 0 %}active{% endif %}">
+            {% if solicitud.paso_actual > 1 %}✅{% elif solicitud.paso_actual == 1 %}📍{% else %}1{% endif %}
+            Paso 1: Datos + Pago
+        </div>
+        <div class="solicitud-step {% if solicitud.paso_actual > 2 %}done{% elif solicitud.paso_actual == 2 %}active{% endif %}">
+            {% if solicitud.paso_actual > 2 %}✅{% elif solicitud.paso_actual == 2 %}📍{% else %}2{% endif %}
+            Paso 2: Aprobación
+        </div>
+        <div class="solicitud-step {% if solicitud.paso_actual > 3 %}done{% elif solicitud.paso_actual == 3 %}active{% endif %}">
+            {% if solicitud.paso_actual > 3 %}✅{% elif solicitud.paso_actual == 3 %}📍{% else %}3{% endif %}
+            Paso 3: OG
+        </div>
+        <div class="solicitud-step {% if solicitud.paso_actual > 4 %}done{% elif solicitud.paso_actual == 4 %}active{% endif %}">
+            {% if solicitud.paso_actual > 4 %}✅{% elif solicitud.paso_actual == 4 %}📍{% else %}4{% endif %}
+            Paso 4: Completar
+        </div>
+        <div class="solicitud-step {% if solicitud.paso_actual == 5 %}done{% endif %}">
+            {% if solicitud.paso_actual == 5 %}✅{% else %}5{% endif %}
+            Paso 5: Validación
+        </div>
+    </div>
+
+    <!-- Resumen -->
+    {% if request.user != solicitud.corredor_asignado %}
+    <div class="card-modern" style="margin-bottom:20px;">
+        <div class="card-modern-body" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.9rem;">
+            {% if solicitud.propiedad %}
+            <span>Propiedad:</span> <strong>{{ solicitud.propiedad.get_tipo_prop_display }} - {{ solicitud.propiedad.comuna }}</strong>
+            {% endif %}
+            <span>Meses:</span> <strong>{{ solicitud.meses }}</strong>
+            <span>Destacada:</span> <strong>{{ solicitud.es_destacada|yesno:'⭐ Sí,No' }}</strong>
+            <span>Total pagado:</span> <strong>${{ solicitud.total_pago|default:0|intcomma }}</strong>
+            <span>Creada:</span> <strong>{{ solicitud.created_at|date:'d/m/Y H:i' }}</strong>
+            {% if solicitud.corredor_asignado %}
+            <span>Corredor:</span> <strong>{{ solicitud.corredor_asignado.get_full_name|default:solicitud.corredor_asignado.email }}</strong>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ============================================================== -->
+    <!-- ACCIONES POR ROL Y ESTADO                                      -->
+    <!-- ============================================================== -->
+
+    <!-- NOTA: El orden de los bloques importa. Si un usuario es tanto solicitante
+         como corredor asignado (mismo usuario), se le muestra el bloque de corredor
+         primero para que pueda realizar las acciones de su rol. -->
+
+    <!-- ---------- CORREDOR (prioridad sobre usuario si el mismo user es ambos) ---------- -->
+    {% if request.user == solicitud.corredor_asignado %}
+
+        {% if solicitud.estado == 'en_revision_corredor' %}
+            <div class="alert-modern alert-info-modern" style="margin-bottom:16px;">
+                📋 Revisa los antecedentes de la propiedad y sube la Orden de Gestión 
+                (con costo de tu gestión y documentos requeridos).
+            </div>
+
+            {% if solicitud.propiedad %}
+            <div class="card-modern" style="margin-bottom:16px;">
+                <div class="card-modern-body">
+                    <div class="card-modern-title">🏠 Antecedentes de la propiedad</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.9rem;margin-top:8px;">
+                        <span>Dirección:</span><strong>{{ solicitud.propiedad.calle }} #{{ solicitud.propiedad.numero_calle }}</strong>
+                        <span>Tipo:</span><strong>{{ solicitud.propiedad.get_tipo_prop_display }}</strong>
+                        <span>Uso:</span><strong>{{ solicitud.propiedad.get_tipo_uso_display }}</strong>
+                        <span>Dormitorios:</span><strong>{{ solicitud.propiedad.numero_dormitorios }}</strong>
+                        <span>Baños:</span><strong>{{ solicitud.propiedad.numero_banos }}</strong>
+                        <span>M² const.:</span><strong>{{ solicitud.propiedad.m_construidos|default:'-' }}</strong>
+                        <span>M² terreno:</span><strong>{{ solicitud.propiedad.m_terreno|default:'-' }}</strong>
+                        <span>Estacionamientos:</span><strong>{{ solicitud.propiedad.num_estacionamientos }}</strong>
+                        <span>Acción:</span><strong>{{ solicitud.propiedad.get_tipo_accion_display }}</strong>
+                        <span>Valor:</span><strong>{{ solicitud.propiedad.precio|default:'-'|intcomma }}</strong>
+                        <span>Unidad Monetaria:</span><strong>{{ solicitud.propiedad.get_tipo_moneda_display }}</strong>
+                        <span>Bodega:</span><strong>{{ solicitud.propiedad.tiene_bodega|yesno:"Sí,No" }}</strong>
+                    </div>
+                    {% with fotos=solicitud.propiedad.fotos.all %}
+                    {% if fotos %}
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                        {% for f in fotos %}
+                        <a href="{{ f.imagen.url }}" target="_blank" style="width:90px;height:70px;border-radius:6px;overflow:hidden;border:1px solid var(--ds-border);">
+                            <img src="{{ f.imagen.url }}" style="width:100%;height:100%;object-fit:cover;">
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Subir OG -->
+            <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary-light);">
+                <div class="card-modern-body">
+                    <div class="card-modern-title">📄 Subir Orden de Gestión</div>
+                    <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+                        Define el costo de tu gestión y los documentos que el usuario debe presentar.
+                    </p>
+                    <form method="POST" action="{% url 'subir_orden_gestion' solicitud.id %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label>Archivo PDF de la Orden de Gestión</label>
+                            <input type="file" name="orden_gestion" accept=".pdf" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Documentos requeridos al usuario</label>
+                            <textarea name="docs_requeridos" rows="12" style="width:100%;padding:10px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.85rem;font-family:monospace;">{{ docs_orientacion_texto }}</textarea>
+                            <div class="form-hint">Los documentos sugeridos según el tipo de acción ya están pre-cargados. Puedes editar la lista si es necesario. El usuario deberá subir estos documentos para continuar.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">📤 Subir OG</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if solicitud.estado == 'og_pendiente' %}
+            <div class="alert-modern alert-warning-modern">⏳ El usuario está revisando la OG.</div>
+        {% endif %}
+
+        {% if solicitud.estado == 'og_aceptada' %}
+            <div class="alert-modern alert-info-modern">⏳ El usuario está completando los datos de la propiedad.</div>
+        {% endif %}
+
+        {% if solicitud.estado == 'en_validacion' %}
+            <div class="alert-modern alert-success-modern" style="margin-bottom:16px;">
+                ✅ El usuario completó los datos. Revisa y valida la información.
+            </div>
+
+            <div class="card-modern" style="margin-bottom:16px;">
+                <div class="card-modern-body">
+                    <div class="card-modern-title">🔍 Validar información</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.9rem;margin:12px 0;">
+                        <span>Descripción:</span><strong>{{ solicitud.propiedad.descripcion_propiedad|truncatewords:30|default:'-' }}</strong>
+                        <span>Entorno:</span><strong>{{ solicitud.propiedad.descripcion_entorno|truncatewords:20|default:'-' }}</strong>
+                    </div>
+                    {% with docs=solicitud.propiedad.docs_legales.all %}
+                    {% if docs %}
+                    <div style="font-size:0.85rem;">
+                        {% for d in docs %}
+                        <div style="display:flex;align-items:center;gap:8px;padding:2px 0;">
+                            📄 <a href="{{ d.documento.url }}" target="_blank">{{ d.nombre }}</a>
+                            <span class="badge-modern badge-modern-neutral">{{ d.get_estado_display }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{% url 'validar_solicitud' solicitud.id %}" style="margin-top:16px;border-top:1px solid var(--ds-border-light);padding-top:16px;">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label>Si hay correcciones, escríbelas aquí</label>
+                            <textarea name="texto" rows="2" style="width:100%;padding:10px;border:1px solid var(--ds-border);border-radius:6px;" placeholder="Describe qué debe corregir el usuario..."></textarea>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button type="submit" name="accion" value="aprobar" class="btn btn-success">
+                                ✅ Aprobar y publicar
+                            </button>
+                            <button type="submit" name="accion" value="rechazar" class="btn btn-warning" style="background:var(--ds-warning);color:white;border-color:var(--ds-warning);">
+                                🔄 Solicitar correcciones
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if solicitud.estado == 'publicada' and solicitud.propiedad %}
+            <div class="alert-modern alert-success-modern">✅ ¡Propiedad publicada!</div>
+            <a href="{% url 'detalle_propiedad' solicitud.propiedad.id %}" class="btn btn-primary btn-block" style="text-decoration:none;">👁️ Ver propiedad</a>
+        {% endif %}
+
+    <!-- ---------- USUARIO (solo si NO es el corredor asignado) ---------- -->
+    {% elif request.user == solicitud.usuario %}
+        {% if solicitud.estado == 'pago_revision' %}
+            <div class="alert-modern alert-info-modern">
+                ⏳ Tu solicitud está en revisión de pago. Un gerente revisará tu comprobante.
+            </div>
+        {% endif %}
+
+        {% if solicitud.estado == 'pago_objetado' %}
+            <div class="alert-modern alert-warning-modern">
+                ⚠️ Tu pago fue objetado. Revisa las observaciones del gerente y corrige.
+            </div>
+        {% endif %}
+
+        {% if solicitud.estado == 'pago_aprobado' or solicitud.estado == 'esperando_corredor' %}
+            <div class="alert-modern alert-success-modern">
+                ✅ ¡Pago aprobado! Pronto se asignará un corredor.
+            </div>
+        {% endif %}
+
+        {% if solicitud.estado == 'en_revision_corredor' %}
+            <div class="alert-modern alert-info-modern">
+                📋 Se ha asignado un corredor. Espera a que suba la Orden de Gestión.
+            </div>
+        {% endif %}
+
+        <!-- ---------- Paso 3/4: OG pendiente + aceptar ---------- -->
+        {% if solicitud.estado == 'og_pendiente' and solicitud.orden_gestion %}
+            <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
+                <div class="card-modern-body">
+                    <div class="card-modern-title" style="font-size:1rem;">📄 Orden de Gestión pendiente de aceptación</div>
+                    
+                    {% if solicitud.docs_requeridos %}
+                    <div class="alert-modern alert-info-modern" style="margin:8px 0;">
+                        <strong>📄 Documentos requeridos por el corredor:</strong>
+                        <div style="margin-top:4px;">{{ solicitud.docs_requeridos }}</div>
+                    </div>
+                    {% endif %}
+
+                    <p style="font-size:0.9rem;color:var(--ds-text-secondary);">
+                        Revisa la Orden de Gestión. Al aceptarla, deberás completar los datos de la propiedad
+                        y subir los documentos solicitados.
+                    </p>
+                    <a href="{{ solicitud.orden_gestion.url }}" target="_blank" class="btn btn-outline btn-sm">📄 Descargar Orden de Gestión</a>
+                    
+                    <form method="POST" action="{% url 'aceptar_orden_gestion' solicitud.id %}" style="margin-top:12px;">
+                        {% csrf_token %}
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:0.9rem;">
+                            <input type="checkbox" name="acepta" required style="width:18px;height:18px;accent-color:var(--ds-success);">
+                            Acepto las condiciones de la Orden de Gestión
+                        </label>
+                        <button type="submit" class="btn btn-success btn-block" style="margin-top:12px;">
+                            ✅ Aceptar y continuar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- ---------- Paso 4/5: Completar datos ---------- -->
+        {% if solicitud.estado == 'og_aceptada' or solicitud.estado == 'en_validacion' %}
+            {% if solicitud.estado == 'og_aceptada' %}
+            <div class="alert-modern alert-success-modern" style="margin-bottom:12px;">
+                ✅ ¡OG aceptada! Ahora completa los datos de la propiedad y sube los documentos.
+            </div>
+            <a href="{% url 'completar_datos_propiedad' solicitud.id %}" class="btn btn-primary btn-block" style="text-decoration:none;margin-bottom:16px;">
+                🏠 Completar datos de propiedad
+            </a>
+            {% endif %}
+            {% if solicitud.estado == 'en_validacion' %}
+            <div class="alert-modern alert-info-modern" style="margin-bottom:12px;">
+                📋 Tus datos están siendo revisados por el corredor. Si hay observaciones, responde abajo.
+            </div>
+            <a href="{% url 'completar_datos_propiedad' solicitud.id %}" class="btn btn-ghost btn-sm" style="text-decoration:none;">✏️ Editar datos</a>
+            {% endif %}
+        {% endif %}
+
+    <!-- ---------- GERENTE / SUPERADMIN ---------- -->
+    {% elif request.user.rol in 'gerente,superadmin' %}
+
+        {% if solicitud.estado == 'pago_revision' or solicitud.estado == 'pago_objetado' %}
+            <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-warning);">
+                <div class="card-modern-body">
+                    <div class="card-modern-title">💰 Revisión de pago</div>
+                    {% if solicitud.comprobante %}
+                    <div style="margin:12px 0;">
+                        <strong>Comprobante:</strong><br>
+                        <a href="{{ solicitud.comprobante.url }}" target="_blank">
+                            <img src="{{ solicitud.comprobante.url }}" style="max-height:200px;border:1px solid var(--ds-border);border-radius:8px;margin-top:4px;">
+                        </a>
+                    </div>
+                    {% endif %}
+                    <p style="font-size:0.9rem;">
+                        <strong>Total:</strong> ${{ solicitud.total_pago|default:0|intcomma }}<br>
+                        <strong>Usuario:</strong> {{ solicitud.usuario.get_full_name|default:solicitud.usuario.email }}<br>
+                        <strong>Publicación:</strong> {{ solicitud.meses }} meses · {% if solicitud.es_destacada %}⭐ Destacada{% else %}Normal{% endif %}
+                    </p>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <form method="POST" action="{% url 'aprobar_pago_solicitud' solicitud.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">✅ Aprobar pago</button>
+                        </form>
+                        <form method="POST" action="{% url 'rechazar_pago_solicitud' solicitud.id %}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                            {% csrf_token %}
+                            <input type="text" name="razon" placeholder="Razón del rechazo" required
+                                style="border:1px solid var(--ds-border);border-radius:6px;padding:8px 12px;font-size:0.85rem;">
+                            <button type="submit" class="btn btn-danger">❌ Rechazar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if solicitud.estado == 'pago_aprobado' or solicitud.estado == 'esperando_corredor' %}
+            <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary-light);">
+                <div class="card-modern-body">
+                    <div class="card-modern-title">� Asignar corredor</div>
+                    <p style="font-size:0.9rem;color:var(--ds-text-secondary);">
+                        Pago aprobado. Asigna un corredor para gestionar la publicación.
+                    </p>
+                    <form method="POST" action="{% url 'asignar_corredor_solicitud' solicitud.id %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        {% csrf_token %}
+                        <select name="corredor_id" required style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
+                            <option value="">Seleccionar corredor...</option>
+                            {% for c in corredores_disponibles %}
+                            <option value="{{ c.id }}">{{ c.get_full_name|default:c.email }} ({{ c.email }})</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary">� Asignar</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+    {% endif %}
+
+    <!-- ============================================================== -->
+    <!-- OBSERVACIONES                                                  -->
+    <!-- ============================================================== -->
+
+    <div class="card-modern" style="margin-bottom:16px;">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1rem;">💬 Observaciones</div>
+            <div style="max-height:400px;overflow-y:auto;margin-bottom:12px;">
+                {% for obs in observaciones %}
+                <div class="obs-item 
+                    {% if obs.autor == solicitud.usuario %}autor-usuario
+                    {% elif obs.autor.rol in 'gerente,superadmin' %}autor-gerente
+                    {% elif obs.autor == solicitud.corredor_asignado %}autor-corredor
+                    {% endif %}">
+                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:4px;">
+                        <strong>{{ obs.autor.get_full_name|default:obs.autor.email }} 
+                            <span class="badge-modern badge-modern-neutral" style="font-size:0.65rem;">{{ obs.autor.get_rol_display }}</span>
+                        </strong>
+                        <span>{{ obs.created_at|date:'d/m/Y H:i' }}</span>
+                    </div>
+                    <div style="font-size:0.9rem;">{{ obs.texto|linebreaksbr }}</div>
+                    {% if obs.archivo %}
+                    <a href="{{ obs.archivo.url }}" target="_blank" class="btn btn-sm btn-ghost" style="margin-top:4px;">📎 Adjunto</a>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="empty-state-modern" style="padding:20px;font-size:0.85rem;">No hay observaciones aún.</div>
+                {% endfor %}
+            </div>
+
+            <form method="POST" action="{% url 'agregar_observacion' solicitud.id %}" enctype="multipart/form-data" style="border-top:1px solid var(--ds-border-light);padding-top:12px;">
+                {% csrf_token %}
+                <div class="form-group" style="margin-bottom:8px;">
+                    <textarea name="texto" rows="2" placeholder="Escribe una observación..." style="width:100%;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.9rem;"></textarea>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input type="file" name="archivo" style="font-size:0.85rem;">
+                    <button type="submit" class="btn btn-primary btn-sm">📤 Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Acciones finales -->
+    {% if solicitud.estado != 'publicada' and solicitud.estado != 'rechazada' and solicitud.estado != 'cancelada' %}
+    <div style="text-align:center;margin-top:16px;">
+        {% if request.user == solicitud.usuario or request.user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'cancelar_solicitud' solicitud.id %}" onsubmit="return confirm('¿Cancelar esta solicitud?');" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">🗑️ Cancelar solicitud</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="text-align:center;margin-top:12px;">
+        <a href="{% url 'gestion' %}" class="btn btn-ghost btn-sm">← Volver a Gestión</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Centro de Comunicaciones{% endblock %}
+{% block content %}
+<style>
+.com-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.com-table th { text-align:left; padding:10px 8px; background:var(--ds-primary); color:#fff; font-weight:600; white-space:nowrap; }
+.com-table td { padding:10px 8px; border-bottom:1px solid var(--ds-border-light); vertical-align:middle; }
+.com-table tr.no-leido { background:var(--ds-primary-light); }
+.com-table tr:hover { background:var(--ds-bg-secondary); }
+.com-tag { display:inline-block; padding:2px 8px; border-radius:9999px; font-size:0.7rem; font-weight:600; white-space:nowrap; }
+.com-tag-sistema { background:#e2e8f0; color:#475569; }
+.com-tag-corredor { background:#d1fae5; color:#065f46; }
+.com-tag-gerente { background:#fef3c7; color:#92400e; }
+.com-tag-superadmin { background:#fce7f3; color:#9d174d; }
+.com-tag-usuario_base { background:#dbeafe; color:#1e40af; }
+.com-btn-icon { display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;border:1px solid var(--ds-border);text-decoration:none;font-size:0.85rem;background:var(--ds-bg);color:var(--ds-text);transition:0.15s; }
+.com-btn-icon:hover { background:var(--ds-primary);color:#fff;border-color:var(--ds-primary); }
+.com-btn-icon.danger:hover { background:var(--ds-error);border-color:var(--ds-error);color:#fff; }
+</style>
+
+<div class="hero-modern">
+    <h1>📬 Centro de Comunicaciones</h1>
+    <p>{{ no_leidos }} mensajes sin leer</p>
+</div>
+
+<div class="card-grid" style="grid-template-columns:260px 1fr;gap:20px;">
+    <!-- ===== SIDEBAR ===== -->
+    <div>
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <a href="{% url 'enviar_comunicacion' %}" class="btn btn-primary btn-block" style="text-decoration:none;margin-bottom:16px;">✉️ Nuevo mensaje</a>
+                <div style="font-size:0.85rem;">
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;"><strong>Recibidos:</strong> {{ recibidos.count }}</div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;"><strong>Enviados:</strong> {{ enviados.count }}</div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;"><strong>No leídos:</strong> {{ no_leidos }}</div>
+                </div>
+
+                <hr style="margin:16px 0;border:none;border-top:1px solid var(--ds-border-light);">
+
+                <!-- Filtros -->
+                <form method="GET" action="{% url 'centro_comunicaciones' %}">
+                    <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;">🔍 Filtros</div>
+
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;margin-bottom:2px;">Tipo de mensaje</label>
+                        <select name="tipo" style="width:100%;padding:6px 8px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.8rem;">
+                            <option value="">Todos</option>
+                            <option value="sistema" {% if filtro_tipo == 'sistema' %}selected{% endif %}>Sistema</option>
+                            <option value="usuario_base" {% if filtro_tipo == 'usuario_base' %}selected{% endif %}>Usuario Base</option>
+                            <option value="corredor" {% if filtro_tipo == 'corredor' %}selected{% endif %}>Corredor</option>
+                            <option value="gerente" {% if filtro_tipo == 'gerente' %}selected{% endif %}>Gerente</option>
+                            <option value="superadmin" {% if filtro_tipo == 'superadmin' %}selected{% endif %}>Superadmin</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;margin-bottom:2px;">Propiedad</label>
+                        <select name="propiedad" style="width:100%;padding:6px 8px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.8rem;">
+                            <option value="">Todas</option>
+                            {% for p in propiedades_usuario %}
+                            <option value="{{ p.id }}" {% if filtro_propiedad|stringformat:"s" == p.id|stringformat:"s" %}selected{% endif %}>{{ p.get_tipo_prop_display }} - {{ p.comuna }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;margin-bottom:2px;">Comuna</label>
+                        <select name="comuna" style="width:100%;padding:6px 8px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.8rem;">
+                            <option value="">Todas</option>
+                            {% for c in todas_comunas %}
+                            <option value="{{ c.id }}" {% if filtro_comuna|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        <label style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;margin-bottom:2px;">Buscar</label>
+                        <input type="text" name="q" value="{{ filtro_q }}" placeholder="Título o mensaje..." style="width:100%;padding:6px 8px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.8rem;">
+                    </div>
+
+                    <div style="display:flex;gap:4px;margin-top:10px;">
+                        <button type="submit" class="btn btn-primary btn-sm" style="flex:1;">Filtrar</button>
+                        <a href="{% url 'centro_comunicaciones' %}" class="btn btn-ghost btn-sm" style="flex-shrink:0;">✕</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN ===== -->
+    <div>
+        <div style="display:flex;gap:0;margin-bottom:16px;">
+            <button class="btn {% if request.GET.tab == 'enviados' %}btn-ghost{% else %}btn-secondary{% endif %} btn-sm" style="border-radius:var(--ds-radius-md) 0 0 var(--ds-radius-md);" onclick="showTab('recibidos')">📥 Recibidos</button>
+            <button class="btn {% if request.GET.tab == 'enviados' %}btn-secondary{% else %}btn-ghost{% endif %} btn-sm" style="border-radius:0 var(--ds-radius-md) var(--ds-radius-md) 0;" onclick="showTab('enviados')">📤 Enviados</button>
+        </div>
+
+        <!-- ===== RECIBIDOS ===== -->
+        <div id="recibidos" class="tab-content">
+            {% if recibidos %}
+            <div style="overflow-x:auto;">
+                <table class="com-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width:120px;">1. Tipo de mensaje</th>
+                            <th style="min-width:100px;">2. Emisor</th>
+                            <th style="min-width:100px;">3. Receptor</th>
+                            <th style="min-width:200px;">4. Detalle</th>
+                            <th style="width:50px;">5. Ir</th>
+                            <th style="width:40px;">6. Leído</th>
+                            <th style="width:40px;">7. Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for com in recibidos %}
+                        <tr class="{% if not com.is_read %}no-leido{% endif %}">
+                            <!-- 1. Tipo de mensaje -->
+                            <td>
+                                <span class="com-tag com-tag-{{ com.source_type }}">{{ com.get_source_type_display }}</span>
+                                <div style="font-weight:600;margin-top:2px;">Prop # {{com.property_id}} - {{ com.title|truncatechars:40 }}</div>
+                            </td>
+                            <!-- 2. Emisor -->
+                            <td>
+                                <div style="white-space:nowrap;">{{ com.emitter_user.get_full_name|default:com.emitter_user.username }}</div>
+                                <div style="font-size:0.7rem;color:var(--ds-text-secondary);">@{{ com.emitter_user.username }}</div>
+                            </td>
+                            <!-- 3. Receptor -->
+                            <td>
+                                <div style="white-space:nowrap;">{{ com.recipient.get_full_name|default:com.recipient.username }}</div>
+                                <div style="font-size:0.7rem;color:var(--ds-text-secondary);">@{{ com.recipient.username }}</div>
+                            </td>
+                            <!-- 4. Detalle -->
+                            <td>
+                                <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-bottom:2px;">{{ com.created_at|date:"d/m/Y H:i" }}</div>
+                                <div>{{ com.message|truncatechars:100 }}</div>
+                            </td>
+                            <!-- 5. Ir -->
+                            <td>
+                                <div style="display:flex;gap:3px;flex-wrap:nowrap;">
+                                    {% if com.property_id %}
+                                    <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad">🏠</a>
+                                    {% endif %}
+                                    {% if com.related_object_id %}
+                                    <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <!-- 6. Leído / Desmarcar (toggle dual) -->
+                            <td>
+                                <a href="{% url 'marcar_no_leido' com.id %}" class="com-btn-icon" title="{% if com.is_read %}Marcar como no leído{% else %}Marcar como leído{% endif %}">
+                                    {% if com.is_read %}📩{% else %}✔️{% endif %}
+                                </a>
+                            </td>
+                            <!-- 7. Eliminar -->
+                            <td>
+                                <a href="{% url 'eliminar_comunicacion' com.id %}" class="com-btn-icon danger" title="Eliminar" onclick="return confirm('¿Eliminar este mensaje?')">🗑️</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-modern">No tienes mensajes recibidos{% if filtro_tipo or filtro_propiedad or filtro_q %} con los filtros aplicados{% endif %}.</div>
+            {% endif %}
+        </div>
+
+        <!-- ===== ENVIADOS ===== -->
+        <div id="enviados" class="tab-content" style="display:none;">
+            {% if enviados %}
+            <div style="overflow-x:auto;">
+                <table class="com-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width:120px;">1. Tipo de mensaje</th>
+                            <th style="min-width:100px;">2. Emisor</th>
+                            <th style="min-width:100px;">3. Receptor</th>
+                            <th style="min-width:200px;">4. Detalle</th>
+                            <th style="width:50px;">5. Ir</th>
+                            <th style="width:40px;">6. Leído</th>
+                            <th style="width:40px;">7. Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for com in enviados %}
+                        <tr>
+                            <!-- 1. Tipo -->
+                            <td>
+                                <span class="com-tag com-tag-{{ com.source_type }}">{{ com.get_source_type_display }}</span>
+                                <div style="font-weight:600;margin-top:2px;">{{ com.title|truncatechars:40 }}</div>
+                            </td>
+                            <!-- 2. Emisor -->
+                            <td>
+                                <div style="white-space:nowrap;">{{ com.emitter_user.get_full_name|default:com.emitter_user.username }}</div>
+                                <div style="font-size:0.7rem;color:var(--ds-text-secondary);">@{{ com.emitter_user.username }}</div>
+                            </td>
+                            <!-- 3. Receptor -->
+                            <td>
+                                <div style="white-space:nowrap;">{{ com.recipient.get_full_name|default:com.recipient.username }}</div>
+                                <div style="font-size:0.7rem;color:var(--ds-text-secondary);">@{{ com.recipient.username }}</div>
+                            </td>
+                            <!-- 4. Detalle -->
+                            <td>
+                                <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-bottom:2px;">{{ com.created_at|date:"d/m/Y H:i" }}</div>
+                                <div>{{ com.message|truncatechars:100 }}</div>
+                            </td>
+                            <!-- 5. Ir -->
+                            <td>
+                                <div style="display:flex;gap:3px;flex-wrap:nowrap;">
+                                    {% if com.property_id %}
+                                    <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad">🏠</a>
+                                    {% endif %}
+                                    {% if com.related_object_id %}
+                                    <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <!-- 6. Leído → no aplica en enviados (se muestra el estado) -->
+                            <td>
+                                <span style="font-size:0.75rem;color:var(--ds-text-secondary);">
+                                    {% if com.is_read %}✔️ Leído{% else %}📩 Pendiente{% endif %}
+                                </span>
+                            </td>
+                            <!-- 7. Eliminar -->
+                            <td>
+                                <a href="{% url 'eliminar_comunicacion' com.id %}" class="com-btn-icon danger" title="Eliminar" onclick="return confirm('¿Eliminar este mensaje?')">🗑️</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-modern">No has enviado mensajes{% if filtro_tipo or filtro_propiedad or filtro_q %} con los filtros aplicados{% endif %}.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('[onclick*="showTab"]').forEach(b => {
+        b.className = 'btn btn-ghost btn-sm';
+    });
+    document.getElementById(tab).style.display = 'block';
+    // Highlight active tab button
+    document.querySelectorAll('[onclick*="showTab"]').forEach(b => {
+        if (b.getAttribute('onclick').includes(tab)) {
+            b.className = 'btn btn-secondary btn-sm';
+        }
+    });
+}
+</script>
+{% endblock %}

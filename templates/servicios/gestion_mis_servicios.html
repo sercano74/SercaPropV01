@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mis Servicios - Dato Constructor{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 style="margin:0;font-size:1.4rem;font-weight:700;">🔧 Mis Servicios Publicados</h1>
+        <p style="margin:4px 0 0 0;color:var(--ds-text-secondary);font-size:0.9rem;">Gestiona tus servicios de construcción</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a href="{% url 'lista_servicios' %}" class="btn btn-outline btn-sm">🔨 Ver directorio</a>
+        <a href="{% url 'contratar_servicio' %}" class="btn btn-primary btn-sm">+ Nuevo servicio</a>
+    </div>
+</div>
+
+{% if servicios %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:16px;">
+    {% for s in servicios %}
+    <div class="card-modern">
+        <div style="display:flex;gap:12px;padding:12px;">
+            {% if s.imagen %}
+            <img src="{{ s.imagen.url }}" style="width:100px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;">
+            {% else %}
+            <div style="width:100px;height:80px;background:var(--ds-bg-secondary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;">🔧</div>
+            {% endif %}
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span class="badge-modern {% if s.estado == 'activo' %}badge-modern-success{% elif s.estado == 'expirado' %}badge-modern-error{% else %}badge-modern-neutral{% endif %}">
+                        {{ s.get_estado_display }}
+                    </span>
+                    <span class="badge-modern badge-modern-neutral">{{ s.categoria.icono|default:'🔧' }} {{ s.categoria.nombre }}</span>
+                </div>
+                <div style="font-weight:600;font-size:0.95rem;margin:4px 0;">{{ s.titulo }}</div>
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);">
+                    📅 {{ s.fecha_expiracion|date:'d/m/Y' }} ({{ s.dias_restantes }} días)
+                    {% if s.tipo_plan == 'anual' %}<span class="badge-modern badge-modern-info">Anual</span>{% endif %}
+                </div>
+                <div style="display:flex;gap:12px;font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;">
+                    <span>📩 {{ s.total_mensajes }} mensajes</span>
+                    {% if s.mensajes_no_leidos > 0 %}
+                    <span style="color:var(--ds-primary);font-weight:600;">🔴 {{ s.mensajes_no_leidos }} no leídos</span>
+                    {% endif %}
+                    {% if s.rating_promedio > 0 %}
+                    <span>⭐ {{ s.rating_promedio }} ({{ s.cantidad_ratings }})</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="padding:8px 12px;border-top:1px solid var(--ds-border-light);display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="{% url 'log_mensajes_servicio' s.id %}" class="btn btn-outline btn-sm" style="font-size:0.75rem;">
+                📩 Mensajes {% if s.mensajes_no_leidos > 0 %}<span style="background:var(--ds-primary);color:white;border-radius:50%;padding:1px 6px;font-size:0.65rem;margin-left:4px;">{{ s.mensajes_no_leidos }}</span>{% endif %}
+            </a>
+            <a href="{% url 'detalle_servicio' s.id %}" class="btn btn-ghost btn-sm" style="font-size:0.75rem;">👁️ Ver</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state-modern">
+    <div class="empty-icon">🔧</div>
+    <h3>No has publicado servicios</h3>
+    <p>Publica tu primer servicio de construcción y llega a más clientes.</p>
+    <a href="{% url 'contratar_servicio' %}" class="btn btn-primary">📢 Publicar servicio</a>
+</div>
+{% endif %}
+
+{% endblock %}

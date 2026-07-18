@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+{% block title %}Editar {{ propiedad.get_tipo_prop_display }} - {{ propiedad.calle }}{% endblock %}
+{% block content %}
+<div class="form-modern-container" style="max-width:900px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <h2 style="margin:0;">✏️ Editar propiedad</h2>
+        <a href="{% url 'detalle_propiedad' propiedad.id %}" class="btn btn-ghost btn-sm" style="text-decoration:none;">← Volver al detalle</a>
+    </div>
+    <p style="color:var(--ds-text-secondary);margin-bottom:20px;">
+        {{ propiedad.get_tipo_prop_display }} · {{ propiedad.calle }} #{{ propiedad.numero_calle }} · 🆔 {{ propiedad.id }}
+        {% if propiedad.comuna %} · {{ propiedad.comuna }}{% endif %}
+    </p>
+
+    <form method="POST" enctype="multipart/form-data" class="form-modern">
+        {% csrf_token %}
+
+        <!-- ===== DATOS BÁSICOS ===== -->
+        <h3 style="margin:20px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🏠 Datos básicos</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Comuna</label>
+                <select name="comuna" class="form-control">
+                    <option value="">— Selecciona —</option>
+                    {% for c in comunas %}
+                    <option value="{{ c.id }}" {% if propiedad.comuna_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Uso</label>
+                <select name="tipo_uso" class="form-control">
+                    {% for k,v in propiedad.TIPO_USO_CHOICES %}
+                    <option value="{{ k }}" {% if propiedad.tipo_uso == k %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>🛏️ Dormitorios</label>
+                <input type="number" name="numero_dormitorios" value="{{ propiedad.numero_dormitorios }}" min="0" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>🚿 Baños</label>
+                <input type="number" name="numero_banos" value="{{ propiedad.numero_banos }}" min="0" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>📐 M² construidos</label>
+                <input type="number" name="m_construidos" step="0.01" value="{{ propiedad.m_construidos|default_if_none:'' }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>🌱 M² terreno</label>
+                <input type="number" name="m_terreno" step="0.01" value="{{ propiedad.m_terreno|default_if_none:'' }}" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>🚗 Estacionamientos</label>
+                <input type="number" name="num_estacionamientos" value="{{ propiedad.num_estacionamientos }}" min="0" class="form-control">
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:24px;">
+                    <input type="checkbox" name="tiene_bodega" value="1" {% if propiedad.tiene_bodega %}checked{% endif %} style="width:20px;height:20px;">
+                    <strong>📦 Tiene bodega</strong>
+                </label>
+            </div>
+        </div>
+
+        <!-- ===== DESCRIPCIÓN, ENTORNO, SERVICIOS ===== -->
+        <h3 style="margin:20px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📝 Descripción, Entorno y Servicios</h3>
+        <div class="form-group">
+            <label>Descripción de la propiedad</label>
+            <textarea name="descripcion_propiedad" rows="5" class="form-control">{{ propiedad.descripcion_propiedad|default:'' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Descripción del entorno</label>
+            <textarea name="descripcion_entorno" rows="4" class="form-control">{{ propiedad.descripcion_entorno|default:'' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>🔧 Servicios / Características</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                {% for s in servicios %}
+                <label class="servicio-checkbox-label" style="display:inline-flex;align-items:center;gap:8px;font-weight:400;font-size:0.85rem;border:2px solid {% if s in propiedad.servicios_prop.all %}var(--ds-primary){% else %}var(--ds-border){% endif %};border-radius:9999px;padding:6px 16px 6px 12px;cursor:pointer;background:{% if s in propiedad.servicios_prop.all %}var(--ds-primary-light){% else %}var(--ds-bg){% endif %};">
+                    <input type="checkbox" name="servicios" value="{{ s.id }}"
+                        {% if s in propiedad.servicios_prop.all %}checked{% endif %}
+                        style="width:18px;height:18px;accent-color:var(--ds-primary);cursor:pointer;">
+                    {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1.1rem;color:var(--ds-primary);"></i>{% endif %}
+                    <span>{{ s.nombre }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ===== PRECIO ===== -->
+        <h3 style="margin:20px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">💰 Precio</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Moneda</label>
+                <select name="tipo_moneda" class="form-control">
+                    <option value="PCL" {% if propiedad.tipo_moneda == 'PCL' %}selected{% endif %}>CLP</option>
+                    <option value="UF" {% if propiedad.tipo_moneda == 'UF' %}selected{% endif %}>UF</option>
+                    <option value="USD" {% if propiedad.tipo_moneda == 'USD' %}selected{% endif %}>USD</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Precio</label>
+                <input type="number" name="precio" step="0.01" value="{{ propiedad.precio|floatformat:0 }}" class="form-control">
+            </div>
+        </div>
+
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary" style="padding:14px 32px;">💾 Guardar cambios</button>
+            <a href="{% url 'detalle_propiedad' propiedad.id %}" class="btn btn-outline" style="padding:14px 32px;text-decoration:none;">Cancelar</a>
+        </div>
+    </form>
+
+    <!-- ============================================================ -->
+    <!-- SECCIÓN: FOTOS                                               -->
+    <!-- ============================================================ -->
+    <hr style="margin:32px 0;border:none;border-top:2px solid var(--ds-border-light);">
+    <h3 style="margin:0 0 10px;">📸 Fotos de la propiedad</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;" id="fotos-grid">
+        {% for foto in propiedad.fotos.all %}
+        <div class="foto-card" data-foto-id="{{ foto.id }}" style="position:relative;width:150px;height:120px;border-radius:10px;overflow:hidden;border:2px solid var(--ds-border);box-shadow:var(--ds-shadow-sm);">
+            <img src="{{ foto.imagen.url }}" alt="Foto propiedad" style="width:100%;height:100%;object-fit:cover;display:block;">
+            <button type="button" onclick="eliminarFoto({{ foto.id }}, this)" style="position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:2px solid var(--ds-error);background:white;color:var(--ds-error);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">✕</button>
+        </div>
+        {% empty %}
+        <div style="color:var(--ds-text-secondary);font-size:0.9rem;padding:20px;text-align:center;width:100%;">No hay fotos aún.</div>
+        {% endfor %}
+    </div>
+
+    <form id="form-subir-foto" method="POST" action="{% url 'subir_foto_propiedad' propiedad.id %}" enctype="multipart/form-data" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        {% csrf_token %}
+        <input type="file" name="imagen" accept="image/*" required style="padding:8px;border:1px solid var(--ds-border);border-radius:6px;flex:1;min-width:200px;">
+        <button type="submit" class="btn btn-primary btn-sm">📤 Subir foto</button>
+    </form>
+
+    <!-- ============================================================ -->
+    <!-- SECCIÓN: DOCUMENTOS LEGALES                                  -->
+    <!-- ============================================================ -->
+    <hr style="margin:32px 0;border:none;border-top:2px solid var(--ds-border-light);">
+    <h3 style="margin:0 0 10px;">📄 Documentos legales</h3>
+
+    {% if docs_requeridos_lista %}
+    <div class="alert-modern alert-info-modern" style="margin-bottom:16px;">
+        <strong>📋 Documentos solicitados por el corredor:</strong>
+        <ul style="margin:8px 0 0 20px;">
+            {% for d in docs_requeridos_lista %}
+            <li>{{ d }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div id="docs-legales-list" style="display:grid;gap:8px;margin-bottom:16px;">
+        {% for doc in docs_legales %}
+        <div class="doc-card" data-doc-id="{{ doc.id }}" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--ds-border);border-radius:10px;background:var(--ds-bg);flex-wrap:wrap;">
+            <div style="flex:1;min-width:150px;">
+                <div style="font-weight:600;font-size:0.9rem;">{{ doc.nombre }}</div>
+                <div style="font-size:0.75rem;color:var(--ds-text-secondary);">
+                    Subido: {{ doc.uploaded_at|date:"d/m/Y H:i" }}
+                    · Estado: <span class="badge-modern {% if doc.estado == 'aprobado' %}badge-modern-success{% elif doc.estado == 'rechazado' %}badge-modern-error{% else %}badge-modern-neutral{% endif %}">{{ doc.get_estado_display }}</span>
+                </div>
+            </div>
+            <a href="{{ doc.documento.url }}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">📄 Ver</a>
+            <form method="POST" action="{% url 'reemplazar_documento_legal' doc.id %}" enctype="multipart/form-data" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="file" name="documento" required style="font-size:0.75rem;max-width:140px;">
+                <button type="submit" class="btn btn-outline btn-sm">🔄 Reemplazar</button>
+            </form>
+            <form method="POST" action="{% url 'eliminar_documento_legal' doc.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar este documento?')">✕</button>
+            </form>
+        </div>
+        {% empty %}
+        <div style="color:var(--ds-text-secondary);font-size:0.9rem;padding:20px;text-align:center;">No hay documentos legales subidos aún.</div>
+        {% endfor %}
+    </div>
+
+    <form method="POST" action="{% url 'subir_documento_legal' propiedad.id %}" enctype="multipart/form-data" style="padding:16px;border:2px dashed var(--ds-border);border-radius:10px;">
+        {% csrf_token %}
+        <div style="font-weight:600;margin-bottom:8px;">📄 Subir nuevo documento legal</div>
+        <div class="form-row" style="gap:8px;">
+            <input type="text" name="nombre" placeholder="Nombre del documento (ej: Escritura)" required style="flex:1;padding:8px;border:1px solid var(--ds-border);border-radius:6px;min-width:150px;">
+            <input type="file" name="documento" required style="padding:8px;border:1px solid var(--ds-border);border-radius:6px;flex:1;min-width:150px;">
+            <button type="submit" class="btn btn-primary btn-sm">📤 Subir</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function eliminarFoto(fotoId, btn) {
+    if (!confirm('¿Eliminar esta foto?')) return;
+    const card = btn.closest('.foto-card');
+    fetch('{% url "eliminar_foto_propiedad" 0 %}'.replace('0', fotoId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            card.remove();
+            // Si no quedan fotos, mostrar mensaje
+            const grid = document.getElementById('fotos-grid');
+            if (grid.children.length === 0) {
+                grid.innerHTML = '<div style="color:var(--ds-text-secondary);font-size:0.9rem;padding:20px;text-align:center;width:100%;">No hay fotos aún.</div>';
+            }
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo eliminar'));
+        }
+    })
+    .catch(err => alert('Error de red: ' + err.message));
+}
+</script>
+
+<style>
+.servicio-checkbox-label:hover {
+    border-color: var(--ds-primary) !important;
+    box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.1);
+}
+.servicio-checkbox-label:has(input:checked) {
+    border-color: var(--ds-primary) !important;
+    background: var(--ds-primary-light) !important;
+}
+.form-control {
+    width:100%;
+    padding:10px 12px;
+    border:2px solid var(--ds-border);
+    border-radius:8px;
+    font-size:0.9rem;
+    background:var(--ds-bg);
+    transition:border-color 0.2s;
+}
+.form-control:focus {
+    border-color:var(--ds-primary);
+    outline:none;
+    box-shadow:0 0 0 3px rgba(255,56,92,0.1);
+}
+textarea.form-control { resize:vertical; min-height:80px; }
+.form-row { display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap; }
+.form-row > .form-group { flex:1; min-width:180px; }
+.form-group { margin-bottom:12px; }
+.form-group label { display:block; font-weight:600; font-size:0.85rem; margin-bottom:4px; }
+</style>
+{% endblock %}

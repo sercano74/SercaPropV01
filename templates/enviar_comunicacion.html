@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-modern-container">
+    <h2>✉️ Enviar mensaje</h2>
+    <form method="POST" class="form-modern">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Destinatario</label>
+            <select name="recipient_id" required>
+                <option value="">Seleccionar...</option>
+                {% for u in usuarios %}
+                <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} ({{ u.get_rol_display }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Asunto</label>
+            <input type="text" name="title" required>
+        </div>
+        <div class="form-group">
+            <label>Mensaje</label>
+            <textarea name="message" rows="6" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Enviar mensaje</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% load humanize %}
+{% load prop_extras %}
+
+<div class="proceso-stepper">
+    {% with estados_proceso='propuesta_aceptada,promesa_observacion,promesa_aceptada,instrucciones_observacion,instrucciones_aceptada,contrato_pendiente,contrato_listo,firma_notarial,escritura_cbr,escritura_aprobada,escritura_rechazada,finalizado' %}
+    <div class="proceso-step {% if proceso.estado == 'propuesta_aceptada' or proceso.estado == 'promesa_observacion' %}current{% elif proceso.promesa_aceptado_at %}done{% else %}pending{% endif %}">
+        📄 Promesa
+    </div>
+    <div class="proceso-step {% if proceso.estado == 'instrucciones_observacion' %}current{% elif proceso.instrucciones_aceptado_at %}done{% elif proceso.promesa_aceptado_at %}pending{% else %}pending{% endif %}">
+        📋 Instrucciones
+    </div>
+    <div class="proceso-step {% if proceso.estado == 'contrato_listo' or proceso.estado == 'contrato_pendiente' %}current{% elif proceso.contrato_firmado %}done{% elif proceso.instrucciones_aceptado_at %}pending{% else %}pending{% endif %}">
+        📝 Contrato
+    </div>
+    <div class="proceso-step {% if proceso.estado == 'firma_notarial' %}current{% elif proceso.contrato_firmado %}done{% else %}pending{% endif %}">
+        ✍️ Firma
+    </div>
+    <div class="proceso-step {% if proceso.estado == 'escritura_cbr' or proceso.estado == 'escritura_rechazada' %}current{% elif proceso.escritura_aprobada or proceso.estado == 'finalizado' %}done{% else %}pending{% endif %}">
+        🏛️ CBR
+    </div>
+    <div class="proceso-step {% if proceso.estado == 'escritura_aprobada' or proceso.estado == 'finalizado' %}done{% else %}pending{% endif %}">
+        ✅ Fin
+    </div>
+    {% endwith %}
+</div>
+
+<div style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">
+    Proceso de Compra #{{ proceso.id }}
+    <span class="badge-modern {% if proceso.estado == 'escritura_aprobada' or proceso.estado == 'finalizado' %}badge-modern-success{% elif proceso.estado == 'escritura_rechazada' or proceso.estado == 'cancelado' %}badge-modern-error{% else %}badge-modern-primary{% endif %}">
+        {{ proceso.get_estado_display }}
+    </span>
+</div>
+
+<div style="font-size:0.75rem;color:var(--ds-text-muted);margin-bottom:8px;padding:6px 10px;background:var(--ds-bg-secondary);border-radius:6px;border:1px solid var(--ds-border-light);">
+    🏠 Propiedad #<strong>{{ proceso.propiedad.id }}</strong> · {{ proceso.propiedad.display_name_public }}
+</div>
+
+<div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:8px;">
+    Comprador: <strong>{{ proceso.comprador.get_full_name|default:proceso.comprador.email }}</strong>
+    {% if user != proceso.comprador %} · Vendedor: <strong>{{ proceso.vendedor.get_full_name|default:proceso.vendedor.email }}</strong>{% endif %}
+</div>
+
+{% if proceso.otros_pausados %}
+<div class="alert-modern" style="background:#fff3cd;border:1px solid #ffc107;padding:8px;border-radius:6px;font-size:0.8rem;margin-bottom:8px;">
+    🔒 Otros procesos de esta propiedad están <strong>pausados</strong> debido a este proceso activo.
+</div>
+{% endif %}
+
+<!-- ===== ETAPA 1: PROMESA DE COMPRAVENTA ===== -->
+<div style="margin-bottom:10px;">
+    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">📄 <u>Promesa de Compraventa</u>
+        {% if proceso.promesa_aceptado_at %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Aceptada {{ proceso.promesa_aceptado_at|date:'d/m/Y H:i' }}</span>{% endif %}
+    </div>
+
+    {% if not proceso.promesa_documento %}
+        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'subir_promesa_compraventa' proceso.id %}" enctype="multipart/form-data" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="file" name="documento" accept=".pdf" required style="font-size:0.75rem;">
+            <button type="submit" class="btn btn-primary btn-sm">📄 Subir Promesa</button>
+        </form>
+        {% else %}
+        <div style="font-size:0.8rem;color:var(--ds-text-secondary);">⏳ El corredor debe subir la Promesa de Compraventa.</div>
+        {% endif %}
+    {% else %}
+        <div style="font-size:0.8rem;">📄 <a href="{{ proceso.promesa_documento.url }}" target="_blank">Descargar Promesa (PDF)</a></div>
+        <div style="font-size:0.75rem;color:var(--ds-text-secondary);">Ronda: {{ proceso.promesa_ronda }} · Subido por: {{ proceso.promesa_subido_por.get_full_name|default:proceso.promesa_subido_por.email }}
+
+        <!-- Estado de aceptaciones -->
+        <div style="display:flex;gap:12px;margin-top:4px;font-size:0.8rem;">
+            <span>Vendedor: {% if proceso.promesa_aceptado_vendedor %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
+            <span>Comprador: {% if proceso.promesa_aceptado_comprador %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
+        </div>
+
+        {% if not proceso.promesa_aceptado_comprador and user == proceso.comprador and proceso.estado in 'propuesta_aceptada,promesa_observacion' %}
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'promesa' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm">✅ Aceptar Promesa (Comprador)</button>
+            </form>
+            <button onclick="document.getElementById('obj-promesa-{{ proceso.id }}-comprador').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+            <div id="obj-promesa-{{ proceso.id }}-comprador" style="display:none;width:100%;margin-top:4px;">
+                <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                    {% csrf_token %}
+                    <input type="text" name="texto" placeholder="Razón de la objeción*" required style="flex:1;min-width:150px;padding:4px 6px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.75rem;">
+                    <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
+                    <button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% if not proceso.promesa_aceptado_vendedor and user == proceso.vendedor and proceso.estado in 'propuesta_aceptada,promesa_observacion' %}
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'promesa' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm">✅ Aceptar Promesa (Vendedor)</button>
+            </form>
+            <button onclick="document.getElementById('obj-promesa-{{ proceso.id }}-vendedor').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+            <div id="obj-promesa-{{ proceso.id }}-vendedor" style="display:none;width:100%;margin-top:4px;">
+                <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                    {% csrf_token %}
+                    <input type="text" name="texto" placeholder="Razón de la objeción*" required style="flex:1;min-width:150px;padding:4px 6px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.75rem;">
+                    <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
+                    <button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Observaciones en Promesa -->
+        {% if proceso.estado in 'propuesta_aceptada,promesa_observacion' and user == proceso.comprador or user == proceso.vendedor or user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'agregar_observacion_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            {% csrf_token %}
+            <input type="text" name="texto" placeholder="Observación (opcional para corredor)" style="width:100%;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+            <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
+            <button type="submit" class="btn btn-outline btn-sm">💬 Agregar</button>
+        </form>
+        {% endif %}
+        {% endif %}
+</div>
+
+<!-- ===== ETAPA 2: INSTRUCCIONES NOTARIALES ===== -->
+<div style="margin-bottom:10px;">
+    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">📋 <u>Instrucciones Notariales</u>
+        {% if proceso.instrucciones_aceptado_at %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Aceptadas {{ proceso.instrucciones_aceptado_at|date:'d/m/Y H:i' }}</span>{% endif %}
+    </div>
+
+    {% if proceso.estado == 'promesa_aceptada' or proceso.estado == 'instrucciones_observacion' %}
+        {% if not proceso.instrucciones_documento %}
+            {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+            <form method="POST" action="{% url 'subir_instrucciones_notariales' proceso.id %}" enctype="multipart/form-data" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="file" name="documento" accept=".pdf" required style="font-size:0.75rem;">
+                <button type="submit" class="btn btn-primary btn-sm">📋 Subir Instrucciones</button>
+            </form>
+            {% endif %}
+        {% else %}
+            <div style="font-size:0.8rem;">📋 <a href="{{ proceso.instrucciones_documento.url }}" target="_blank">Descargar Instrucciones (PDF)</a></div>
+            <div style="font-size:0.75rem;color:var(--ds-text-secondary);">Ronda: {{ proceso.instrucciones_ronda }}</div>
+
+            <div style="display:flex;gap:12px;margin-top:4px;font-size:0.8rem;">
+                <span>Vendedor: {% if proceso.instrucciones_aceptado_vendedor %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
+                <span>Comprador: {% if proceso.instrucciones_aceptado_comprador %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
+            </div>
+
+            {% if not proceso.instrucciones_aceptado_comprador and user == proceso.comprador %}
+            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'instrucciones' %}" style="margin-top:4px;">
+                {% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar Instrucciones (Comprador)</button>
+            </form>
+            {% endif %}
+            {% if not proceso.instrucciones_aceptado_vendedor and user == proceso.vendedor %}
+            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'instrucciones' %}" style="margin-top:4px;">
+                {% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar Instrucciones (Vendedor)</button>
+            </form>
+            {% endif %}
+
+            {% if proceso.estado == 'instrucciones_observacion' and user == proceso.comprador or user == proceso.vendedor or user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+            <form method="POST" action="{% url 'agregar_observacion_proceso' proceso.id 'instrucciones' %}" enctype="multipart/form-data" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                {% csrf_token %}
+                <input type="text" name="texto" placeholder="Observación" style="width:100%;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+                <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
+                <button type="submit" class="btn btn-outline btn-sm">💬 Agregar</button>
+            </form>
+            {% endif %}
+        {% endif %}
+    {% elif proceso.estado == 'instrucciones_aceptada' or proceso.estado == 'contrato_pendiente' or proceso.estado == 'contrato_listo' or proceso.estado == 'firma_notarial' or proceso.estado == 'escritura_cbr' or proceso.estado == 'escritura_aprobada' or proceso.estado == 'escritura_rechazada' or proceso.estado == 'cancelado' or proceso.estado == 'finalizado' %}
+        {% if proceso.instrucciones_documento %}
+        <div style="font-size:0.8rem;">📋 <a href="{{ proceso.instrucciones_documento.url }}" target="_blank">Descargar Instrucciones (PDF)</a></div>
+        <span style="color:var(--ds-success);font-size:0.75rem;">✅ Aceptadas</span>
+        {% endif %}
+    {% endif %}
+</div>
+
+<!-- ===== ETAPA 3: CONTRATO DE COMPRAVENTA + NOTARÍA ===== -->
+<div style="margin-bottom:10px;">
+    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">📝 <u>Contrato de Compraventa</u>
+        {% if proceso.contrato_firmado %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Firmado {{ proceso.contrato_firmado_at|date:'d/m/Y' }}</span>{% endif %}
+    </div>
+
+    {% if proceso.estado == 'instrucciones_aceptada' or proceso.estado == 'contrato_pendiente' %}
+        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'subir_contrato_notaria' proceso.id %}" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            {% csrf_token %}
+            <input type="file" name="contrato_documento" accept=".pdf" required style="font-size:0.75rem;">
+            <input type="text" name="notaria_nombre" placeholder="Nombre notaría" required style="width:120px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
+            <input type="text" name="notaria_direccion" placeholder="Dirección" required style="width:120px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
+            <input type="date" name="notaria_fecha" required style="width:110px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
+            <input type="time" name="notaria_hora" required style="width:80px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
+            <button type="submit" class="btn btn-primary btn-sm">💾 Guardar todo</button>
+        </form>
+        {% endif %}
+    {% endif %}
+
+    {% if proceso.contrato_documento %}
+    <div style="font-size:0.8rem;">📝 <a href="{{ proceso.contrato_documento.url }}" target="_blank">Descargar Contrato (PDF)</a></div>
+    {% endif %}
+
+    {% if proceso.notaria_nombre %}
+    <div style="font-size:0.8rem;padding:6px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);margin-top:4px;">
+        🏛️ <strong>{{ proceso.notaria_nombre }}</strong> · 📍 {{ proceso.notaria_direccion }}<br>
+        📆 {{ proceso.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ proceso.notaria_hora|time:'H:i' }}
+    </div>
+    {% endif %}
+
+    {% if proceso.estado == 'contrato_listo' and not proceso.contrato_firmado %}
+        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'marcar_firma_notarial' proceso.id %}" style="margin-top:4px;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-sm">✅ Marcar firma notarial realizada</button>
+        </form>
+        {% endif %}
+    {% endif %}
+
+    {% if proceso.contrato_firmado %}
+    <div style="font-size:0.8rem;color:var(--ds-success);">✅ Firma notarial realizada {{ proceso.contrato_firmado_at|date:'d/m/Y H:i' }}</div>
+    {% endif %}
+</div>
+
+<!-- ===== ETAPA 4: INSCRIPCIÓN CBR ===== -->
+<div style="margin-bottom:10px;">
+    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">🏛️ <u>Conservador de Bienes Raíces</u>
+        {% if proceso.escritura_aprobada %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Inscrita {{ proceso.escritura_resultado_at|date:'d/m/Y' }}</span>{% endif %}
+        {% if proceso.estado == 'escritura_rechazada' %}<span style="color:var(--ds-error);font-size:0.75rem;">❌ Rechazada</span>{% endif %}
+    </div>
+
+    {% if proceso.estado == 'firma_notarial' %}
+        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="margin-top:4px;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="iniciar">
+            <button type="submit" class="btn btn-primary btn-sm">🏛️ Marcar ingreso a CBR</button>
+        </form>
+        {% endif %}
+    {% endif %}
+
+    {% if proceso.escritura_ingresada_at %}
+    <div style="font-size:0.8rem;">📋 Ingresada a CBR: {{ proceso.escritura_ingresada_at|date:'d/m/Y H:i' }}</div>
+    {% endif %}
+
+    {% if proceso.estado == 'escritura_cbr' or proceso.estado == 'escritura_rechazada' %}
+        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="display:flex;gap:4px;align-items:center;margin-top:4px;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="resultado">
+            <select name="resultado" required style="padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+                <option value="">Seleccionar resultado...</option>
+                <option value="aprobada">✅ Aprobada</option>
+                <option value="rechazada">❌ Rechazada</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm">💾 Registrar resultado</button>
+        </form>
+        {% endif %}
+    {% endif %}
+
+    {% if proceso.estado == 'escritura_aprobada' and not proceso.escritura_comunicado %}
+        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="margin-top:4px;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="comunicar_aprobacion">
+            <button type="submit" class="btn btn-success btn-sm">📢 Comunicar aprobación y finalizar</button>
+        </form>
+        {% endif %}
+    {% endif %}
+
+    {% if proceso.escritura_comunicado %}
+    <div style="font-size:0.8rem;color:var(--ds-success);font-weight:600;">✅ Resultado comunicado a las partes {{ proceso.escritura_comunicado_at|date:'d/m/Y H:i' }}</div>
+    {% endif %}
+</div>
+
+<!-- ===== REACTIVAR COMPETIDORES (SOLO CORREDOR) ===== -->
+{% if proceso.otros_pausados %}
+    {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+    <hr style="margin:8px 0;border:none;border-top:1px solid var(--ds-error);">
+    <div style="background:#fff0f0;padding:10px;border-radius:8px;border:2px solid var(--ds-error);">
+        <div style="font-weight:700;font-size:0.85rem;color:var(--ds-error);margin-bottom:6px;">⚠️ Reactivar competidores</div>
+        <p style="font-size:0.75rem;margin:0 0 6px;">Si el comprador <strong>no cumple</strong> con la Promesa de Compraventa, puedes reactivar los otros procesos y cancelar este.</p>
+        <form method="POST" action="{% url 'reactivar_competidores' proceso.id %}" onsubmit="return confirm('¿Estás seguro? Se cancelará este proceso y se reactivarán todos los demás interesados. Esta acción no se puede deshacer.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">🔄 Reactivar competidores y cancelar proceso</button>
+        </form>
+    </div>
+    {% endif %}
+{% endif %}
+
+<!-- ===== OBSERVACIONES DEL PROCESO ===== -->
+{% with obs_promesa=proceso.observaciones.all|dictsortreversed:"created_at" %}
+{% if obs_promesa %}
+<hr style="margin:8px 0;border:none;border-top:1px solid var(--ds-border-light);">
+<div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">💬 Observaciones</div>
+{% for obs in obs_promesa|slice:":5" %}
+<div style="font-size:0.75rem;padding:4px 0;border-bottom:1px solid var(--ds-border-light);">
+    <strong>{{ obs.autor.get_full_name|default:obs.autor.email }}</strong>
+    <span style="color:var(--ds-text-secondary);">({{ obs.get_etapa_display }} R{{ obs.ronda }})</span>
+    <span style="color:var(--ds-text-secondary);">{{ obs.created_at|date:'d/m/Y H:i' }}</span>
+    <div>{{ obs.texto|truncatechars:120 }}</div>
+    {% if obs.archivo %}<div>📎 <a href="{{ obs.archivo.url }}" target="_blank">Descargar adjunto</a></div>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+</div>

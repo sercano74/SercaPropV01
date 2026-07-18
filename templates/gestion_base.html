@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>📋 Mi Panel de Gestión</h1>
+    <p>{{ user.get_full_name|default:user.username }} • Usuario {{user.rol|title}}</p>
+</div>
+
+<!-- ===== GRILLA ÚNICA: Todo en una sola tabla ===== -->
+<div class="card-modern" style="margin-bottom:20px;">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span>📋 Mis registros</span>
+            <a href="{% url 'solicitar_publicacion' %}" class="btn btn-primary btn-sm" style="text-decoration:none;">📢 Nueva solicitud</a>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>Solicitud</th>
+                        <th>Creada</th>
+                        <th>Meses</th>
+                        <th>Destacada?</th>
+                        <th>Estado</th>
+                        <th>Vence</th>
+                        <th>Detalle Propiedad</th>
+                        <th>Archivar</th>
+                        <th>Renovar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <!-- Solicitud / Acción -->
+                        <td>
+                            {% if item.solicitud %}
+                            <a href="{% url 'detalle_solicitud' item.solicitud.id %}" style="font-weight:600;color:var(--ds-primary);text-decoration:none;">
+                                #{{ item.solicitud.id }}
+                            </a>
+                            <span style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;">
+                                {{ item.propiedad.get_tipo_accion_display }}
+                            </span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Creada -->
+                        <td style="font-size:0.85rem;">
+                            {% if item.solicitud %}
+                                {{ item.solicitud.created_at|date:"d/m/Y" }}
+                            {% elif item.publicacion %}
+                                {{ item.publicacion.created_at|date:"d/m/Y" }}
+                            {% else %}
+                                {{ item.propiedad.created_at|date:"d/m/Y" }}
+                            {% endif %}
+                        </td>
+
+                        <!-- Meses -->
+                        <td style="text-align:center;">
+                            {% if item.meses > 0 %}
+                            {{ item.meses }}
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Destacada? -->
+                        <td>
+                            {% if item.es_destacada %}
+                            <span class="badge-modern" style="background:#FFF2F4;color:#FF385C;border:1px solid #FF385C;font-size:0.7rem;">⭐ Destacada</span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Estado (Publicación + Cierre) -->
+                        <td>
+                            {% if item.propiedad.tipo_cierre == "vendida" %}
+                            <span class="badge-cierre badge-cierre-vendida">✅ Vendida</span>
+                            {% elif item.propiedad.tipo_cierre == "arrendada" %}
+                            <span class="badge-cierre badge-cierre-arrendada">✅ Arrendada</span>
+                            {% elif item.publicacion %}
+                            <span class="badge-modern
+                                {% if item.publicacion.estado == 'publicada' %}badge-modern-success
+                                {% elif item.publicacion.estado == 'en_revision' %}badge-modern-primary
+                                {% else %}badge-modern-neutral{% endif %}">
+                                {{ item.publicacion.get_estado_display }}
+                            </span>
+                            {% else %}
+                            <span class="badge-modern badge-modern-neutral">{{ item.solicitud.get_estado_display|default:"—" }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Vence -->
+                        <td style="font-size:0.85rem;">
+                            {% if item.publicacion and item.publicacion.expira_at %}
+                                {{ item.publicacion.expira_at|date:"d/m/Y" }}
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Detalle Propiedad -->
+                        <td>
+                            <a href="{% url 'detalle_propiedad' item.propiedad.id %}" style="font-weight:600;color:var(--ds-text);text-decoration:none;">
+                                {{ item.propiedad.get_tipo_prop_display }} · {{ item.propiedad.calle }} #{{ item.propiedad.numero_calle }}
+                            </a>
+                            {% if item.propiedad.comuna %}
+                            <br><span style="font-size:0.75rem;color:var(--ds-text-secondary);">📍 {{ item.propiedad.comuna }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Archivar -->
+                        <td>
+                            {% if item.propiedad.estado != 'archivada' and not item.propiedad.tipo_cierre %}
+                            <a href="{% url 'archivar_propiedad' item.propiedad.id %}" class="btn btn-danger btn-sm" style="text-decoration:none;padding:4px 10px;font-size:0.7rem;background:var(--ds-primary);border-color:var(--ds-primary);" onclick="return confirm('¿Archivar propiedad?')">Archivar</a>
+                            {% elif item.propiedad.tipo_cierre %}
+                            <span style="font-size:0.75rem;color:var(--ds-text-secondary);color:var(--ds-success);"> <strong>Caso de éxito !</strong></span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">Archivada</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Renovar -->
+                        <td>
+                            {% if item.publicacion and item.publicacion.estado == 'publicada' and not item.propiedad.tipo_cierre %}
+                            <a href="{% url 'renovar_publicacion' item.publicacion.id %}" class="btn btn-success btn-sm" style="text-decoration:none;padding:4px 10px;font-size:0.7rem;">Renovar</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state-modern" style="padding:24px;">
+                                <div style="font-size:2.5rem;margin-bottom:8px;">📭</div>
+                                <h3>Aún no tienes registros</h3>
+                                <p>Crea una <a href="{% url 'solicitar_publicacion' %}" style="color:var(--ds-primary);text-decoration:underline;">nueva solicitud de publicación</a> para comenzar.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CENTRO DE COMUNICACIONES ===== -->
+<div class="card-modern" style="margin-top:24px;">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📬 Centro de Comunicaciones</div>
+        {% for com in comunicaciones %}
+        <div class="card-modern" style="margin-bottom:8px;{% if not com.is_read %}background:var(--ds-bg-secondary);border-color:var(--ds-primary);{% endif %}">
+            <div class="card-modern-body" style="padding:12px;">
+                <div class="card-modern-title" style="font-size:0.95rem;">{{ com.title }}</div>
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:4px;">{{ com.created_at|date:"d/m/Y H:i" }} · {{ com.emitter_user.get_full_name|default:com.emitter_user.username }}</div>
+                <div class="card-modern-text" style="font-size:0.85rem;">{{ com.message|truncatewords:20 }}</div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-modern" style="padding:20px;">No tienes comunicaciones.</div>
+        {% endfor %}
+        <a href="{% url 'centro_comunicaciones' %}" class="btn btn-ghost btn-sm" style="margin-top:8px;">Ir al Centro de Comunicaciones →</a>
+    </div>
+</div>
+{% endblock %}

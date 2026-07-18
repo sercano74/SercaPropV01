@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Paso 1 - Solicitar publicación{% endblock %}
+{% block content %}
+<div class="form-modern-container" style="max-width:800px;">
+    <h2>📢 Paso 1: Solicitar publicación</h2>
+    <p style="margin-bottom:16px;color:var(--ds-text-secondary);">
+        Ingresa los datos básicos de tu propiedad, sube al menos 1 foto, escoge el tipo de publicación 
+        y sube el comprobante de pago. El sistema calculará el costo automáticamente.
+    </p>
+
+    <form method="POST" enctype="multipart/form-data" class="form-modern" id="solicitar-form">
+        {% csrf_token %}
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📍 Ubicación y tipo</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Región</label>
+                <select name="region" id="region-select">
+                    <option value="">Seleccionar...</option>
+                    {% for r in regiones %}
+                    <option value="{{ r.id }}">{{ r.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Comuna *</label>
+                <select name="comuna" required>
+                    <option value="">Seleccionar...</option>
+                    {% for c in comunas %}
+                    <option value="{{ c.id }}" data-region="{{ c.region.id }}">{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Calle *</label>
+                <input type="text" name="calle" required>
+            </div>
+            <div class="form-group">
+                <label>Número *</label>
+                <input type="text" name="numero_calle" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de propiedad *</label>
+                <select name="tipo_prop" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="casa">Casa</option>
+                    <option value="departamento">Departamento</option>
+                    <option value="local">Local Comercial</option>
+                    <option value="terreno">Terreno</option>
+                    <option value="oficina">Oficina</option>
+                    <option value="bodega">Bodega</option>
+                    <option value="parcela">Parcela</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>N° Depto/Lote</label>
+                <input type="text" name="num_tipo_prop">
+            </div>
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🏠 Características</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Dormitorios *</label>
+                <input type="number" name="numero_dormitorios" value="0" min="0" required>
+            </div>
+            <div class="form-group">
+                <label>Baños *</label>
+                <input type="number" name="numero_banos" value="0" min="0" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>M² construidos</label>
+                <input type="number" name="m_construidos" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>M² terreno</label>
+                <input type="number" name="m_terreno" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Estacionamientos</label>
+                <input type="number" name="num_estacionamientos" value="0" min="0">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;padding-top:24px;">
+                <input type="checkbox" class="toggle-checkbox" id="id_tiene_bodega" name="tiene_bodega" value="1">
+                <label for="id_tiene_bodega" class="toggle-label-switch">
+                    <span class="toggle-switch-track">
+                        <span class="toggle-switch-thumb"></span>
+                    </span>
+                    <span class="toggle-switch-text">🏚️ ¿Tiene bodega?</span>
+                </label>
+            </div>
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📸 Fotos de la propiedad *</h3>
+        <div class="form-group">
+            <p style="margin-bottom:8px;color:var(--ds-text-secondary);font-size:0.9rem;">Agrega al menos 1 foto. Puedes eliminarlas y reemplazarlas.</p>
+            <div id="foto-preview-container" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;"></div>
+            <button type="button" id="btn-agregar-foto" class="btn btn-outline" style="display:inline-flex;align-items:center;gap:6px;">➕ Agregar foto</button>
+            <input type="file" name="fotos" id="fotos-input" multiple accept="image/*" style="display:none;">
+            <div class="form-hint" id="foto-count-hint">0 fotos seleccionadas (mínimo 1).</div>
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">💰 Precio y acción</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de acción *</label>
+                <select name="tipo_accion" id="id_tipo_accion" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="venta">Venta</option>
+                    <option value="arriendo">Arriendo</option>
+                    <option value="srt">Short Rental Time (SRT)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Moneda</label>
+                <select name="tipo_moneda">
+                    <option value="PCL">Pesos Chilenos (CLP)</option>
+                    <option value="UF">UF</option>
+                    <option value="USD">USD</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Precio *</label>
+            <input type="number" name="precio" required step="0.01">
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📢 Tipo de publicación</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Meses de publicación</label>
+                <input type="number" name="meses" id="id_meses" value="1" min="1">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;padding-top:24px;">
+                <input type="checkbox" class="toggle-checkbox" id="id_destacada" name="es_destacada" value="1">
+                <label for="id_destacada" class="toggle-label-switch">
+                    <span class="toggle-switch-track">
+                        <span class="toggle-switch-thumb"></span>
+                    </span>
+                    <span class="toggle-switch-text">⭐ ¿Destacada?</span>
+                </label>
+            </div>
+        </div>
+
+        {% if config_pago %}
+        <div class="card" style="margin-bottom:15px;border:2px solid var(--ds-primary-light);border-radius:12px;padding:16px;">
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:10px;">💰 Valores de publicación</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.85rem;">
+                <span>Normal venta</span><span><strong>${{ config_pago.valor_pub_venta_mensual|intcomma }}/mes</strong></span>
+                <span>Destacada venta</span><span><strong>${{ config_pago.valor_destacado_venta_mensual|intcomma }}/mes</strong></span>
+                <span>Normal arriendo</span><span><strong>${{ config_pago.valor_pub_arriendo_mensual|intcomma }}/mes</strong></span>
+                <span>Destacada arriendo</span><span><strong>${{ config_pago.valor_destacado_arriendo_mensual|intcomma }}/mes</strong></span>
+                <span>Normal SRT</span><span><strong>${{ config_pago.valor_pub_str_dia|intcomma }}/día</strong></span>
+                <span>Destacada SRT</span><span><strong>${{ config_pago.valor_destacado_str_dia|intcomma }}/día</strong></span>
+            </div>
+            <p style="margin-top:12px;font-size:1.1rem;font-weight:800;color:var(--ds-primary);" id="total-estimado">Total estimado: $0</p>
+        </div>
+
+        <div class="card" style="margin-bottom:15px;border:2px solid var(--ds-border-light);border-radius:12px;padding:16px;">
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:8px;">🏦 Datos para depósito</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.85rem;">
+                <span>Banco</span><span><strong>{{ config_pago.banco_nombre }}</strong></span>
+                <span>Tipo cuenta</span><span><strong>{{ config_pago.get_tipo_cuenta_display }}</strong></span>
+                <span>N° Cuenta</span><span><strong>{{ config_pago.numero_cuenta }}</strong></span>
+                <span>Titular</span><span><strong>{{ config_pago.titular }}</strong></span>
+                <span>RUT</span><span><strong>{{ config_pago.dni_titular }}</strong></span>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert-modern alert-warning-modern">
+            ⚠️ No hay configuración de pagos activa. Contacta al administrador.
+        </div>
+        {% endif %}
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🧾 Comprobante de pago</h3>
+        <div class="form-group">
+            <label>Comprobante *</label>
+            <input type="file" name="comprobante" accept="image/*" required>
+            <div class="form-hint">Sube una foto o captura de tu comprobante de transferencia.</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:10px;">
+            📤 Enviar solicitud
+        </button>
+    </form>
+</div>
+
+<style>
+/* ===== TOGGLE SWITCH (compatible con todos los navegadores) ===== */
+.toggle-checkbox {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+}
+.toggle-label-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    padding: 6px 16px 6px 12px;
+    border-radius: 9999px;
+    border: 2px solid #d0d0d0;
+    background: #fff;
+    transition: all 0.2s ease;
+}
+.toggle-switch-track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: #ccc;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+}
+.toggle-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.25s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+/* checkbox marcado → hermano label → estilos activos */
+.toggle-checkbox:checked + .toggle-label-switch {
+    border-color: #2563eb !important;
+    background: #eff6ff !important;
+}
+.toggle-checkbox:checked + .toggle-label-switch .toggle-switch-track {
+    background: #2563eb !important;
+}
+.toggle-checkbox:checked + .toggle-label-switch .toggle-switch-thumb {
+    left: 22px !important;
+    background: white !important;
+}
+.toggle-checkbox:checked + .toggle-label-switch .toggle-switch-text {
+    color: #2563eb !important;
+}
+
+/* Foto preview cards */
+.foto-preview-card {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid #d0d0d0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    background: #fff;
+}
+.foto-preview-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.foto-preview-card .btn-eliminar-foto {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    border: none;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+.foto-preview-card .btn-eliminar-foto:hover {
+    background: rgb(185, 28, 28);
+    transform: scale(1.1);
+}
+#foto-count-hint.error {
+    color: #dc2626 !important;
+    font-weight: 600;
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+    try {
+        document.addEventListener('DOMContentLoaded', function() {
+            // ===== FOTOS CON PREVIEW =====
+            var fotosInput = document.getElementById('fotos-input');
+            var previewContainer = document.getElementById('foto-preview-container');
+            var fotoCountHint = document.getElementById('foto-count-hint');
+            var btnAgregarFoto = document.getElementById('btn-agregar-foto');
+            var form = document.getElementById('solicitar-form');
+
+            // Array de archivos seleccionados
+            var fotosSeleccionadas = [];
+
+            function actualizarCount() {
+                var n = fotosSeleccionadas.length;
+                fotoCountHint.textContent = n + ' foto' + (n === 1 ? '' : 's') + ' seleccionada' + (n === 1 ? '' : 's') + ' (mínimo 1).';
+                fotoCountHint.classList.toggle('error', n < 1);
+            }
+
+            function renderizarPreviews() {
+                previewContainer.innerHTML = '';
+                fotosSeleccionadas.forEach(function(file, index) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var card = document.createElement('div');
+                        card.className = 'foto-preview-card';
+                        var img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = 'Foto ' + (index + 1);
+                        var btnDel = document.createElement('button');
+                        btnDel.type = 'button';
+                        btnDel.className = 'btn-eliminar-foto';
+                        btnDel.innerHTML = '✕';
+                        btnDel.title = 'Eliminar foto';
+                        btnDel.addEventListener('click', function(ev) {
+                            ev.stopPropagation();
+                            fotosSeleccionadas.splice(index, 1);
+                            sincronizarInput();
+                            renderizarPreviews();
+                        });
+                        card.appendChild(img);
+                        card.appendChild(btnDel);
+                        previewContainer.appendChild(card);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            function sincronizarInput() {
+                var dt = new DataTransfer();
+                fotosSeleccionadas.forEach(function(f) { dt.items.add(f); });
+                fotosInput.files = dt.files;
+                actualizarCount();
+            }
+
+            if (btnAgregarFoto) {
+                btnAgregarFoto.addEventListener('click', function() { fotosInput.click(); });
+            }
+
+            if (fotosInput) {
+                fotosInput.addEventListener('change', function() {
+                    var nuevos = Array.from(fotosInput.files);
+                    fotosSeleccionadas = fotosSeleccionadas.concat(nuevos);
+                    sincronizarInput();
+                    renderizarPreviews();
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (fotosSeleccionadas.length < 1) {
+                        e.preventDefault();
+                        fotoCountHint.textContent = '❌ Debes agregar al menos 1 foto.';
+                        fotoCountHint.classList.add('error');
+                        fotoCountHint.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+
+            // ===== CÁLCULO TOTAL =====
+            var mesesInput = document.getElementById('id_meses');
+            var destacadaCheck = document.getElementById('id_destacada');
+            var tipoAccion = document.getElementById('id_tipo_accion');
+            var totalEst = document.getElementById('total-estimado');
+
+            if (totalEst) {
+                {% if config_pago %}
+                var valores = {
+                    venta: { normal: {{ config_pago.valor_pub_venta_mensual }}, destacada: {{ config_pago.valor_destacado_venta_mensual }} },
+                    arriendo: { normal: {{ config_pago.valor_pub_arriendo_mensual }}, destacada: {{ config_pago.valor_destacado_arriendo_mensual }} },
+                    srt: { normal: {{ config_pago.valor_pub_str_dia }}, destacada: {{ config_pago.valor_destacado_str_dia }} },
+                };
+                function actualizarTotal() {
+                    var meses = parseInt(mesesInput.value) || 1;
+                    var destacada = destacadaCheck.checked;
+                    var accion = tipoAccion.value;
+                    if (valores[accion]) {
+                        var base = destacada ? valores[accion].destacada : valores[accion].normal;
+                        totalEst.textContent = 'Total estimado: $' + (base * meses).toLocaleString('es-CL');
+                    } else {
+                        totalEst.textContent = 'Selecciona tipo de acción para ver el total';
+                    }
+                }
+                mesesInput.addEventListener('change', actualizarTotal);
+                mesesInput.addEventListener('input', actualizarTotal);
+                destacadaCheck.addEventListener('change', actualizarTotal);
+                tipoAccion.addEventListener('change', actualizarTotal);
+                actualizarTotal();
+                {% endif %}
+            }
+
+            // ===== FILTRO COMUNA =====
+            var regionSelect = document.getElementById('region-select');
+            var comunaSelect = document.querySelector('select[name="comuna"]');
+            if (regionSelect && comunaSelect) {
+                function filtrarComunas() {
+                    var regionId = regionSelect.value;
+                    Array.from(comunaSelect.options).forEach(function(opt) {
+                        if (opt.value === '') return;
+                        opt.style.display = opt.dataset.region === regionId ? 'block' : 'none';
+                        if (opt.style.display === 'none' && opt.selected) opt.selected = false;
+                    });
+                }
+                regionSelect.addEventListener('change', filtrarComunas);
+                filtrarComunas();
+            }
+        });
+    } catch(e) {
+        console.log('Error menor en solicitar_publicacion.js:', e);
+    }
+})();
+</script>
+{% endblock %}

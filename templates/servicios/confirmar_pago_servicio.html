@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Confirmar Pago - Dato Constructor{% endblock %}
+{% block content %}
+
+<div style="max-width:600px;margin:0 auto;">
+    <h1 style="font-size:1.4rem;font-weight:700;margin-bottom:24px;">💳 Confirmar pago</h1>
+
+    <div class="card-modern" style="margin-bottom:24px;">
+        <div class="card-modern-body">
+            <h3 style="margin:0 0 12px 0;font-size:1rem;">Resumen de tu servicio</h3>
+            <table style="width:100%;font-size:0.9rem;">
+                <tr><td style="padding:4px 0;color:var(--ds-text-secondary);">Plan:</td><td style="padding:4px 0;font-weight:600;">{{ data.tipo_plan|capfirst }}</td></tr>
+                <tr><td style="padding:4px 0;color:var(--ds-text-secondary);">Título:</td><td style="padding:4px 0;">{{ data.titulo }}</td></tr>
+                <tr><td style="padding:4px 0;color:var(--ds-text-secondary);">Monto base:</td><td style="padding:4px 0;">${{ data.monto_base|floatformat:0 }}</td></tr>
+                <tr><td style="padding:4px 0;color:var(--ds-text-secondary);">IVA (19%):</td><td style="padding:4px 0;">${{ data.monto_iva|floatformat:0 }}</td></tr>
+                <tr><td style="padding:8px 0 4px 0;color:var(--ds-text);font-weight:700;border-top:2px solid var(--ds-border);">Total:</td>
+                    <td style="padding:8px 0 4px 0;font-weight:700;font-size:1.2rem;color:var(--ds-primary);border-top:2px solid var(--ds-border);">${{ data.monto_total|floatformat:0 }}</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Datos bancarios (usando la config existente si existe) -->
+    <div class="card-modern" style="margin-bottom:24px;border:2px solid var(--ds-warning);">
+        <div class="card-modern-body">
+            <h4 style="margin:0 0 8px 0;font-size:0.95rem;">🏦 Datos para transferencia</h4>
+            <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin:0 0 8px 0;">
+                Realiza una transferencia electrónica por el <strong>total</strong> a la siguiente cuenta:
+            </p>
+            {% if config_pago %}
+            <div style="background:var(--ds-bg-secondary);padding:12px;border-radius:8px;font-size:0.85rem;">
+                <div><strong>Banco:</strong> {{ config_pago.banco_nombre }}</div>
+                <div><strong>Tipo:</strong> {{ config_pago.get_tipo_cuenta_display }}</div>
+                <div><strong>N° Cuenta:</strong> {{ config_pago.numero_cuenta }}</div>
+                <div><strong>Titular:</strong> {{ config_pago.titular }}</div>
+                <div><strong>RUT:</strong> {{ config_pago.dni_titular }}</div>
+                <div><strong>Email confirmación:</strong> {{ config_pago.email_confirmacion }}</div>
+            </div>
+            {% else %}
+            <div style="background:var(--ds-bg-secondary);padding:12px;border-radius:8px;font-size:0.85rem;">
+                <p style="margin:0;">Contáctanos para recibir los datos de pago: <strong>ordered.dev.01@gmail.com</strong></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="form-modern-container">
+        <h2>Sube tu comprobante</h2>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Comprobante de transferencia *</label>
+                <input type="file" name="comprobante" accept="image/*" required>
+                <div class="form-hint">Sube una foto o captura del comprobante.</div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">✅ Confirmar y publicar servicio</button>
+            <a href="{% url 'contratar_servicio' %}" class="btn btn-ghost btn-block" style="margin-top:8px;">← Corregir datos</a>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

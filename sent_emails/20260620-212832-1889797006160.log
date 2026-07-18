@@ -1,0 +1,123 @@
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============1089621425721643728=="
+Subject: Confirma tu correo =?utf-8?q?electr=C3=B3nico?= - Serca Propiedades
+From: Serca Propiedades <sergiocannobbio@gmail.com>
+To: sergio.cannobbio@libertarios6r.lat
+Date: Sun, 21 Jun 2026 01:28:32 +0000
+Message-ID: <178200531274.15472.5505849419805673369@SERCA>
+
+--===============1089621425721643728==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+
+Hola Luis Pitersen,
+
+Gracias por registrarte en Serca Propiedades.
+
+Para confirmar tu correo electr=C3=B3nico, haz clic en el siguiente enlace:
+http://127.0.0.1:8000/confirmar-email/NQ/dahqbk-e0bcf3e968a31e3a3e37f9252284e=
+254/
+
+Este enlace expirar=C3=A1 en 48 horas.
+
+Si no creaste esta cuenta, puedes ignorar este mensaje.
+
+Saludos,
+El equipo de Serca Propiedades
+   =20
+
+--===============1089621425721643728==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<!DOCTYPE html>
+<html lang=3D"es">
+<head>
+    <meta charset=3D"UTF-8">
+    <meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-scale=3D=
+1.0">
+    <title>Confirma tu correo - Serca Propiedades</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f=
+4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; b=
+order-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08)=
+; }
+        .header { background: #1a1a2e; padding: 32px 40px; text-align: center=
+; }
+        .header h1 { color: #fff; margin: 0; font-size: 1.5rem; }
+        .header .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .body { padding: 40px; }
+        .body p { color: #555; line-height: 1.6; font-size: 0.95rem; }
+        .btn-confirm {
+            display: inline-block;
+            padding: 14px 36px;
+            background: #2563eb;
+            color: #fff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 24px 0;
+        }
+        .btn-confirm:hover { background: #1d4ed8; }
+        .footer { padding: 24px 40px; background: #f9f9f9; text-align: center=
+; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; }
+        .footer a { color: #2563eb; text-decoration: none; }
+        .expiry { background: #fff7ed; border: 1px solid #fed7aa; border-radi=
+us: 8px; padding: 12px 16px; font-size: 0.85rem; color: #9a3412; margin-top: =
+20px; }
+        @media only screen and (max-width: 480px) {
+            .container { margin: 20px 12px; }
+            .body { padding: 24px; }
+            .header { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class=3D"container">
+        <div class=3D"header">
+            <div class=3D"icon">=F0=9F=8F=A0</div>
+            <h1>Confirma tu correo electr=C3=B3nico</h1>
+        </div>
+        <div class=3D"body">
+            <p>Hola <strong>Luis Pitersen</strong>,</p>
+            <p>Gracias por registrarte en <strong>Serca Propiedades</strong>.=
+ Para empezar a usar tu cuenta, solo falta un paso:</p>
+
+            <div style=3D"text-align:center;">
+                <a href=3D"http://127.0.0.1:8000/confirmar-email/NQ/dahqbk-e0=
+bcf3e968a31e3a3e37f9252284e254/" class=3D"btn-confirm">=E2=9C=85 Confirmar mi=
+ correo</a>
+            </div>
+
+            <p style=3D"text-align:center;font-size:0.85rem;color:#888;">
+                O copia este enlace en tu navegador:<br>
+                <span style=3D"color:#2563eb;word-break:break-all;">http://12=
+7.0.0.1:8000/confirmar-email/NQ/dahqbk-e0bcf3e968a31e3a3e37f9252284e254/</spa=
+n>
+            </p>
+
+            <div class=3D"expiry">
+                =E2=8F=B0 Este enlace expirar=C3=A1 en <strong>48 horas</stro=
+ng>. Si no confirmas a tiempo, puedes solicitar un nuevo enlace desde tu perf=
+il.
+            </div>
+
+            <p style=3D"margin-top:24px;">Si no creaste esta cuenta, puedes i=
+gnorar este mensaje.</p>
+            <p>Saludos,<br><strong>El equipo de Serca Propiedades</strong></p>
+        </div>
+        <div class=3D"footer">
+            &copy; 2026 Serca Propiedades. Todos los derechos reservados.
+        </div>
+    </div>
+</body>
+</html>
+
+--===============1089621425721643728==--
+
+-------------------------------------------------------------------------------

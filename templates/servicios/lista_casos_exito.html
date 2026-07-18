@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Casos de Éxito - Serca Propiedades{% endblock %}
+{% block content %}
+
+<style>
+/* Airbnb-style modal overlay */
+.modal-overlay-caso {
+  display:none;
+  position:fixed;
+  top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.45);
+  z-index:9999;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  backdrop-filter:blur(2px);
+}
+.modal-caso {
+  background:#fff;
+  border-radius:16px;
+  max-width:680px;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  padding:28px 32px;
+  box-shadow:0 16px 48px rgba(0,0,0,0.2);
+  position:relative;
+}
+.modal-caso-close {
+  position:absolute;
+  top:16px; right:16px;
+  width:32px; height:32px;
+  border-radius:50%;
+  border:none;
+  background:#f7f7f7;
+  font-size:1.1rem;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background 0.15s;
+}
+.modal-caso-close:hover { background:#ebebeb; }
+.modal-caso h2 {
+  font-size:1.3rem;
+  font-weight:700;
+  margin:0 0 20px 0;
+  color:#222;
+  letter-spacing:-0.3px;
+}
+.modal-caso .form-group {
+  margin-bottom:14px;
+}
+.modal-caso .form-group label {
+  display:block;
+  font-size:0.8rem;
+  font-weight:600;
+  color:#222;
+  margin-bottom:4px;
+}
+.modal-caso .form-group input,
+.modal-caso .form-group textarea,
+.modal-caso .form-group select {
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  font-size:0.9rem;
+  background:#fff;
+  transition:border-color 0.15s;
+  box-sizing:border-box;
+}
+.modal-caso .form-group input:focus,
+.modal-caso .form-group textarea:focus,
+.modal-caso .form-group select:focus {
+  outline:none;
+  border-color:#222;
+}
+.modal-caso .form-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.btn-airbnb {
+  background:#FF385C;
+  color:#fff;
+  border:none;
+  padding:12px 24px;
+  border-radius:10px;
+  font-size:0.9rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background 0.15s;
+  text-decoration:none;
+  display:inline-block;
+}
+.btn-airbnb:hover { background:#e31c5f; }
+.btn-airbnb-outline {
+  background:transparent;
+  color:#FF385C;
+  border:2px solid #FF385C;
+  padding:10px 22px;
+  border-radius:10px;
+  font-size:0.85rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.15s;
+  text-decoration:none;
+  display:inline-block;
+}
+.btn-airbnb-outline:hover { background:#FF385C; color:#fff; }
+.btn-airbnb-sm {
+  padding:6px 14px;
+  font-size:0.75rem;
+  border-radius:8px;
+}
+.btn-airbnb-ghost {
+  background:transparent;
+  border:1px solid #ddd;
+  padding:6px 14px;
+  border-radius:8px;
+  font-size:0.75rem;
+  cursor:pointer;
+  transition:all 0.15s;
+  color:#222;
+  text-decoration:none;
+  display:inline-block;
+}
+.btn-airbnb-ghost:hover { border-color:#222; background:#f7f7f7; }
+.btn-airbnb-danger {
+  background:#fff;
+  color:#c13515;
+  border:1px solid #c13515;
+  padding:6px 14px;
+  border-radius:8px;
+  font-size:0.75rem;
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.btn-airbnb-danger:hover { background:#c13515; color:#fff; }
+.caso-card {
+  background:#fff;
+  border:1px solid #ebebeb;
+  border-radius:16px;
+  overflow:hidden;
+  transition:box-shadow 0.2s, transform 0.15s;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+}
+.caso-card:hover {
+  box-shadow:0 6px 20px rgba(0,0,0,0.08);
+  transform:translateY(-2px);
+}
+.caso-card-img {
+  width:100%;
+  height:180px;
+  object-fit:cover;
+  display:block;
+}
+.caso-card-body {
+  padding:16px 18px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+.caso-card-tag {
+  display:inline-block;
+  font-size:0.65rem;
+  font-weight:600;
+  color:#717171;
+  text-transform:uppercase;
+  letter-spacing:0.3px;
+  margin-bottom:6px;
+}
+.caso-card-title {
+  font-size:1rem;
+  font-weight:700;
+  color:#222;
+  margin-bottom:4px;
+  line-height:1.3;
+}
+.caso-card-client {
+  font-size:0.8rem;
+  color:#717171;
+  margin-bottom:8px;
+}
+.caso-card-desc {
+  font-size:0.85rem;
+  color:#484848;
+  line-height:1.5;
+  flex:1;
+}
+.caso-card-testimonio {
+  font-size:0.8rem;
+  color:#717171;
+  font-style:italic;
+  border-left:3px solid #FF385C;
+  padding-left:12px;
+  margin:10px 0 0 0;
+}
+.caso-card-actions {
+  display:flex;
+  gap:6px;
+  padding:10px 18px 14px;
+  border-top:1px solid #f0f0f0;
+}
+@media (max-width:600px) {
+  .modal-caso { padding:20px; }
+  .modal-caso .form-row { grid-template-columns:1fr; }
+}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 style="margin:0;font-size:1.6rem;font-weight:700;color:#222;">🏆 Casos de Éxito</h1>
+        <p style="margin:4px 0 0 0;color:#717171;font-size:0.9rem;">
+            Historias reales de clientes y propiedades gestionadas con éxito
+        </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        {% if todos_casos %}
+        <button onclick="abrirModalCrear()" class="btn-airbnb btn-airbnb-sm">➕ Nuevo caso</button>
+        {% endif %}
+        <a href="{% url 'lista_servicios' %}" class="btn-airbnb-outline btn-airbnb-sm">🔨 Dato Constructor</a>
+        <a href="{% url 'home' %}" class="btn-airbnb-outline btn-airbnb-sm">🏠 Propiedades</a>
+    </div>
+</div>
+
+<!-- ===== MODAL CREAR / EDITAR ===== -->
+<div id="modal-caso" class="modal-overlay-caso" onclick="if(event.target===this)cerrarModal()">
+    <div class="modal-caso">
+        <button class="modal-caso-close" onclick="cerrarModal()">✕</button>
+        <h2 id="modal-title">➕ Nuevo caso de éxito</h2>
+        <form id="modal-form" method="POST" action="{% url 'gestion_casos_exito' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="accion" id="modal-accion" value="crear">
+            <input type="hidden" name="caso_id" id="modal-caso-id" value="">
+
+            <div class="form-group">
+                <label style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">Tipo de entidad relacionada</label>
+                <div style="display:flex;gap:16px;margin-bottom:12px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem;">
+                        <input type="radio" name="tipo_entidad" value="servicio" checked onchange="toggleTipoEntidad()"> 🔧 Servicio
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem;">
+                        <input type="radio" name="tipo_entidad" value="propiedad" onchange="toggleTipoEntidad()"> 🏠 Propiedad
+                    </label>
+                </div>
+            </div>
+            <div class="form-group" id="campo-servicio">
+                <label>Servicio relacionado</label>
+                <select name="servicio_id" id="modal-servicio">
+                    <option value="">— Selecciona un servicio —</option>
+                    {% for s in servicios %}
+                    <option value="{{ s.id }}">{{ s.titulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- ===== SECCIÓN PROPIEDAD: Carga inteligente ===== -->
+            <div class="form-group" id="campo-propiedad" style="display:none;">
+                <label>🔍 Buscar propiedad vendida/arrendada por ID</label>
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <input type="number" id="prop-buscar-id" placeholder="Ej: 42" min="1" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:0.9rem;">
+                    <button type="button" onclick="cargarPropiedad()" class="btn-airbnb" style="padding:10px 20px;font-size:0.85rem;white-space:nowrap;">📡 Cargar</button>
+                </div>
+
+                <!-- Preview de propiedad cargada -->
+                <div id="prop-preview" style="display:none;border:1px solid #ebebeb;border-radius:12px;overflow:hidden;margin-bottom:12px;">
+                    <div style="display:flex;gap:0;flex-wrap:wrap;">
+                        <div id="prop-preview-img" style="width:120px;height:120px;background:#f7f7f7;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">🏠</div>
+                        <div style="flex:1;padding:12px 14px;min-width:180px;">
+                            <div id="prop-preview-title" style="font-weight:700;font-size:0.95rem;color:#222;margin-bottom:4px;"></div>
+                            <div id="prop-preview-meta" style="font-size:0.8rem;color:#717171;margin-bottom:4px;"></div>
+                            <div id="prop-preview-details" style="display:flex;gap:10px;flex-wrap:wrap;font-size:0.75rem;color:#717171;margin-top:4px;"></div>
+                        </div>
+                    </div>
+                    <div id="prop-preview-status" style="padding:8px 14px;background:#f7f7f7;font-size:0.75rem;color:#484848;display:flex;align-items:center;gap:6px;">
+                        <span>✅ Propiedad cargada correctamente</span>
+                        <button type="button" onclick="limpiarPropiedad()" style="margin-left:auto;background:none;border:none;color:#c13515;cursor:pointer;font-size:0.75rem;text-decoration:underline;">✕ Quitar</button>
+                    </div>
+                </div>
+
+                <div id="prop-error" style="display:none;padding:10px 12px;background:#fff5f5;border:1px solid #ffc0c0;border-radius:10px;font-size:0.8rem;color:#c13515;margin-bottom:10px;"></div>
+
+                <input type="hidden" name="propiedad_id" id="modal-propiedad" value="">
+                <input type="hidden" id="prop-cargada" value="0">
+            </div>
+
+            <div class="form-group">
+                <label>Título del caso *</label>
+                <input type="text" name="titulo" id="modal-titulo" required placeholder="Ej: Remodelación completa de baño">
+            </div>
+            <div class="form-group">
+                <label>Descripción *</label>
+                <textarea name="descripcion" id="modal-descripcion" required rows="3" placeholder="Describe el trabajo realizado..."></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cliente *</label>
+                    <input type="text" name="cliente_nombre" id="modal-cliente" required placeholder="Nombre del cliente">
+                </div>
+                <div class="form-group">
+                    <label>Testimonio</label>
+                    <textarea name="cliente_testimonio" id="modal-testimonio" rows="2" placeholder="'Quedé muy satisfecho...'"></textarea>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Imagen «Antes»</label>
+                    <input type="file" name="imagen_antes" accept="image/*" id="modal-img-antes">
+                </div>
+                <div class="form-group">
+                    <label>Imagen «Después»</label>
+                    <input type="file" name="imagen_despues" accept="image/*" id="modal-img-despues">
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                <button type="button" onclick="cerrarModal()" class="btn-airbnb-ghost" style="padding:10px 20px;font-size:0.85rem;">Cancelar</button>
+                <button type="submit" class="btn-airbnb" style="font-size:0.85rem;" id="modal-submit">✅ Crear caso</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== GRID DE CASOS ===== -->
+<div class="card-grid vitrina-grid" style="gap:16px;">
+    {% for caso in todos_casos|default:casos %}
+    <div class="caso-card">
+        {% if caso.imagen_despues %}
+        <img src="{{ caso.imagen_despues.url }}" alt="{{ caso.titulo }}" class="caso-card-img">
+        {% elif caso.servicio and caso.servicio.imagen %}
+        <img src="{{ caso.servicio.imagen.url }}" alt="{{ caso.titulo }}" class="caso-card-img">
+        {% elif caso.propiedad %}
+            {% with primera_foto=caso.propiedad.fotos.first %}
+                {% if primera_foto %}
+                <img src="{{ primera_foto.imagen.url }}" alt="{{ caso.titulo }}" class="caso-card-img">
+                {% else %}
+                <div class="caso-card-img" style="background:#f7f7f7;display:flex;align-items:center;justify-content:center;font-size:3rem;">🏆</div>
+                {% endif %}
+            {% endwith %}
+        {% else %}
+        <div class="caso-card-img" style="background:#f7f7f7;display:flex;align-items:center;justify-content:center;font-size:3rem;">🏆</div>
+        {% endif %}
+        <div class="caso-card-body">
+            <span class="caso-card-tag">
+                {% if caso.servicio %}
+                    {{ caso.servicio.categoria.icono|default:'🔧' }} {{ caso.servicio.categoria.nombre }}
+                {% elif caso.propiedad %}
+                    🏠 {{ caso.propiedad.get_tipo_prop_display }}
+                {% else %}
+                    🏆 Caso de éxito
+                {% endif %}
+            </span>
+            <a href="{% url 'detalle_caso_exito' caso.id %}" style="text-decoration:none;color:inherit;">
+                <div class="caso-card-title">{{ caso.titulo }}</div>
+            </a>
+            
+            <div class="caso-card-desc">{{ caso.descripcion|truncatechars:120 }}</div>
+            {% if caso.cliente_testimonio %}
+            <div class="caso-card-testimonio">"{{ caso.cliente_testimonio|truncatechars:80 }}"</div>
+            {% endif %}
+            <div class="caso-card-client">👤 {{ caso.cliente_nombre }}</div>
+            
+        </div>
+        {% if todos_casos %}
+        <!-- Admin actions (always visible for gerente/superadmin on this page) -->
+        <div class="caso-card-actions">
+            <button onclick="editarCaso({{ caso.id }}, '{{ caso.titulo|escapejs }}', '{{ caso.descripcion|escapejs }}', '{{ caso.cliente_nombre|escapejs }}', '{{ caso.cliente_testimonio|escapejs }}', '{{ caso.servicio_id|default:'' }}', '{{ caso.propiedad_id|default:'' }}')" class="btn-airbnb-ghost">✏️ Editar</button>
+            <form method="POST" action="{% url 'gestion_casos_exito' %}" style="display:inline;" onsubmit="return confirm('¿Eliminar este caso de éxito «{{ caso.titulo }}»?\nEsta acción no se puede deshacer.');">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="eliminar">
+                <input type="hidden" name="caso_id" value="{{ caso.id }}">
+                <button type="submit" class="btn-airbnb-danger">🗑️ Eliminar</button>
+            </form>
+            <form method="POST" action="{% url 'gestion_casos_exito' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="toggle">
+                <input type="hidden" name="caso_id" value="{{ caso.id }}">
+                <button type="submit" class="btn-airbnb-ghost">
+                    {% if caso.is_publicado %}🙈 Ocultar{% else %}👁️ Publicar{% endif %}
+                </button>
+            </form>
+            <span class="badge-modern {% if caso.is_publicado %}badge-modern-success{% else %}badge-modern-neutral{% endif %}" style="font-size:0.6rem;margin-left:auto;align-self:center;">
+                {{ caso.is_publicado|yesno:"Publicado,Oculto" }}
+            </span>
+        </div>
+        {% endif %}
+        {% if not todos_casos %}
+        <div style="padding:0 18px 14px;">
+            <a href="{% url 'detalle_caso_exito' caso.id %}" class="btn-airbnb-outline btn-airbnb-sm">Ver caso completo →</a>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div style="grid-column:1/-1;text-align:center;padding:60px 20px;">
+        <div style="font-size:4rem;margin-bottom:16px;">🏆</div>
+        <h3 style="font-size:1.2rem;font-weight:700;color:#222;margin:0 0 8px 0;">No hay casos de éxito publicados</h3>
+        <p style="color:#717171;font-size:0.9rem;margin:0 0 20px 0;">Pronto compartiremos historias de clientes satisfechos y propiedades exitosas.</p>
+        {% if not todos_casos %}
+        <a href="{% url 'home' %}" class="btn-airbnb">🏠 Volver al inicio</a>
+        {% else %}
+        <button onclick="abrirModalCrear()" class="btn-airbnb">➕ Crear el primer caso</button>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function toggleTipoEntidad() {
+    var tipo = document.querySelector('input[name="tipo_entidad"]:checked').value;
+    document.getElementById('campo-servicio').style.display = tipo === 'servicio' ? 'block' : 'none';
+    document.getElementById('campo-propiedad').style.display = tipo === 'propiedad' ? 'block' : 'none';
+}
+
+function abrirModalCrear() {
+    document.getElementById('modal-accion').value = 'crear';
+    document.getElementById('modal-title').textContent = '➕ Nuevo caso de éxito';
+    document.getElementById('modal-submit').textContent = '✅ Crear caso';
+    document.getElementById('modal-caso-id').value = '';
+    document.getElementById('modal-titulo').value = '';
+    document.getElementById('modal-descripcion').value = '';
+    document.getElementById('modal-cliente').value = '';
+    document.getElementById('modal-testimonio').value = '';
+    document.getElementById('modal-servicio').value = '';
+    document.getElementById('modal-propiedad').value = '';
+    document.getElementById('modal-img-antes').value = '';
+    document.getElementById('modal-img-despues').value = '';
+    // Reset to servicio
+    document.querySelector('input[name="tipo_entidad"][value="servicio"]').checked = true;
+    toggleTipoEntidad();
+    document.getElementById('modal-caso').style.display = 'flex';
+}
+
+function editarCaso(id, titulo, descripcion, cliente, testimonio, servicioId, propId) {
+    document.getElementById('modal-accion').value = 'editar';
+    document.getElementById('modal-title').textContent = '✏️ Editar caso de éxito';
+    document.getElementById('modal-submit').textContent = '💾 Guardar cambios';
+    document.getElementById('modal-caso-id').value = id;
+    document.getElementById('modal-titulo').value = titulo;
+    document.getElementById('modal-descripcion').value = descripcion;
+    document.getElementById('modal-cliente').value = cliente;
+    document.getElementById('modal-testimonio').value = testimonio;
+    document.getElementById('modal-servicio').value = servicioId || '';
+    document.getElementById('modal-propiedad').value = propId || '';
+    document.getElementById('modal-img-antes').value = '';
+    document.getElementById('modal-img-despues').value = '';
+    // Set radio based on which ID exists
+    if (servicioId) {
+        document.querySelector('input[name="tipo_entidad"][value="servicio"]').checked = true;
+    } else if (propId) {
+        document.querySelector('input[name="tipo_entidad"][value="propiedad"]').checked = true;
+    } else {
+        document.querySelector('input[name="tipo_entidad"][value="servicio"]').checked = true;
+    }
+    toggleTipoEntidad();
+    document.getElementById('modal-caso').style.display = 'flex';
+}
+
+function cerrarModal() {
+    document.getElementById('modal-caso').style.display = 'none';
+}
+
+function cargarPropiedad() {
+    var propId = document.getElementById('prop-buscar-id').value.trim();
+    var errorDiv = document.getElementById('prop-error');
+    var preview = document.getElementById('prop-preview');
+
+    errorDiv.style.display = 'none';
+    preview.style.display = 'none';
+
+    if (!propId || parseInt(propId) < 1) {
+        errorDiv.textContent = '⚠️ Ingresa un ID de propiedad válido.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    var url = "{% url 'api_propiedad_para_caso' 0 %}".replace('/0/', '/' + propId + '/');
+
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                errorDiv.textContent = '⚠️ ' + data.error;
+                errorDiv.style.display = 'block';
+                return;
+            }
+            // Llenar preview
+            document.getElementById('prop-preview-title').textContent = data.titulo;
+            document.getElementById('prop-preview-meta').textContent =
+                data.tipo_cierre + ' · ' + data.comuna + ' · ' + data.moneda + ' $' + data.precio.toLocaleString();
+
+            var detalles = [];
+            if (data.dormitorios) detalles.push('🛏️ ' + data.dormitorios + ' dorm.');
+            if (data.banos) detalles.push('🚿 ' + data.banos + ' baños');
+            if (data.m_construidos) detalles.push('📐 ' + data.m_construidos + ' m²');
+            document.getElementById('prop-preview-details').textContent = detalles.join(' │ ');
+
+            var imgDiv = document.getElementById('prop-preview-img');
+            if (data.foto_url) {
+                imgDiv.innerHTML = '<img src="' + data.foto_url + '" style="width:100%;height:100%;object-fit:cover;">';
+            } else {
+                imgDiv.innerHTML = '🏠';
+                imgDiv.style.fontSize = '2.5rem';
+            }
+
+            // Pre-poblar campos sugeridos
+            var tituloInput = document.getElementById('modal-titulo');
+            if (!tituloInput.value) {
+                tituloInput.value = 'Caso de éxito: ' + data.titulo;
+            }
+            var clienteInput = document.getElementById('modal-cliente');
+            if (!clienteInput.value && data.cliente_nombre) {
+                clienteInput.value = data.cliente_nombre;
+            }
+            var descInput = document.getElementById('modal-descripcion');
+            if (!descInput.value && data.descripcion) {
+                descInput.value = data.descripcion.slice(0, 300);
+            }
+
+            document.getElementById('modal-propiedad').value = propId;
+            document.getElementById('prop-cargada').value = '1';
+            preview.style.display = 'block';
+        })
+        .catch(function(err) {
+            errorDiv.textContent = '❌ Error de conexión al cargar la propiedad.';
+            errorDiv.style.display = 'block';
+        });
+}
+
+function limpiarPropiedad() {
+    document.getElementById('prop-preview').style.display = 'none';
+    document.getElementById('prop-error').style.display = 'none';
+    document.getElementById('prop-buscar-id').value = '';
+    document.getElementById('modal-propiedad').value = '';
+    document.getElementById('prop-cargada').value = '0';
+}
+</script>
+{% endblock %}

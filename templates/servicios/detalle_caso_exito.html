@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ caso.titulo }} - Caso de Éxito{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:16px;">
+    <a href="{% url 'lista_casos_exito' %}" class="btn btn-ghost btn-sm">← Todos los casos de éxito</a>
+    <a href="{% url 'home' %}" class="btn btn-ghost btn-sm">🏠 Propiedades</a>
+</div>
+
+<div class="detail-modern-grid">
+    <!-- COLUMNA PRINCIPAL -->
+    <div>
+        <!-- GALERÍA ANTES / DESPUÉS -->
+        <div class="detail-modern-gallery">
+            {% if caso.imagen_despues %}
+            <img src="{{ caso.imagen_despues.url }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
+            {% elif caso.servicio and caso.servicio.imagen %}
+            <img src="{{ caso.servicio.imagen.url }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
+            {% elif caso.propiedad %}
+                {% with primera_foto=caso.propiedad.fotos.first %}
+                    {% if primera_foto %}
+                    <img src="{{ primera_foto.imagen.url }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
+                    {% else %}
+                    <div style="width:100%;height:300px;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:4rem;border-radius:var(--ds-radius-lg);">🏆</div>
+                    {% endif %}
+                {% endwith %}
+            {% else %}
+            <div style="width:100%;height:300px;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:4rem;border-radius:var(--ds-radius-lg);">🏆</div>
+            {% endif %}
+
+            {% if caso.imagen_antes and caso.imagen_despues %}
+            <div class="detail-modern-thumbs" style="margin-top:12px;">
+                <div style="flex:1;text-align:center;">
+                    <small style="font-size:0.7rem;color:var(--ds-text-muted);">Antes</small>
+                    <img src="{{ caso.imagen_antes.url }}" alt="Antes" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
+                </div>
+                <div style="flex:1;text-align:center;">
+                    <small style="font-size:0.7rem;color:var(--ds-text-muted);">Después</small>
+                    <img src="{{ caso.imagen_despues.url }}" alt="Después" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- DESCRIPCIÓN -->
+        <div class="card-modern" style="margin-top:20px;">
+            <div class="card-modern-body">
+                <h2 style="margin:0 0 8px 0;font-size:1.3rem;">📖 Historia</h2>
+                <p style="font-size:0.95rem;color:var(--ds-text-secondary);line-height:1.7;">{{ caso.descripcion|linebreaksbr }}</p>
+            </div>
+        </div>
+
+        <!-- TESTIMONIO -->
+        {% if caso.cliente_testimonio %}
+        <div class="card-modern" style="margin-top:16px;background:var(--ds-primary-light);border-color:var(--ds-primary);">
+            <div class="card-modern-body">
+                <h3 style="margin:0 0 8px 0;font-size:1.1rem;">💬 Testimonio</h3>
+                <blockquote style="font-size:1rem;font-style:italic;color:var(--ds-text);border-left:4px solid var(--ds-primary);padding-left:16px;margin:0;line-height:1.6;">
+                    "{{ caso.cliente_testimonio }}"
+                </blockquote>
+                <p style="margin:8px 0 0 0;font-weight:600;font-size:0.9rem;color:var(--ds-primary);">— {{ caso.cliente_nombre }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ENLACES A SERVICIO O PROPIEDAD RELACIONADA -->
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+            {% if caso.servicio %}
+            <div class="card-modern" style="flex:1;min-width:200px;">
+                <div class="card-modern-body" style="text-align:center;">
+                    <div style="font-size:2rem;">🔧</div>
+                    <div style="font-weight:600;font-size:0.9rem;margin:8px 0;">{{ caso.servicio.titulo }}</div>
+                    <a href="{% url 'detalle_servicio' caso.servicio.id %}" class="btn btn-outline btn-sm" style="text-decoration:none;">
+                        Ver servicio →
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            {% if caso.propiedad %}
+            <div class="card-modern" style="flex:1;min-width:200px;">
+                <div class="card-modern-body" style="text-align:center;">
+                    <div style="font-size:2rem;">🏠</div>
+                    <div style="font-weight:600;font-size:0.9rem;margin:8px 0;">
+                        {{ caso.propiedad.get_tipo_prop_display }} · {{ caso.propiedad.comuna }}
+                    </div>
+                    <a href="{% url 'detalle_propiedad' caso.propiedad.id %}" class="btn btn-outline btn-sm" style="text-decoration:none;">
+                        Ver propiedad →
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- COLUMNA LATERAL -->
+    <div>
+        <div class="detail-modern-info">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span class="badge-modern badge-modern-primary" style="font-size:0.8rem;">
+                    {% if caso.servicio %}
+                        {{ caso.servicio.categoria.icono|default:'🔧' }} {{ caso.servicio.categoria.nombre }}
+                    {% elif caso.propiedad %}
+                        🏠 {{ caso.propiedad.get_tipo_prop_display }}
+                    {% else %}
+                        🏆 Caso de éxito
+                    {% endif %}
+                </span>
+                <span style="font-size:0.75rem;color:var(--ds-text-secondary);">{{ caso.created_at|date:"M Y" }}</span>
+            </div>
+
+            <h2 style="margin:0 0 16px 0;font-size:1.5rem;">{{ caso.titulo }}</h2>
+
+            <div style="padding:16px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);margin-bottom:16px;">
+                <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;">👤 Cliente</div>
+                <div style="font-size:1.1rem;">{{ caso.cliente_nombre }}</div>
+            </div>
+
+            {% if caso.servicio %}
+            <div style="padding:16px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);margin-bottom:16px;">
+                <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;">🔨 Servicio utilizado</div>
+                <div style="font-size:0.9rem;">{{ caso.servicio.titulo }}</div>
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;">
+                    👤 {{ caso.servicio.publicante.get_full_name|default:caso.servicio.publicante.email }}
+                </div>
+                <a href="{% url 'detalle_servicio' caso.servicio.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;text-decoration:none;">
+                    🔧 Contactar profesional
+                </a>
+            </div>
+            {% endif %}
+
+            {% if caso.propiedad %}
+            <div style="padding:16px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);margin-bottom:16px;">
+                <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;">🏠 Propiedad</div>
+                <div style="font-size:0.9rem;">{{ caso.propiedad.get_tipo_prop_display }}</div>
+                <div style="font-size:0.85rem;color:var(--ds-text-secondary);">📍 {{ caso.propiedad.comuna }}</div>
+                <div style="font-size:1rem;font-weight:700;margin-top:4px;">
+                    {{ caso.propiedad.get_tipo_moneda_display }} {{ caso.propiedad.precio|floatformat:0 }}
+                </div>
+                <a href="{% url 'detalle_propiedad' caso.propiedad.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;text-decoration:none;">
+                    🏠 Ver propiedad
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- COMPARTIR -->
+            <div style="padding:16px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);text-align:center;">
+                <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;">📤 Compartir</div>
+                <div style="display:flex;gap:12px;justify-content:center;font-size:1.3rem;">
+                    <a href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}" target="_blank" style="text-decoration:none;">💬</a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" target="_blank" style="text-decoration:none;">📘</a>
+                    <a href="https://twitter.com/intent/tweet?text={{ request.build_absolute_uri|urlencode }}" target="_blank" style="text-decoration:none;">🐦</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

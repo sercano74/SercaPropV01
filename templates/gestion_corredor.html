@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>📋 Panel del Corredor</h1>
+    <p>Gestiona tus propiedades asignadas y publicaciones</p>
+</div>
+
+<div class="card-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📌 Propiedades asignadas</div>
+            {% for asig in asignaciones %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--ds-border-light);">
+                <div>
+                    <strong>{{ asig.propiedad.get_tipo_prop_display }}</strong> - {{ asig.propiedad.calle }}
+                    <span class="badge-modern badge-modern-primary" style="margin-left:6px;">{{ asig.get_estado_display }}</span>
+                </div>
+                <a href="{% url 'detalle_propiedad' asig.propiedad.id %}" class="btn btn-ghost btn-sm">Ver</a>
+            </div>
+            {% empty %}
+            <div class="empty-state-modern">Sin propiedades asignadas.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📢 Mis publicaciones</div>
+            <div class="table-modern">
+                <table class="table-modern">
+                    <thead><tr><th>Propiedad</th><th>Estado</th><th>Acción</th></tr></thead>
+                    <tbody>
+                    {% for pub in publicaciones %}
+                    <tr>
+                        <td>{{ pub.propiedad.calle }}</td>
+                        <td><span class="badge-modern badge-modern-neutral">{{ pub.get_estado_display }}</span></td>
+                        <td><a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="btn btn-ghost btn-sm" style="text-decoration:none;">Ver</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="empty-state-modern">Sin publicaciones.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="{% url 'agenda' %}" class="btn btn-primary">📅 Gestionar mi agenda</a>
+    <a href="{% url 'centro_comunicaciones' %}" class="btn btn-outline">📬 Centro de Comunicaciones</a>
+</div>
+{% endblock %}

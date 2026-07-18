@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>⚙️ Panel del Superadmin</h1>
+    <p>Administración general del sistema</p>
+</div>
+
+<div class="card-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">🛡️ Corredores pendientes</div>
+            {% for c in corredores_pendientes %}
+            <div style="padding:12px 0;border-bottom:1px solid var(--ds-border-light);">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong>{{ c.get_full_name|default:c.username }}</strong>
+                        <span style="font-size:0.85rem;color:var(--ds-text-secondary);margin-left:6px;">{{ c.email }}</span>
+                    </div>
+                    <form method="POST" action="{% url 'validar_corredores' %}" style="display:flex;gap:6px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="corredor_id" value="{{ c.id }}">
+                        <button type="submit" name="accion" value="validar" class="btn btn-success btn-sm">✅ Validar</button>
+                        <button type="submit" name="accion" value="rechazar" class="btn btn-danger btn-sm">❌ Rechazar</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state-modern">No hay corredores pendientes.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:16px;">👤 Crear Gerente</div>
+            <a href="{% url 'crear_gerente' %}" class="btn btn-primary btn-block" style="text-decoration:none;">+ Crear nuevo gerente</a>
+            <hr style="margin:16px 0;border:none;border-top:1px solid var(--ds-border-light);">
+            <a href="{% url 'revisar_postulaciones' %}" class="btn btn-outline btn-block" style="text-decoration:none;">📋 Revisar postulaciones de corredores</a>
+            <hr style="margin:16px 0;border:none;border-top:1px solid var(--ds-border-light);">
+            <a href="/admin/" class="btn btn-outline btn-block" style="text-decoration:none;">🔧 Ir al Admin de Django</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

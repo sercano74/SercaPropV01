@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>🛡️ Validar Corredores</h1>
+    <p>Aprueba o rechaza las cuentas de corredores pendientes</p>
+</div>
+
+<div class="card-modern">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:16px;">Corredores pendientes de validación</div>
+        {% for c in corredores_pendientes %}
+        <div style="padding:14px 0;border-bottom:1px solid var(--ds-border-light);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+                <strong>{{ c.get_full_name|default:c.username }}</strong>
+                <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">📧 {{ c.email }} · 📱 {{ c.cel_phone|default:"-" }} · 🆔 {{ c.dni|default:"-" }}</div>
+            </div>
+            <form method="POST" style="display:flex;gap:6px;">
+                {% csrf_token %}
+                <input type="hidden" name="corredor_id" value="{{ c.id }}">
+                <button type="submit" name="accion" value="validar" class="btn btn-success btn-sm">✅ Validar</button>
+                <button type="submit" name="accion" value="rechazar" class="btn btn-danger btn-sm">❌ Rechazar</button>
+            </form>
+        </div>
+        {% empty %}
+        <div class="empty-state-modern">No hay corredores pendientes de validación.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

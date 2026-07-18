@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirma tu correo - {{ site_name }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #1a1a2e; padding: 32px 40px; text-align: center; }
+        .header h1 { color: #fff; margin: 0; font-size: 1.5rem; }
+        .header .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .body { padding: 40px; }
+        .body p { color: #555; line-height: 1.6; font-size: 0.95rem; }
+        .btn-confirm {
+            display: inline-block;
+            padding: 14px 36px;
+            background: #2563eb;
+            color: #fff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 24px 0;
+        }
+        .btn-confirm:hover { background: #1d4ed8; }
+        .footer { padding: 24px 40px; background: #f9f9f9; text-align: center; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; }
+        .footer a { color: #2563eb; text-decoration: none; }
+        .expiry { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; color: #9a3412; margin-top: 20px; }
+        @media only screen and (max-width: 480px) {
+            .container { margin: 20px 12px; }
+            .body { padding: 24px; }
+            .header { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🏠</div>
+            <h1>Confirma tu correo electrónico</h1>
+        </div>
+        <div class="body">
+            <p>Hola <strong>{{ user.get_full_name|default:user.username }}</strong>,</p>
+            <p>Gracias por registrarte en <strong>{{ site_name }}</strong>. Para empezar a usar tu cuenta, solo falta un paso:</p>
+
+            <div style="text-align:center;">
+                <a href="{{ confirm_url }}" class="btn-confirm">✅ Confirmar mi correo</a>
+            </div>
+
+            <p style="text-align:center;font-size:0.85rem;color:#888;">
+                O copia este enlace en tu navegador:<br>
+                <span style="color:#2563eb;word-break:break-all;">{{ confirm_url }}</span>
+            </p>
+
+            <div class="expiry">
+                ⏰ Este enlace expirará en <strong>{{ expiry_hours }} horas</strong>. Si no confirmas a tiempo, puedes solicitar un nuevo enlace desde tu perfil.
+            </div>
+
+            <p style="margin-top:24px;">Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
+            <p>Saludos,<br><strong>El equipo de {{ site_name }}</strong></p>
+        </div>
+        <div class="footer">
+            &copy; {% now "Y" %} {{ site_name }}. Todos los derechos reservados.
+        </div>
+    </div>
+</body>
+</html>

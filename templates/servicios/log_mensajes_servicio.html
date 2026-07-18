@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mensajes - {{ servicio.titulo }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;">
+    <a href="{% url 'gestion_mis_servicios' %}" class="btn btn-ghost btn-sm">← Mis servicios</a>
+    <h1 style="margin:0;font-size:1.3rem;font-weight:700;">📩 Mensajes: {{ servicio.titulo }}</h1>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    {% for m in mensajes %}
+    <div class="card-modern" style="{% if not m.is_leido %}border-left:4px solid var(--ds-primary);{% endif %}">
+        <div class="card-modern-body">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                <div>
+                    <strong style="font-size:0.95rem;">{{ m.nombre_remitente }}</strong>
+                    {% if not m.is_leido %}<span class="badge-modern badge-modern-primary">Nuevo</span>{% endif %}
+                </div>
+                <small style="color:var(--ds-text-secondary);">{{ m.created_at|date:'d/m/Y H:i' }}</small>
+            </div>
+            <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:8px;">
+                📧 {{ m.email_remitente }} · 📞 {{ m.telefono_remitente }}
+            </div>
+            <div style="background:var(--ds-bg-secondary);padding:12px;border-radius:8px;font-size:0.9rem;margin-bottom:12px;">
+                {{ m.mensaje|linebreaksbr }}
+            </div>
+
+            {% if m.respuesta %}
+            <div style="background:var(--ds-primary-light);padding:12px;border-radius:8px;font-size:0.85rem;margin-bottom:8px;">
+                <small style="font-weight:600;color:var(--ds-primary);">Tu respuesta ({{ m.respondido_at|date:'d/m/Y H:i' }}):</small>
+                <div style="margin-top:4px;">{{ m.respuesta|linebreaksbr }}</div>
+            </div>
+            {% endif %}
+
+            <form method="POST" style="margin-top:8px;">
+                {% csrf_token %}
+                <input type="hidden" name="mensaje_id" value="{{ m.id }}">
+                {% if not m.is_leido %}
+                <button type="submit" name="accion" value="marcar_leido" class="btn btn-ghost btn-sm">✓ Marcar leído</button>
+                {% endif %}
+                {% if not m.respuesta %}
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <textarea name="respuesta" rows="2" placeholder="Escribe tu respuesta..." style="flex:1;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.85rem;font-family:inherit;"></textarea>
+                    <button type="submit" name="accion" value="responder" class="btn btn-primary btn-sm">Responder</button>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state-modern" style="grid-column:1/-1;">
+        <div class="empty-icon">📩</div>
+        <h3>No hay mensajes aún</h3>
+        <p>Los mensajes de los interesados aparecerán aquí.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

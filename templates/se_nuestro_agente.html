@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>🤝 Sé Nuestro Agente</h1>
+    <p>Únete al equipo de corredores de Serca Propiedades</p>
+</div>
+
+<div style="max-width:1400px;margin:0 auto;">
+
+    <div class="card-modern" style="margin-bottom:24px;">
+        <div class="card-modern-body" style="text-align:center;padding:32px;">
+            <div style="font-size:1.2rem;margin-bottom:8px;">
+                ¿Por qué ser corredor en Serca?
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:16px;">
+                <span class="badge-modern badge-modern-primary" style="font-size:0.9rem;padding:8px 16px;">💰 Comisiones atractivas</span>
+                <span class="badge-modern badge-modern-primary" style="font-size:0.9rem;padding:8px 16px;">📈 Complementa tus ingresos</span>
+                <span class="badge-modern badge-modern-primary" style="font-size:0.9rem;padding:8px 16px;">🏠 Gestiona propiedades</span>
+                <span class="badge-modern badge-modern-primary" style="font-size:0.9rem;padding:8px 16px;">📱 Plataforma intuitiva</span>
+                <span class="badge-modern badge-modern-primary" style="font-size:0.9rem;padding:8px 16px;">🤝 Soporte personalizado</span>
+            </div>
+        </div>
+    </div>
+
+    <h2 style="text-align:center;margin-bottom:24px;font-weight:700;">Elige tu plan</h2>
+
+    <div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:stretch;gap:16px;margin-bottom:32px;justify-content:center;">
+        {% for plan in planes %}
+        <div class="card-modern" style="text-align:center;display:flex;flex-direction:column;">
+            <div class="card-modern-body" style="flex:1;display:flex;flex-direction:column;">
+                <div style="font-size:1.4rem;font-weight:700;color:var(--ds-primary);margin-bottom:8px;">{{ plan.nombre }}</div>
+                <div style="font-size:2.5rem;font-weight:800;color:var(--ds-text);margin:12px 0;">
+                    ${{ plan.precio|floatformat:0 }}
+                    <span style="font-size:0.9rem;font-weight:400;color:var(--ds-text-secondary);"> x {{ plan.duracion_meses }} meses</span>
+                </div>
+
+                <div style="margin:16px 0;text-align:left;flex:1;">
+                    {% if plan.descripcion %}
+                    <p style="margin-bottom:12px;font-size:0.95rem;">{{ plan.descripcion }}</p>
+                    {% endif %}
+                    <ul style="list-style:none;padding:0;margin:0;">
+                        <li style="padding:6px 0;font-size:0.9rem;">
+                            ✅ Hasta <strong>{{ plan.max_propiedades_simultaneas }}</strong> propiedades simultáneas
+                        </li>
+                        <li style="padding:6px 0;font-size:0.9rem;">
+                            💰 Comisión del <strong>{{ plan.comision_porcentaje }}%</strong> de lo cobrado
+                        </li>
+                    </ul>
+                </div>
+
+                {% if user.is_authenticated %}
+                <a href="{% url 'postular_corredor' plan.id %}" class="btn btn-primary btn-block" style="text-decoration:none;">
+                    Postular a este plan →
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}?next={% url 'postular_corredor' plan.id %}" class="btn btn-primary btn-block" style="text-decoration:none;">
+                    Inicia sesión para postular →
+                </a>
+                <a href="{% url 'registro' %}?next={% url 'postular_corredor' plan.id %}" class="btn btn-outline btn-block" style="text-decoration:none;margin-top:8px;">
+                    Crear cuenta gratis →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-modern" style="grid-column:1/-1;">
+            No hay planes disponibles para corredores en este momento. Vuelve pronto.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>📋 Postular a {{ plan.nombre }}</h1>
+    <p>Completa tus datos para postular como corredor</p>
+</div>
+
+<div style="max-width:700px;margin:0 auto;">
+    <div class="card-modern" style="margin-bottom:20px;">
+        <div class="card-modern-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <div>
+                    <strong style="font-size:1.1rem;">{{ plan.nombre }}</strong>
+                    <div style="font-size:0.85rem;color:var(--ds-text-secondary);">
+                        ${{ plan.precio|floatformat:0 }} / {{ plan.duracion_meses }} año
+                        · {{ plan.max_propiedades_simultaneas }} props. máx.
+                        · {{ plan.comision_porcentaje }}% comisión
+                    </div>
+                </div>
+                <a href="{% url 'se_nuestro_agente' %}" class="btn btn-ghost btn-sm">← Cambiar plan</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <form method="POST" enctype="multipart/form-data" class="form-modern">
+                {% csrf_token %}
+
+                <h3 style="margin-bottom:16px;font-size:1.1rem;">🧑 Datos personales</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nombres *</label>
+                        <input type="text" name="nombres" required
+                               value="{{ datos.nombres|default:user.first_name }}"
+                               placeholder="Juan">
+                    </div>
+                    <div class="form-group">
+                        <label>Apellidos *</label>
+                        <input type="text" name="apellidos" required
+                               value="{{ datos.apellidos|default:user.last_name }}"
+                               placeholder="Pérez">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required
+                               value="{{ datos.email|default:user.email }}"
+                               placeholder="tu@email.cl"
+                               {% if user.is_authenticated %}readonly{% endif %}>
+                        {% if user.is_authenticated %}
+                        <div class="form-hint">Email asociado a tu cuenta</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label>RUT / DNI</label>
+                        <input type="text" name="dni"
+                               value="{{ datos.dni|default:user.dni }}"
+                               placeholder="12.345.678-9">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Teléfono *</label>
+                        <input type="text" name="cel_phone" required
+                               value="{{ datos.cel_phone|default:user.cel_phone }}"
+                               placeholder="+56 9 1234 5678">
+                    </div>
+                    <div class="form-group">
+                        <label>Comuna</label>
+                        <select name="comuna">
+                            <option value="">Selecciona una comuna</option>
+                            {% for c in comunas %}
+                            <option value="{{ c.id }}" {% if datos.comuna|stringformat:"s" == c.id|stringformat:"s" or user.comuna_id == c.id %}selected{% endif %}>
+                                {{ c.nombre }}, {{ c.region.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Domicilio</label>
+                    <input type="text" name="domicilio"
+                           value="{{ datos.domicilio|default:user.domicilio }}"
+                           placeholder="Calle y número">
+                </div>
+
+                <div class="form-group">
+                    <label>Currículo / Experiencia</label>
+                    <textarea name="curriculo" placeholder="Cuéntanos sobre ti, tu experiencia en bienes raíces, etc.">{{ datos.curriculo|default:user.curriculo }}</textarea>
+                </div>
+
+                <hr style="margin:24px 0;border:none;border-top:1px solid var(--ds-border-light);">
+
+                <h3 style="margin-bottom:16px;font-size:1.1rem;">🔑 Contraseña</h3>
+                {% if user.is_authenticated %}
+                <div class="form-hint" style="margin-bottom:16px;">
+                    Ya tienes una cuenta en Serca. Ingresa tu contraseña actual para confirmar.
+                </div>
+                {% endif %}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Contraseña *</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Repetir contraseña *</label>
+                        <input type="password" name="password2" required>
+                    </div>
+                </div>
+
+                <hr style="margin:24px 0;border:none;border-top:1px solid var(--ds-border-light);">
+
+                <h3 style="margin-bottom:16px;font-size:1.1rem;">💳 Comprobante de depósito</h3>
+                <div class="form-group">
+                    <label>Comprobante *</label>
+                    <input type="file" name="comprobante" accept="image/*" required>
+                    <div class="form-hint">Sube una foto o captura del comprobante de depósito por <strong>${{ plan.precio|floatformat:0 }}</strong> asociado a este plan.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:24px;">
+                    📤 Enviar postulación
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

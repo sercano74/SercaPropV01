@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-modern-container">
+    <h2>👤 Crear Gerente</h2>
+    <p style="margin-bottom:16px;color:var(--ds-text-secondary);">Crea una cuenta de gerente desde el panel de Superadmin.</p>
+    <form method="POST" class="form-modern">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nombres</label>
+                <input type="text" name="first_name" required>
+            </div>
+            <div class="form-group">
+                <label>Apellidos</label>
+                <input type="text" name="last_name" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Nombre de usuario *</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label>RUT / DNI</label>
+            <input type="text" name="dni">
+        </div>
+        <div class="form-group">
+            <label>Contraseña *</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Crear Gerente</button>
+    </form>
+</div>
+{% endblock %}

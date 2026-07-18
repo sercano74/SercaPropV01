@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-modern-container" style="max-width:800px;">
+    <h2>📋 Publicar Propiedad</h2>
+    <form method="POST" enctype="multipart/form-data" class="form-modern">
+
+        <h3 style="margin:20px 0 12px;font-weight:700;font-size:1.1rem;color:var(--ds-text);">📍 Ubicación</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Región</label>
+                <select name="region" id="region-select">
+                    <option value="">Seleccionar...</option>
+                    {% for c in comunas %}
+                        {% ifchanged c.region_id %}
+                        <option value="{{ c.region.id }}">{{ c.region.nombre }}</option>
+                        {% endifchanged %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Comuna *</label>
+                <select name="comuna" required>
+                    <option value="">Seleccionar...</option>
+                    {% for c in comunas %}
+                    <option value="{{ c.id }}" data-region="{{ c.region.id }}">{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Calle *</label>
+                <input type="text" name="calle" required>
+            </div>
+            <div class="form-group">
+                <label>Número *</label>
+                <input type="text" name="numero_calle" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de propiedad *</label>
+                <select name="tipo_prop" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="casa">Casa</option>
+                    <option value="departamento">Departamento</option>
+                    <option value="local">Local Comercial</option>
+                    <option value="terreno">Terreno</option>
+                    <option value="oficina">Oficina</option>
+                    <option value="bodega">Bodega</option>
+                    <option value="parcela">Parcela</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>N° Depto/Lote/etc</label>
+                <input type="text" name="num_tipo_prop">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Población / Localidad</label>
+            <input type="text" name="poblacion_localidad">
+        </div>
+
+        <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">🏠 Características</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Dormitorios</label>
+                <input type="number" name="numero_dormitorios" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>Baños</label>
+                <input type="number" name="numero_banos" value="0" min="0">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Estacionamientos</label>
+                <input type="number" name="num_estacionamientos" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>Uso</label>
+                <select name="tipo_uso">
+                    <option value="habitacional">Habitacional</option>
+                    <option value="comercial">Comercial</option>
+                    <option value="agro">Agrícola</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>M² construidos</label>
+                <input type="number" name="m_construidos" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>M² terreno</label>
+                <input type="number" name="m_terreno" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+
+        <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">💰 Precio y acción</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de acción *</label>
+                <select name="tipo_accion" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="venta" {% if tipo_accion_presel == 'venta' %}selected{% endif %}>Venta</option>
+                    <option value="arriendo" {% if tipo_accion_presel == 'arriendo' %}selected{% endif %}>Arriendo</option>
+                    <option value="srt" {% if tipo_accion_presel == 'srt' %}selected{% endif %}>Short Rental Time (SRT)</option>
+                </select>
+            </div>
+            
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Moneda</label>
+                <select name="tipo_moneda">
+                    <option value="PCL">Pesos Chilenos (CLP)</option>
+                    <option value="UF">UF</option>
+                    <option value="USD">USD</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Precio *</label>
+                <input type="number" name="precio" required step="0.01">
+            </div>
+            
+        </div>
+        <div class ="form-row">
+            <div class="form-group">
+                <label>Contribuciones anuales (CLP)</label>
+                <input type="number" name="montoanual_contribuciones_pcl" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Gastos comunes mensuales (CLP)</label>
+                <input type="number" name="montomensual_gastoscomunes_pcl" step="0.01">
+            </div>
+        </div>
+
+        <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">📝 Descripción</h3>
+        <div class="form-group">
+            <label>Descripción de la propiedad</label>
+            <textarea name="descripcion_propiedad" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Descripción del entorno</label>
+            <textarea name="descripcion_entorno" rows="3"></textarea>
+        </div>
+
+        <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">🔧 Servicios</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            {% for s in servicios %}
+            <label style="font-weight:400;font-size:0.9rem;border:1px solid var(--black);padding:4px 10px;cursor:pointer;">
+                <input type="checkbox" name="servicios" value="{{ s.id }}"> {{ s.nombre }}
+            </label>
+            {% endfor %}
+        </div>
+
+        <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">📸 Fotos</h3>
+        <div class="form-group">
+            <label>Selecciona las fotos de la propiedad</label>
+            <input type="file" name="fotos" multiple accept="image/*">
+        </div>
+
+        <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">📢 Publicación</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Meses de publicación</label>
+                <input type="number" name="meses" value="1" min="1" id="meses-input">
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:20px;">
+                    <input type="checkbox" name="es_destacada" id="destacada-check"> ¿Destacada?
+                </label>
+            </div>
+        </div>
+
+        {% if config_pago %}
+        <div class="card" style="margin-bottom:15px;">
+            <h3>💰 Valores de publicación</h3>
+            <table style="width:100%;font-size:0.85rem;">
+                <tr><td>Normal venta</td><td><strong>${{ config_pago.valor_pub_venta_mensual }}/mes</strong></td></tr>
+                <tr><td>Destacada venta</td><td><strong>${{ config_pago.valor_destacado_venta_mensual }}/mes</strong></td></tr>
+                <tr><td>Normal arriendo</td><td><strong>${{ config_pago.valor_pub_arriendo_mensual }}/mes</strong></td></tr>
+                <tr><td>Destacada arriendo</td><td><strong>${{ config_pago.valor_destacado_arriendo_mensual }}/mes</strong></td></tr>
+                <tr><td>Normal SRT</td><td><strong>${{ config_pago.valor_pub_str_dia }}/día</strong></td></tr>
+                <tr><td>Destacada SRT</td><td><strong>${{ config_pago.valor_destacado_str_dia }}/día</strong></td></tr>
+            </table>
+            <p style="margin-top:8px;font-size:0.85rem;font-weight:700;" id="total-estimado">Total estimado: $0</p>
+        </div>
+
+        <div class="form-group">
+            <label>Banco para depósito</label>
+            <input type="text" value="{{ config_pago.banco_nombre }}" disabled>
+        </div>
+        <div class="form-group">
+            <label>Tipo de cuenta</label>
+            <input type="text" value="{{ config_pago.get_tipo_cuenta_display }}" disabled>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>N° Cuenta</label>
+                <input type="text" value="{{ config_pago.numero_cuenta }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Titular</label>
+                <input type="text" value="{{ config_pago.titular }}" disabled>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>RUT Titular</label>
+            <input type="text" value="{{ config_pago.dni_titular }}" disabled>
+        </div>
+        <div class="form-group">
+            <label>Comprobante de pago (opcional)</label>
+            <input type="file" name="comprobante" accept="image/*">
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn-primary" style="width:100%;margin-top:10px;">Publicar Propiedad</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mesesInput = document.getElementById('meses-input');
+    const destacadaCheck = document.getElementById('destacada-check');
+    const tipoAccion = document.querySelector('select[name="tipo_accion"]');
+    const totalEst = document.getElementById('total-estimado');
+
+    function actualizarTotal() {
+        const meses = parseInt(mesesInput.value) || 1;
+        const destacada = destacadaCheck.checked;
+        const accion = tipoAccion.value;
+
+        let valores = {
+            venta: { normal: {{ config_pago.valor_pub_venta_mensual }}, destacada: {{ config_pago.valor_destacado_venta_mensual }} },
+            arriendo: { normal: {{ config_pago.valor_pub_arriendo_mensual }}, destacada: {{ config_pago.valor_destacado_arriendo_mensual }} },
+            srt: { normal: {{ config_pago.valor_pub_str_dia }}, destacada: {{ config_pago.valor_destacado_str_dia }} },
+        };
+
+        if (valores[accion]) {
+            const base = destacada ? valores[accion].destacada : valores[accion].normal;
+            const total = base * meses;
+            totalEst.textContent = `Total estimado: $${total.toLocaleString('es-CL')}`;
+        } else {
+            totalEst.textContent = 'Selecciona tipo de acción para ver el total';
+        }
+    }
+
+    mesesInput.addEventListener('change', actualizarTotal);
+    destacadaCheck.addEventListener('change', actualizarTotal);
+    tipoAccion.addEventListener('change', actualizarTotal);
+    actualizarTotal();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-modern-container">
+    <h2>🔐 Iniciar Sesión</h2>
+    <form method="POST" class="form-modern">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" required placeholder="tu@email.cl">
+        </div>
+        <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" name="password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
+        <p style="margin-top:16px;text-align:center;font-size:0.9rem;color:var(--ds-text-secondary);">
+            ¿No tienes cuenta? <a href="{% url 'registro' %}" style="color:var(--ds-primary);font-weight:600;text-decoration:underline;">Regístrate aquí</a>
+        </p>
+    </form>
+</div>
+{% endblock %}

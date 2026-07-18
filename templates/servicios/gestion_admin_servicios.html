@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Admin Servicios - Dato Constructor{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <h1 style="margin:0;font-size:1.4rem;font-weight:700;">⚙️ Administración de Servicios</h1>
+    <a href="{% url 'lista_servicios' %}" class="btn btn-outline btn-sm">🔨 Ver directorio</a>
+</div>
+
+<!-- CONFIGURACIÓN DE PRECIOS -->
+<div style="margin-bottom:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin:0 0 12px 0;">💰 Configuración de Precios de Publicación</h3>
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="actualizar_precios">
+                <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:end;">
+                    <div class="form-group" style="flex:1;min-width:140px;">
+                        <label>Plan mensual (CLP)</label>
+                        <input type="number" name="valor_mensual" value="{{ config_precios.valor_mensual }}" required min="0">
+                    </div>
+                    <div class="form-group" style="flex:1;min-width:140px;">
+                        <label>Plan anual (CLP)</label>
+                        <input type="number" name="valor_anual" value="{{ config_precios.valor_anual }}" required min="0">
+                    </div>
+                    <div class="form-group" style="flex:1;min-width:100px;">
+                        <label>IVA (decimal)</label>
+                        <input type="number" name="iva" value="{{ config_precios.iva }}" step="0.01" min="0" max="1" required>
+                    </div>
+                    <div class="form-group" style="display:flex;align-items:end;">
+                        <button type="submit" class="btn btn-primary btn-sm">💾 Actualizar precios</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- PAGOS PENDIENTES -->
+{% if pagos_pendientes %}
+<div style="margin-bottom:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin:0 0 12px 0;">💳 Pagos pendientes de revisión ({{ pagos_pendientes.count }})</h3>
+    <div class="table-modern">
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Servicio</th><th>Publicante</th><th>Plan</th><th>Total</th><th>Fecha</th><th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pagos_pendientes %}
+                <tr>
+                    <td>#{{ p.id }}</td>
+                    <td>{{ p.servicio.titulo }}</td>
+                    <td>{{ p.publicante.get_full_name|default:p.publicante.email }}</td>
+                    <td>{{ p.get_tipo_pago_display }}</td>
+                    <td><strong>${{ p.monto_total|floatformat:0 }}</strong></td>
+                    <td>{{ p.created_at|date:'d/m/Y' }}</td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="aprobar_pago">
+                                <input type="hidden" name="pago_id" value="{{ p.id }}">
+                                <button type="submit" class="btn btn-success btn-sm" style="font-size:0.7rem;">✅ Aprobar</button>
+                            </form>
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="rechazar_pago">
+                                <input type="hidden" name="pago_id" value="{{ p.id }}">
+                                <button type="submit" class="btn btn-danger btn-sm" style="font-size:0.7rem;">❌ Rechazar</button>
+                            </form>
+                            {% if p.comprobante %}
+                            <a href="{{ p.comprobante.url }}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:0.7rem;">👁️ Ver comprobante</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- TODOS LOS SERVICIOS -->
+<div>
+    <h3 style="font-size:1rem;font-weight:700;margin:0 0 12px 0;">📋 Todos los servicios ({{ servicios.count }})</h3>
+    <div class="table-modern">
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Título</th><th>Publicante</th><th>Categoría</th><th>Plan</th><th>Estado</th><th>Vence</th><th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in servicios %}
+                <tr>
+                    <td>#{{ s.id }}</td>
+                    <td><strong>{{ s.titulo }}</strong></td>
+                    <td>{{ s.publicante.get_full_name|default:s.publicante.email }}</td>
+                    <td>{{ s.categoria.nombre }}</td>
+                    <td>{{ s.get_tipo_plan_display }}</td>
+                    <td>
+                        <span class="badge-modern {% if s.estado == 'activo' %}badge-modern-success{% elif s.estado == 'expirado' %}badge-modern-error{% elif s.estado == 'pausado' %}badge-modern-warning{% else %}badge-modern-neutral{% endif %}">
+                            {{ s.get_estado_display }}
+                        </span>
+                    </td>
+                    <td style="font-size:0.85rem;">{{ s.fecha_expiracion|date:'d/m/Y' }} ({{ s.dias_restantes }}d)</td>
+                    <td>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="toggle_estado">
+                                <input type="hidden" name="servicio_id" value="{{ s.id }}">
+                                {% if s.estado == 'activo' %}
+                                <input type="hidden" name="nuevo_estado" value="pausado">
+                                <button type="submit" class="btn btn-warning btn-sm" style="font-size:0.7rem;">⏸️ Pausar</button>
+                                {% elif s.estado == 'pausado' %}
+                                <input type="hidden" name="nuevo_estado" value="activo">
+                                <button type="submit" class="btn btn-success btn-sm" style="font-size:0.7rem;">▶️ Activar</button>
+                                {% endif %}
+                            </form>
+                            <a href="{% url 'detalle_servicio' s.id %}" class="btn btn-ghost btn-sm" style="font-size:0.7rem;">👁️</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--ds-text-secondary);">No hay servicios registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Completar datos de propiedad{% endblock %}
+{% block content %}
+<div class="form-modern-container" style="max-width:800px;">
+    <h2>🏠 Completar información de la propiedad</h2>
+    <p style="margin-bottom:16px;color:var(--ds-text-secondary);">
+        Completa la descripción, entorno, servicios y sube los documentos solicitados.
+        {% if solicitud.es_destacada %}⭐ Al ser <strong>Destacada</strong>, puedes subir hasta <strong>10 fotos</strong> en total.{% else %}📄 Publicación <strong>Normal</strong> — máximo <strong>3 fotos</strong>.{% endif %}
+    </p>
+
+    <form method="POST" enctype="multipart/form-data" class="form-modern">
+        {% csrf_token %}
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📝 Descripción</h3>
+        <div class="form-group">
+            <label>Descripción de la propiedad</label>
+            <textarea name="descripcion_propiedad" rows="4" required>{{ propiedad.descripcion_propiedad|default:'' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Descripción del entorno</label>
+            <textarea name="descripcion_entorno" rows="3">{{ propiedad.descripcion_entorno|default:'' }}</textarea>
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🔧 Servicios / Características</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            {% for s in servicios %}
+            <label class="servicio-checkbox-label" style="display:inline-flex;align-items:center;gap:8px;font-weight:400;font-size:0.85rem;border:2px solid {% if s in propiedad.servicios_prop.all %}var(--ds-primary){% else %}var(--ds-border){% endif %};border-radius:9999px;padding:6px 16px 6px 12px;cursor:pointer;background:{% if s in propiedad.servicios_prop.all %}var(--ds-primary-light){% else %}var(--ds-bg){% endif %};transition:all 0.2s ease;user-select:none;">
+                <input type="checkbox" name="servicios" value="{{ s.id }}"
+                    {% if s in propiedad.servicios_prop.all %}checked{% endif %}
+                    style="width:18px;height:18px;accent-color:var(--ds-primary);cursor:pointer;">
+                {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1.1rem;color:var(--ds-primary);"></i>{% endif %}
+                <span style="white-space:nowrap;">{{ s.nombre }}</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">💰 Precio (ajustar si es necesario)</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Moneda</label>
+                <select name="tipo_moneda">
+                    <option value="PCL" {% if propiedad.tipo_moneda == 'PCL' %}selected{% endif %}>Pesos Chilenos (CLP)</option>
+                    <option value="UF" {% if propiedad.tipo_moneda == 'UF' %}selected{% endif %}>UF</option>
+                    <option value="USD" {% if propiedad.tipo_moneda == 'USD' %}selected{% endif %}>USD</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Precio *</label>
+                <input type="number" name="precio" required step="0.01"
+                    value="{% if propiedad.precio %}{{ propiedad.precio|floatformat:0 }}{% endif %}">
+                <span class="form-hint">Valor indicado en la solicitud: {% if propiedad.precio %}${{ propiedad.precio|floatformat:0|intcomma }}{% else %}—{% endif %}</span>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Contribuciones anuales (CLP)</label>
+                <input type="number" name="montoanual_contribuciones_pcl" step="0.01" value="{{ propiedad.montoanual_contribuciones_pcl|default_if_none:'' }}">
+            </div>
+            <div class="form-group">
+                <label>Gastos comunes mensuales (CLP)</label>
+                <input type="number" name="montomensual_gastoscomunes_pcl" step="0.01" value="{{ propiedad.montomensual_gastoscomunes_pcl|default_if_none:'' }}">
+            </div>
+        </div>
+
+        {% if docs_requeridos_lista %}
+        <div class="alert-modern alert-info-modern" style="margin:8px 0;">
+            <strong>📄 Documentos solicitados por el corredor:</strong>
+            <ul style="margin:8px 0 0 20px;">
+                {% for d in docs_requeridos_lista %}
+                <li>{{ d }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📄 Documentos legales</h3>
+        <div class="form-group">
+            <label>Sube aquí los documentos solicitados (si ya los subiste antes, súbelos de nuevo si el corredor lo requiere)</label>
+            <div id="docs-entries">
+                <div class="form-row" style="margin-bottom:8px;">
+                    <input type="text" name="doc_nombres" placeholder="Nombre del documento (ej: Escritura)">
+                    <input type="file" name="documentos">
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" onclick="addDocEntry()">+ Agregar otro documento</button>
+        </div>
+
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">
+            📸 Fotos adicionales
+            <span style="font-size:0.8rem;font-weight:400;color:var(--ds-text-secondary);">
+                ({{ fotos_existentes|length }} subida{% if fotos_existentes|length != 1 %}s{% endif %} — faltan <span id="fotos-faltantes">{{ max_fotos|add:fotos_existentes|length|add:"-"|cut:"-" }}</span> de {% if solicitud.es_destacada %}10{% else %}3{% endif %})
+            </span>
+        </h3>
+
+        {% if fotos_existentes %}
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;" id="fotos-thumbnails">
+            {% for foto in fotos_existentes %}
+            <div style="position:relative;width:100px;height:80px;border-radius:8px;overflow:hidden;border:2px solid var(--ds-border-light);box-shadow:var(--ds-shadow-sm);">
+                <img src="{{ foto.imagen.url }}" alt="Foto propiedad" style="width:100%;height:100%;object-fit:cover;display:block;">
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label>
+                Agrega más fotos de tu propiedad
+                <span style="font-weight:400;font-size:0.8rem;color:var(--ds-text-muted);">
+                    (puedes seleccionar varias a la vez o ir agregando una por una)
+                </span>
+            </label>
+            <div id="fotos-entries">
+                <div style="margin-bottom:8px;">
+                    <input type="file" name="fotos" accept="image/*" style="padding:8px;border:1px solid var(--ds-border);border-radius:6px;width:100%;">
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" onclick="addFotoEntry()" id="btn-add-foto">+ Agregar otra foto</button>
+            <span style="font-size:0.75rem;color:var(--ds-text-muted);margin-left:8px;" id="foto-count">(1 archivo seleccionado)</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:15px;">
+            💾 Guardar y enviar a revisión
+        </button>
+    </form>
+</div>
+
+<script>
+function addDocEntry() {
+    const div = document.createElement('div');
+    div.className = 'form-row';
+    div.style.marginBottom = '8px';
+    div.innerHTML = '<input type="text" name="doc_nombres" placeholder="Nombre del documento"><input type="file" name="documentos">';
+    document.getElementById('docs-entries').appendChild(div);
+}
+
+function addFotoEntry() {
+    const div = document.createElement('div');
+    div.style.marginBottom = '8px';
+    div.innerHTML = '<input type="file" name="fotos" accept="image/*" style="padding:8px;border:1px solid var(--ds-border);border-radius:6px;width:100%;">';
+    document.getElementById('fotos-entries').appendChild(div);
+    updateFotoCount();
+}
+
+function updateFotoCount() {
+    const total = document.querySelectorAll('#fotos-entries input[type="file"]').length;
+    document.getElementById('foto-count').textContent = `(${total} archivo${total !== 1 ? 's' : ''} seleccionado${total !== 1 ? 's' : ''})`;
+
+    const existentes = {{ fotos_existentes|length }};
+    const maxFotos = {{ max_fotos }};
+    const faltan = maxFotos - existentes;
+    const faltanSpan = document.getElementById('fotos-faltantes');
+    if (faltanSpan) faltanSpan.textContent = Math.max(0, faltan);
+
+    const btn = document.getElementById('btn-add-foto');
+    if (total >= faltan) {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+    } else {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
+}
+</script>
+
+<style>
+/* Airbnb-style checkbox labels */
+.servicio-checkbox-label:hover {
+    border-color: var(--ds-primary) !important;
+    box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.1);
+}
+.servicio-checkbox-label:has(input:checked) {
+    border-color: var(--ds-primary) !important;
+    background: var(--ds-primary-light) !important;
+}
+</style>
+{% endblock %}

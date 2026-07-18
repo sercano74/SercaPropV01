@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load agenda_extras %}
+{% block title %}Agenda{% endblock %}
+{% block content %}
+<style>
+.ag-nav { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px; }
+.ag-nav-left { display:flex;align-items:center;gap:6px; }
+.ag-nav-title { font-size:1.2rem;font-weight:700; }
+.ag-btn { display:inline-flex;align-items:center;justify-content:center;padding:6px 14px;border-radius:var(--ds-radius-md);border:1px solid var(--ds-border);background:var(--ds-bg);font-size:0.85rem;font-weight:500;text-decoration:none;color:var(--ds-text);transition:0.15s;cursor:pointer; }
+.ag-btn:hover { background:var(--ds-primary);color:#fff;border-color:var(--ds-primary); }
+.ag-btn.active { background:var(--ds-primary);color:#fff;border-color:var(--ds-primary); }
+.ag-btn-sm { padding:4px 10px;font-size:0.8rem; }
+
+/* Calendario mensual */
+.ag-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px; }
+.ag-day-header { text-align:center;font-size:0.75rem;font-weight:600;color:var(--ds-text-secondary);padding:6px 0; }
+.ag-day-cell { min-height:80px;background:var(--ds-bg-secondary);border-radius:6px;padding:4px;font-size:0.75rem; position:relative; }
+.ag-day-cell.today { border:2px solid var(--ds-primary); }
+.ag-day-cell.other-month { opacity:0.4; }
+.ag-day-num { font-weight:600;margin-bottom:2px; }
+.ag-card-bl { font-size:0.65rem;padding:2px 4px;border-radius:4px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;gap:2px; }
+.ag-card-bl.disponible { background:#d1fae5;color:#065f46; }
+.ag-card-bl.reservado { background:#fee2e2;color:#991b1b; }
+.ag-card-bl .del-btn { background:none;border:none;cursor:pointer;font-size:0.65rem;color:inherit;padding:0 2px; }
+
+/* Timeline diario/semanal */
+.ag-timeline { display:flex;flex-direction:column;gap:0; }
+.ag-timeline-row { display:flex;align-items:stretch;border-bottom:1px solid var(--ds-border-light);min-height:40px; }
+.ag-timeline-hour { width:60px;flex-shrink:0;font-size:0.7rem;color:var(--ds-text-secondary);padding:4px 6px;display:flex;align-items:center; }
+.ag-timeline-slots { flex:1;display:flex;gap:2px;padding:2px 0; }
+.ag-timeline-slot { flex:1;min-height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:600; }
+.ag-timeline-slot.libre { background:#d1fae5;color:#065f46; }
+.ag-timeline-slot.ocupado { background:#fee2e2;color:#991b1b; }
+.ag-timeline-slot.vacio { background:var(--ds-bg); }
+</style>
+
+<div class="hero-modern">
+    <h1>📅 Agenda</h1>
+    <p>Administra tus bloques de atención</p>
+</div>
+
+<!-- ===== Navegación ===== -->
+<div class="ag-nav">
+    <div class="ag-nav-left">
+        {% if vista == "mes" %}
+            <a href="?vista=mes&anio={{ anio_ant }}&mes={{ mes_ant }}&dia=1" class="ag-btn ag-btn-sm">◀</a>
+            <span class="ag-nav-title">{{ ref_date|date:"F Y" }}</span>
+            <a href="?vista=mes&anio={{ anio_sig }}&mes={{ mes_sig }}&dia=1" class="ag-btn ag-btn-sm">▶</a>
+        {% elif vista == "semana" %}
+            <a href="?vista=semana&anio={{ desde|date:"Y" }}&mes={{ desde|date:"n" }}&dia={{ desde|date:"j" }}&nav=ant" class="ag-btn ag-btn-sm">◀</a>
+            <span class="ag-nav-title">Semana del {{ desde|date:"d/m/Y" }}</span>
+            <a href="?vista=semana&anio={{ hasta|date:"Y" }}&mes={{ hasta|date:"n" }}&dia={{ hasta|date:"j" }}&nav=sig" class="ag-btn ag-btn-sm">▶</a>
+        {% else %}
+            <a href="?vista=dia&anio={{ ref_date|date:"Y" }}&mes={{ ref_date|date:"n" }}&dia={{ ref_date|date:"j" }}&nav=ant" class="ag-btn ag-btn-sm">◀</a>
+            <span class="ag-nav-title">{{ ref_date|date:"l d F Y" }}</span>
+            <a href="?vista=dia&anio={{ ref_date|date:"Y" }}&mes={{ ref_date|date:"n" }}&dia={{ ref_date|date:"j" }}&nav=sig" class="ag-btn ag-btn-sm">▶</a>
+        {% endif %}
+    </div>
+    <div style="display:flex;gap:4px;">
+        <a href="?vista=mes&anio={{ hoy.year }}&mes={{ hoy.month }}&dia=1" class="ag-btn ag-btn-sm {% if vista == 'mes' %}active{% endif %}">📅 Mes</a>
+        <a href="?vista=semana&anio={{ hoy.year }}&mes={{ hoy.month }}&dia={{ hoy.day }}" class="ag-btn ag-btn-sm {% if vista == 'semana' %}active{% endif %}">📆 Semana</a>
+        <a href="?vista=dia&anio={{ hoy.year }}&mes={{ hoy.month }}&dia={{ hoy.day }}" class="ag-btn ag-btn-sm {% if vista == 'dia' %}active{% endif %}">📅 Día</a>
+    </div>
+</div>
+
+<div class="card-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+    <!-- ===== IZQUIERDA: Calendario / Timeline ===== -->
+    <div>
+        {% if vista == "mes" %}
+            <!-- Calendario mensual -->
+            <div class="ag-grid">
+                <div class="ag-day-header">Lun</div>
+                <div class="ag-day-header">Mar</div>
+                <div class="ag-day-header">Mié</div>
+                <div class="ag-day-header">Jue</div>
+                <div class="ag-day-header">Vie</div>
+                <div class="ag-day-header">Sáb</div>
+                <div class="ag-day-header">Dom</div>
+                {% for d in mes_calendario %}
+                    {% if d %}
+                        {% with fecha_str=d|date:"Y-m-d" %}
+                        <div class="ag-day-cell {% if d == hoy %}today{% endif %}">
+                            <div class="ag-day-num">{{ d.day }}</div>
+                            {% with dia_bloques=bloques_por_fecha|dict_get:fecha_str %}
+                            {% if dia_bloques %}
+                                {% for b in dia_bloques %}
+                                <div class="ag-card-bl {% if b.reservado %}reservado{% else %}disponible{% endif %}">
+                                    <span>{{ b.hora_inicio|time:"H:i" }}–{{ b.hora_fin|time:"H:i" }}</span>
+                                    <form method="POST" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="eliminar">
+                                        <input type="hidden" name="bloque_id" value="{{ b.id }}">
+                                        <button type="submit" class="del-btn" onclick="return confirm('¿Eliminar este bloque?')">✕</button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                        {% endwith %}
+                    {% else %}
+                        <div class="ag-day-cell other-month"></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% elif vista == "semana" %}
+            <!-- Timeline semanal -->
+            <div style="overflow-x:auto;">
+                <div style="display:grid;grid-template-columns:60px repeat(7,1fr);gap:2px;min-width:700px;">
+                    <div></div>
+                    {% for d in dias_semana %}
+                    <div style="text-align:center;font-size:0.7rem;font-weight:600;padding:4px 0;">
+                        {{ d|date:"D" }} {{ d.day }}
+                    </div>
+                    {% endfor %}
+                    {% for hora_str in horas_del_dia %}
+                        <div style="font-size:0.65rem;color:var(--ds-text-secondary);padding:4px 2px;">{{ hora_str }}</div>
+                        {% for d in dias_semana %}
+                            {% with fecha_str=d|date:"Y-m-d" %}
+                            {% with dia_bloques=bloques_por_fecha|dict_get:fecha_str %}
+                            <div style="min-height:28px;border-radius:4px;{% if dia_bloques %}{% for b in dia_bloques %}{% if b.hora_inicio|time:'H:i' == hora_str %}{% if b.reservado %}background:#fee2e2;{% else %}background:#d1fae5;{% endif %}{% endif %}{% endfor %}{% endif %}">
+                                {% if dia_bloques %}
+                                    {% for b in dia_bloques %}
+                                        {% if b.hora_inicio|time:"H:i" == hora_str %}
+                                        <div style="font-size:0.6rem;padding:2px;text-align:center;">
+                                            {% if b.reservado %}🔴{% else %}🟢{% endif %}
+                                            <form method="POST" style="display:inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="accion" value="eliminar">
+                                                <input type="hidden" name="bloque_id" value="{{ b.id }}">
+                                                <button type="submit" style="background:none;border:none;cursor:pointer;font-size:0.6rem;color:var(--ds-text-secondary);" onclick="return confirm('¿Eliminar?')">✕</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            {% endwith %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <!-- Timeline diario -->
+            <div class="ag-timeline">
+                {% for hora_str in horas_del_dia %}
+                <div class="ag-timeline-row">
+                    <div class="ag-timeline-hour">{{ hora_str }}</div>
+                    <div class="ag-timeline-slots">
+                        {% with fecha_str=ref_date|date:"Y-m-d" %}
+                        {% with dia_bloques=bloques_por_fecha|dict_get:fecha_str %}
+                        {% if dia_bloques %}
+                            {% for b in dia_bloques %}
+                                {% if b.hora_inicio|time:"H:i" == hora_str %}
+                                <div class="ag-timeline-slot {% if b.reservado %}ocupado{% else %}libre{% endif %}" style="flex:1;">
+                                    <span>{% if b.reservado %}🔴 Reservado{% else %}🟢 Disponible{% endif %}</span>
+                                    <form method="POST" style="display:inline;margin-left:4px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="eliminar">
+                                        <input type="hidden" name="bloque_id" value="{{ b.id }}">
+                                        <button type="submit" style="background:none;border:none;cursor:pointer;font-size:0.7rem;" onclick="return confirm('¿Eliminar?')">✕</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <div class="ag-timeline-slot vacio"></div>
+                        {% endif %}
+                        {% endwith %}
+                        {% endwith %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ===== DERECHA: Formularios ===== -->
+    <div>
+        <!-- Creación masiva de bloques -->
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1rem;margin-bottom:12px;">📦 Creación masiva de bloques</div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="crear_masivo">
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" name="fecha" value="{{ ref_date|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Hora de inicio</label>
+                        <input type="time" name="hora_inicio" value="09:00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad de espacios (bloques de 1 hora)</label>
+                        <input type="number" name="cantidad" value="4" min="1" max="48">
+                    </div>
+                    <p style="font-size:0.75rem;color:var(--ds-text-secondary);margin:6px 0 0;">⏱️ Crea N bloques consecutivos de 1 hora desde la hora indicada. Si ya existe un bloque en esa hora no se duplica.</p>
+                    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;">Crear bloques</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

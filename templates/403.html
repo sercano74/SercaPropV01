@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Acceso denegado{% endblock %}
+{% block content %}
+<div style="text-align:center;padding:80px 20px;max-width:600px;margin:0 auto;">
+    <div style="font-size:5rem;margin-bottom:16px;">🚫</div>
+    <h1 style="font-size:1.8rem;margin-bottom:12px;">Acceso denegado</h1>
+    <p style="color:var(--ds-text-secondary);font-size:1rem;margin-bottom:24px;">
+        No tienes permisos suficientes para acceder a esta página.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a href="/" class="btn btn-primary">🏠 Ir al inicio</a>
+        <a href="{% url 'login' %}" class="btn btn-outline">🔑 Iniciar sesión</a>
+    </div>
+</div>
+{% endblock %}

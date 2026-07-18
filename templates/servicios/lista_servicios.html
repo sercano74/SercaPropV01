@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dato Constructor - Servicios{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 style="margin:0;font-size:1.6rem;font-weight:700;">🔨 Dato Constructor</h1>
+        <p style="margin:4px 0 0 0;color:var(--ds-text-secondary);font-size:0.9rem;">
+            Encuentra profesionales y servicios para tu hogar
+        </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        {% if user.is_authenticated %}
+        <a href="{% url 'contratar_servicio' %}" class="btn btn-primary btn-sm">📢 Publicar mi servicio</a>
+        <a href="{% url 'gestion_mis_servicios' %}" class="btn btn-outline btn-sm">🔧 Mis servicios</a>
+        {% else %}
+        <a href="{% url 'login' %}?next={% url 'contratar_servicio' %}" class="btn btn-primary btn-sm">📢 Publicar mi servicio</a>
+        {% endif %}
+        <a href="{% url 'home' %}" class="btn btn-outline btn-sm">🏠 Propiedades</a>
+    </div>
+</div>
+
+<!-- FILTROS -->
+<form method="GET" class="filter-bar-modern">
+    <select name="categoria">
+        <option value="">Todas las categorías</option>
+        {% for cat in categorias %}
+        <option value="{{ cat.id }}" {% if filtro_categoria|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+            {{ cat.icono|default:'🔧' }} {{ cat.nombre }}
+        </option>
+        {% endfor %}
+    </select>
+    <input type="text" name="q" placeholder="Buscar servicio o profesional..." value="{{ filtro_search|default:'' }}">
+    <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+    {% if filtro_categoria or filtro_search %}
+    <a href="{% url 'lista_servicios' %}" class="btn btn-ghost btn-sm">Limpiar</a>
+    {% endif %}
+</form>
+
+<!-- GRID DE SERVICIOS -->
+<div class="card-grid vitrina-grid">
+    {% for s in servicios %}
+    <div class="property-card-modern" style="position:relative;">
+        <a href="{% url 'detalle_servicio' s.id %}" style="text-decoration:none;color:inherit;">
+            {% if s.imagen %}
+            <img src="{{ s.imagen.url }}" alt="{{ s.titulo }}" class="card-img">
+            {% else %}
+            <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;">🔧</div>
+            {% endif %}
+            <div class="card-body">
+                <span class="card-badge" style="background:var(--ds-bg-secondary);color:var(--ds-text-secondary);font-size:0.65rem;">
+                    {{ s.categoria.icono|default:'🔧' }} {{ s.categoria.nombre }}
+                </span>
+                <div class="card-title" style="font-size:1rem;margin-top:6px;">
+                    <strong>{{ s.titulo }}</strong>
+                </div>
+                <div class="card-subtitle" style="font-size:0.8rem;">
+                    👤 {{ s.publicante.get_full_name|default:s.publicante.email }}
+                </div>
+                {% if s.rating_promedio > 0 %}
+                <div style="font-size:0.85rem;margin:4px 0;">
+                    {% for i in "12345"|make_list %}
+                        {% if forloop.counter <= s.rating_promedio %}⭐{% else %}☆{% endif %}
+                    {% endfor %}
+                    <span style="font-size:0.75rem;color:var(--ds-text-secondary);">({{ s.cantidad_ratings }})</span>
+                </div>
+                {% endif %}
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;">
+                    📅 {{ s.dias_restantes }} días restantes
+                </div>
+                <div style="margin-top:8px;">
+                    <span class="btn btn-outline btn-sm" style="font-size:0.75rem;">Ver detalle →</span>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% empty %}
+    <div class="empty-state-modern" style="grid-column:1/-1;">
+        <div class="empty-icon">🔧</div>
+        <h3>No hay servicios disponibles</h3>
+        <p>Vuelve pronto o <a href="{% url 'contratar_servicio' %}" style="color:var(--ds-primary);text-decoration:underline;">publica tu servicio aquí</a>.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

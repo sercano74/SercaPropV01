@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>📋 Postulación de {{ solicitud.nombres }} {{ solicitud.apellidos }}</h1>
+    <p>
+        {% if solicitud.estado == "pendiente" %}
+        <span class="badge-modern badge-modern-warning" style="font-size:1rem;">⏳ Pendiente de revisión</span>
+        {% elif solicitud.estado == "en_dialogo" %}
+        <span class="badge-modern badge-modern-info" style="font-size:1rem;">💬 En diálogo</span>
+        {% elif solicitud.estado == "aprobada" %}
+        <span class="badge-modern badge-modern-success" style="font-size:1rem;">✅ Aprobada</span>
+        {% elif solicitud.estado == "rechazada" %}
+        <span class="badge-modern badge-modern-error" style="font-size:1rem;">❌ Rechazada</span>
+        {% endif %}
+    </p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <!-- Columna izquierda: datos del postulante -->
+    <div>
+        <div class="card-modern" style="margin-bottom:20px;">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:16px;">🧑 Datos personales</div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Nombres</div>
+                        <div>{{ solicitud.nombres }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Apellidos</div>
+                        <div>{{ solicitud.apellidos }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Email</div>
+                        <div>{{ solicitud.email }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Teléfono</div>
+                        <div>{{ solicitud.cel_phone|default:"-" }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">RUT/DNI</div>
+                        <div>{{ solicitud.dni|default:"-" }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Comuna</div>
+                        <div>{{ solicitud.comuna.nombre|default:"-" }}</div>
+                    </div>
+                    <div style="grid-column:1/-1;">
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Domicilio</div>
+                        <div>{{ solicitud.domicilio|default:"-" }}</div>
+                    </div>
+                    <div style="grid-column:1/-1;">
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Currículo</div>
+                        <div style="white-space:pre-wrap;font-size:0.9rem;">{{ solicitud.curriculo|default:"Sin currículo" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:16px;">📦 Plan seleccionado</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong style="font-size:1.2rem;">{{ solicitud.plan.nombre }}</strong>
+                        <div style="font-size:0.85rem;color:var(--ds-text-secondary);">
+                            ${{ solicitud.plan.precio|floatformat:0 }} · {{ solicitud.plan.duracion_meses }} año(s)
+                        </div>
+                    </div>
+                    <span class="badge-modern badge-modern-info">
+                        {{ solicitud.plan.max_propiedades_simultaneas }} props. · {{ solicitud.plan.comision_porcentaje }}% comisión
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {% if solicitud.comprobante %}
+        <div class="card-modern" style="margin-top:20px;">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">💳 Comprobante de depósito</div>
+                <img src="{{ solicitud.comprobante.url }}" alt="Comprobante" style="max-width:100%;border-radius:var(--ds-radius-md);border:1px solid var(--ds-border-light);">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Columna derecha: acciones y comunicaciones -->
+    <div>
+        {% if solicitud.estado in "pendiente en_dialogo" %}
+        <div class="card-modern" style="margin-bottom:20px;border-color:var(--ds-primary);">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:16px;">⚡ Acciones</div>
+
+                <form method="POST" class="form-modern">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Observaciones para el postulante</label>
+                        <textarea name="observaciones" placeholder="Escribe aquí tus observaciones, requisitos o feedback...">{{ solicitud.observaciones_admin }}</textarea>
+                    </div>
+
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
+                        <button type="submit" name="accion" value="aprobar" class="btn btn-success"
+                                onclick="return confirm('¿Aprobar esta postulación? El usuario pasará a ser corredor automáticamente.');">
+                            ✅ Aprobar
+                        </button>
+                        <button type="submit" name="accion" value="en_dialogo" class="btn btn-info"
+                                style="background:var(--ds-info);color:white;border-color:var(--ds-info);">
+                            💬 Marcar en diálogo
+                        </button>
+                        <button type="submit" name="accion" value="rechazar" class="btn btn-danger"
+                                onclick="return confirm('¿Estás seguro de rechazar esta postulación?');">
+                            ❌ Rechazar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if solicitud.observaciones_admin %}
+        <div class="card-modern" style="margin-bottom:20px;">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:8px;">📝 Observaciones registradas</div>
+                <div style="white-space:pre-wrap;font-size:0.9rem;">{{ solicitud.observaciones_admin }}</div>
+                {% if solicitud.revisado_por %}
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:8px;">
+                    Revisado por {{ solicitud.revisado_por.get_full_name }} el {{ solicitud.fecha_revision|date:"d/m/Y H:i" }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if solicitud.usuario %}
+        <div class="card-modern" style="margin-bottom:20px;">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:8px;">🔗 Cuenta vinculada</div>
+                <div>
+                    <strong>{{ solicitud.usuario.get_full_name }}</strong>
+                    <span class="badge-modern {% if solicitud.usuario.rol == 'corredor' %}badge-modern-success{% else %}badge-modern-neutral{% endif %}">
+                        {{ solicitud.usuario.get_rol_display }}
+                    </span>
+                    <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">
+                        @{{ solicitud.usuario.username }} · {{ solicitud.usuario.email }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Comunicaciones relacionadas -->
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">💬 Historial de comunicaciones</div>
+                {% for com in comunicaciones %}
+                <div style="padding:12px 0;border-bottom:1px solid var(--ds-border-light);{% if not com.is_read %}background:var(--ds-primary-light);margin:0 -12px;padding:12px;{% endif %}">
+                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:4px;">
+                        <strong>{{ com.title }}</strong>
+                        <span>{{ com.created_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div style="font-size:0.85rem;">{{ com.message }}</div>
+                </div>
+                {% empty %}
+                <div class="empty-state-modern" style="padding:16px;">Sin comunicaciones asociadas a esta postulación.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="margin-top:20px;text-align:center;">
+            <a href="{% url 'revisar_postulaciones' %}" class="btn btn-ghost">← Volver a postulaciones</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

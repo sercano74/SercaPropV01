@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-modern-container">
+    <h2>🔄 Renovar Publicación</h2>
+    <p style="color:var(--ds-text-secondary);margin-bottom:8px;">Propiedad: <strong>{{ publicacion.propiedad.get_tipo_prop_display }} - {{ publicacion.propiedad.calle }}</strong></p>
+    <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin-bottom:16px;">Vence: {{ publicacion.expira_at|date:"d/m/Y" }} · Días restantes: {{ publicacion.dias_restantes }}</p>
+    <form method="POST" enctype="multipart/form-data" class="form-modern">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="form-group">
+                <label>Meses adicionales</label>
+                <input type="number" name="meses" value="1" min="1">
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:20px;font-weight:500;">
+                    <input type="checkbox" name="es_destacada"> ¿Destacada?
+                </label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Comprobante de pago</label>
+            <input type="file" name="comprobante" accept="image/*">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Solicitar renovación</button>
+    </form>
+</div>
+{% endblock %}

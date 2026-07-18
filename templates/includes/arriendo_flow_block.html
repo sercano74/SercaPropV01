@@ -1,0 +1,79 @@
+{% load humanize %}
+
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
+    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid var(--ds-success);background:var(--ds-success);color:white;">✅ Intención</div>
+    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid {% if visita.contrato_arriendo %}var(--ds-success){% else %}var(--ds-border){% endif %};background:{% if visita.contrato_arriendo %}var(--ds-success){% else %}var(--ds-bg){% endif %};color:{% if visita.contrato_arriendo %}white{% else %}var(--ds-text-secondary){% endif %};">{% if visita.contrato_arriendo %}✅{% else %}2{% endif %} Contrato</div>
+    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid {% if visita.notaria_confirmada %}var(--ds-success){% else %}var(--ds-border){% endif %};background:{% if visita.notaria_confirmada %}var(--ds-success){% else %}var(--ds-bg){% endif %};color:{% if visita.notaria_confirmada %}white{% else %}var(--ds-text-secondary){% endif %};">{% if visita.notaria_confirmada %}✅{% else %}3{% endif %} Notaría</div>
+    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid {% if visita.caso_cerrado %}var(--ds-success){% else %}var(--ds-border){% endif %};background:{% if visita.caso_cerrado %}var(--ds-success){% else %}var(--ds-bg){% endif %};color:{% if visita.caso_cerrado %}white{% else %}var(--ds-text-secondary){% endif %};">{% if visita.caso_cerrado %}✅{% else %}4{% endif %} Cierre</div>
+</div>
+
+{% if visita.caso_cerrado %}
+<div style="font-size:0.85rem;color:var(--ds-success);font-weight:600;margin-bottom:8px;">🎉 Caso cerrado {{ visita.caso_cerrado_at|date:'d/m/Y' }}</div>
+{% endif %}
+
+{% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+    {% if not visita.contrato_arriendo and not visita.caso_cerrado %}
+    <div style="margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);">
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;">📄 Subir Contrato de Arriendo</div>
+        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="subir_contrato">
+            <input type="file" name="contrato_arriendo" accept=".pdf" required style="font-size:0.8rem;max-width:160px;">
+            <button type="submit" class="btn btn-primary btn-sm">📤 Subir Contrato</button>
+        </form>
+    </div>
+    {% endif %}
+{% endif %}
+
+{% if visita.contrato_arriendo %}
+<div style="font-size:0.85rem;margin-bottom:8px;">
+    📄 <a href="{{ visita.contrato_arriendo.url }}" target="_blank">Descargar Contrato de Arriendo</a>
+    {% if visita.contrato_arriendo_subido_por %} · Subido por {{ visita.contrato_arriendo_subido_por.get_full_name|default:visita.contrato_arriendo_subido_por.email }}{% endif %}
+</div>
+{% endif %}
+
+{% if visita.contrato_arriendo and not visita.notaria_confirmada and not visita.caso_cerrado %}
+    {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+    <div style="margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);">
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;">📅 Proponer Cita Notarial</div>
+        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="notaria_proponer">
+            <input type="text" name="notaria_nombre" placeholder="Nombre notaría" value="{{ visita.notaria_nombre }}" required style="width:140px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+            <input type="text" name="notaria_direccion" placeholder="Dirección" value="{{ visita.notaria_direccion }}" required style="width:140px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+            <input type="date" name="notaria_fecha" value="{{ visita.notaria_fecha|date:'Y-m-d' }}" required style="width:130px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+            <input type="time" name="notaria_hora" value="{{ visita.notaria_hora|time:'H:i' }}" required style="width:100px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
+            <button type="submit" class="btn btn-primary btn-sm">💾 Guardar y proponer</button>
+        </form>
+    </div>
+    {% endif %}
+{% endif %}
+
+{% if visita.notaria_nombre %}
+<div style="font-size:0.85rem;margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);">
+    <div style="font-weight:600;">📅 Cita notarial propuesta:</div>
+    <div>🏛️ {{ visita.notaria_nombre }} · 📍 {{ visita.notaria_direccion }}</div>
+    <div>📆 {{ visita.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ visita.notaria_hora|time:'H:i' }}</div>
+    {% if visita.notaria_confirmada %}
+    <div style="color:var(--ds-success);font-weight:600;margin-top:4px;">✅ Confirmada {{ visita.notaria_confirmada_at|date:'d/m/Y H:i' }}</div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if visita.notaria_nombre and not visita.notaria_confirmada and visita.usuario == user and not visita.caso_cerrado %}
+<form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="margin-bottom:8px;">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="notaria_confirmar">
+    <button type="submit" class="btn btn-success btn-sm">✅ Confirmar cita notarial</button>
+</form>
+{% endif %}
+
+{% if visita.notaria_confirmada and not visita.caso_cerrado %}
+    {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+    <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="margin-bottom:4px;">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="cerrar_caso">
+        <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('¿Estás seguro de cerrar este caso de arriendo?')">🎉 Cerrar caso</button>
+    </form>
+    {% endif %}
+{% endif %}

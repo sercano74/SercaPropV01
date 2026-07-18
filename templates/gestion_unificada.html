@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>📋 Panel de Gestión</h1>
+    <p>{{ user.get_full_name|default:user.username }} · {{ user.get_rol_display|default:user.rol|title }}</p>
+</div>
+
+<!-- ===== BLOQUES DE ACCIÓN RÁPIDA según rol ===== -->
+{% if rol == 'gerente' or rol == 'superadmin' %}
+<div class="card-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+    <div class="card-modern" style="text-align:center;padding:16px;">
+        <div style="font-size:2rem;">🛡️</div>
+        <div style="font-weight:700;font-size:0.9rem;margin:4px 0;">Corredores pendientes</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--ds-primary);">{{ corredores_pendientes|length }}</div>
+        <a href="{% url 'validar_corredores' %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Validar →</a>
+    </div>
+    <div class="card-modern" style="text-align:center;padding:16px;">
+        <div style="font-size:2rem;">📢</div>
+        <div style="font-weight:700;font-size:0.9rem;margin:4px 0;">Publicaciones pendientes</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--ds-primary);">{{ publicaciones_pendientes|length }}</div>
+        <a href="{% url 'gestion_mis_publicaciones' %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Revisar →</a>
+    </div>
+    <div class="card-modern" style="text-align:center;padding:16px;">
+        <div style="font-size:2rem;">📋</div>
+        <div style="font-weight:700;font-size:0.9rem;margin:4px 0;">Postulaciones</div>
+        <a href="{% url 'revisar_postulaciones' %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver →</a>
+    </div>
+</div>
+{% endif %}
+
+{% if rol == "corredor" %}
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+    <a href="{% url 'agenda' %}" class="btn btn-primary">📅 Gestionar mi agenda</a>
+    <a href="{% url 'centro_comunicaciones' %}" class="btn btn-outline">📬 Centro de Comunicaciones</a>
+</div>
+{% endif %}
+
+{% if rol == "base" %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'solicitar_publicacion' %}" class="btn btn-primary">📢 Nueva solicitud de publicación</a>
+</div>
+{% endif %}
+
+<!-- ===== TABLA UNIFICADA ===== -->
+<div class="card-modern">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">
+            📋 Propiedades · Solicitudes · Publicaciones
+            <span class="badge-modern badge-modern-neutral" style="margin-left:8px;">{{ items|length }} registro{{ items|length|pluralize:"s" }}</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Solicitud / Acción</th>
+                        <th>Etapa Gestión</th>
+                        <th>Meses</th>
+                        <th>⭐</th>
+                        <th>Vence</th>
+                        <th>Detalle Propiedad</th>
+                        <th>Archivar</th>
+                        <th>Renovar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <!-- ID -->
+                        <td><strong>{{ item.propiedad.id }}</strong></td>
+
+                        <!-- Cliente -->
+                        <td>
+                            {% if item.cliente %}
+                            <span style="font-size:0.85rem;font-weight:600;">{{ item.cliente.get_full_name|default:item.cliente.email }}</span>
+                            {% elif item.solicitud and item.solicitud.usuario %}
+                            <span style="font-size:0.85rem;">{{ item.solicitud.usuario.get_full_name|default:item.solicitud.usuario.email }}</span>
+                            {% elif item.propiedad.dueno %}
+                            <span style="font-size:0.85rem;">{{ item.propiedad.dueno.get_full_name|default:item.propiedad.dueno.email }}</span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Solicitud / Acción -->
+                        <td>
+                            {% if item.solicitud %}
+                            <a href="{% url 'detalle_solicitud' item.solicitud.id %}" style="font-weight:600;color:var(--ds-primary);text-decoration:none;">
+                                Solicitud #{{ item.solicitud.id }}
+                            </a>
+                            <span style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;">
+                                {{ item.propiedad.get_tipo_accion_display }}
+                                · Creada: {{ item.solicitud.created_at|date:"d/m/Y" }}
+                            </span>
+                            {% elif item.publicacion %}
+                            <a href="{% url 'detalle_propiedad' item.propiedad.id %}" style="font-weight:600;text-decoration:none;">
+                                Publicación #{{ item.publicacion.id }}
+                            </a>
+                            <span style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;">
+                                {{ item.propiedad.get_tipo_accion_display }}
+                                · Creada: {{ item.publicacion.created_at|date:"d/m/Y" }}
+                            </span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">Propiedad directa</span>
+                            <span style="font-size:0.75rem;color:var(--ds-text-secondary);display:block;">
+                                {{ item.propiedad.get_tipo_accion_display|default:"—" }}
+                                · Creada: {{ item.propiedad.created_at|date:"d/m/Y" }}
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Etapa Gestión -->
+                        <td>
+                            {% with etapa=item.etapa_gestion %}
+                            {% if "Cerrada" in etapa %}
+                            <span style="font-size:0.8rem;font-weight:600;color:var(--ds-success);">{{ etapa }}</span>
+                            {% elif "Propuesta aceptada" in etapa or "Promesa" in etapa or "Instrucciones" in etapa or "Contrato" in etapa or "Firma" in etapa or "CBR" in etapa or "Escritura" in etapa %}
+                            <span style="font-size:0.8rem;font-weight:600;color:var(--ds-info);">{{ etapa }}</span>
+                            {% elif "Pago" in etapa or "revisión" in etapa or "objetado" in etapa %}
+                            <span style="font-size:0.8rem;font-weight:600;color:var(--ds-warning);">{{ etapa }}</span>
+                            {% elif "OG" in etapa or "Validación" in etapa or "Asignando" in etapa %}
+                            <span style="font-size:0.8rem;font-weight:600;color:var(--ds-primary);">{{ etapa }}</span>
+                            {% elif "Publicada" in etapa %}
+                            <span style="font-size:0.8rem;font-weight:600;color:var(--ds-success);">{{ etapa }}</span>
+                            {% elif "Asignada a corredor" in etapa %}
+                            <span style="font-size:0.8rem;font-weight:600;color:var(--ds-primary);">{{ etapa }}</span>
+                            {% elif "Borrador" in etapa %}
+                            <span style="font-size:0.8rem;color:var(--ds-text-muted);">{{ etapa }}</span>
+                            {% else %}
+                            <span style="font-size:0.8rem;color:var(--ds-text-secondary);">{{ etapa }}</span>
+                            {% endif %}
+                            {% endwith %}
+                            {% if item.solicitud %}
+                            <br><span class="badge-modern badge-modern-neutral" style="font-size:0.65rem;">Estado: {{ item.solicitud.get_estado_display }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Meses -->
+                        <td style="text-align:center;">
+                            {% if item.meses > 0 %}
+                            {{ item.meses }}
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- ⭐ Destacada -->
+                        <td>
+                            {% if item.es_destacada %}
+                            <span class="badge-modern" style="background:#FFF2F4;color:#FF385C;border:1px solid #FF385C;font-size:0.65rem;">⭐</span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Vence -->
+                        <td style="font-size:0.85rem;">
+                            {% if item.publicacion and item.publicacion.expira_at %}
+                                {{ item.publicacion.expira_at|date:"d/m/Y" }}
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Detalle Propiedad -->
+                        <td>
+                            <a href="{% url 'detalle_propiedad' item.propiedad.id %}" style="font-weight:600;color:var(--ds-text);text-decoration:none;">
+                                {{ item.propiedad.get_tipo_prop_display }} · {{ item.propiedad.calle }} #{{ item.propiedad.numero_calle }}
+                            </a>
+                            {% if item.propiedad.comuna %}
+                            <br><span style="font-size:0.75rem;color:var(--ds-text-secondary);">📍 {{ item.propiedad.comuna }}</span>
+                            {% endif %}
+                            {% if item.corredor_prop and rol == 'gerente' or rol == 'superadmin' or rol == 'corredor' %}
+                            <br><span style="font-size:0.7rem;color:var(--ds-primary);">🏢 Corredor: {{ item.corredor_prop.corredor.get_full_name|default:item.corredor_prop.corredor.email }}</span>
+                            {% endif %}
+                            {% if item.visitas_count > 0 %}
+                            <br><span style="font-size:0.7rem;color:var(--ds-text-secondary);">👁️ {{ item.visitas_count }} visita{{ item.visitas_count|pluralize:"s" }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Archivar -->
+                        <td>
+                            {% if item.propiedad.estado != 'archivada' and not item.propiedad.tipo_cierre %}
+                            <a href="{% url 'archivar_propiedad' item.propiedad.id %}" class="btn btn-danger btn-sm" style="text-decoration:none;padding:4px 10px;font-size:0.7rem;background:var(--ds-primary);border-color:var(--ds-primary);" onclick="return confirm('¿Archivar propiedad?')">Archivar</a>
+                            {% elif item.propiedad.tipo_cierre %}
+                            <span style="font-size:0.75rem;color:var(--ds-text-secondary);">—</span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">Archivada</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Renovar -->
+                        <td>
+                            {% if item.publicacion and item.publicacion.estado == 'publicada' and not item.propiedad.tipo_cierre %}
+                            <a href="{% url 'renovar_publicacion' item.publicacion.id %}" class="btn btn-success btn-sm" style="text-decoration:none;padding:4px 10px;font-size:0.7rem;">Renovar</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state-modern" style="padding:24px;">
+                                <div style="font-size:2.5rem;margin-bottom:8px;">📭</div>
+                                <h3>Aún no tienes registros</h3>
+                                <p>No hay propiedades, solicitudes o publicaciones para tu perfil.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== COMUNICACIONES (solo para usuario base) ===== -->
+{% if rol == "base" and comunicaciones %}
+<div class="card-modern" style="margin-top:24px;">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📬 Centro de Comunicaciones</div>
+        {% for com in comunicaciones %}
+        <div class="card-modern" style="margin-bottom:8px;{% if not com.is_read %}background:var(--ds-primary-light);border-color:var(--ds-primary);{% endif %}">
+            <div class="card-modern-body" style="padding:12px;">
+                <div class="card-modern-title" style="font-size:0.95rem;">{{ com.title }}</div>
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:4px;">{{ com.created_at|date:"d/m/Y H:i" }} · {{ com.emitter_user.get_full_name|default:com.emitter_user.username }}</div>
+                <div class="card-modern-text" style="font-size:0.85rem;">{{ com.message|truncatewords:20 }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        <a href="{% url 'centro_comunicaciones' %}" class="btn btn-ghost btn-sm" style="margin-top:8px;">Ir al Centro de Comunicaciones →</a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

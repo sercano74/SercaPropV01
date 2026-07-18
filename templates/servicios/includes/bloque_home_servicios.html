@@ -1,0 +1,97 @@
+{% load static %}
+<div class="servicios-home-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:1.1rem;font-weight:700;">🔨 Servicios para tu Hogar</h3>
+        <a href="{% url 'lista_servicios' %}" class="btn btn-outline btn-sm">Ver todos →</a>
+    </div>
+    <div class="servicios-home-grid">
+        {% for s in servicios %}
+        <a href="{% url 'detalle_servicio' s.id %}" class="servicio-home-card" style="text-decoration:none;color:inherit;">
+            {% if s.imagen %}
+            <img src="{{ s.imagen.url }}" alt="{{ s.titulo }}" class="servicio-home-img">
+            {% else %}
+            <div class="servicio-home-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:2rem;">🔧</div>
+            {% endif %}
+            <div class="servicio-home-body">
+                <div class="servicio-home-categoria">{{ s.categoria.icono|default:'🔧' }} {{ s.categoria.nombre }}</div>
+                <div class="servicio-home-titulo">{{ s.titulo }}</div>
+                <div class="servicio-home-publicante">👤 {{ s.publicante.get_full_name|default:s.publicante.email }}</div>
+                {% if s.rating_promedio > 0 %}
+                <div class="servicio-home-rating">
+                    {% for i in "12345"|make_list %}
+                        {% if forloop.counter <= s.rating_promedio %}⭐{% else %}☆{% endif %}
+                    {% endfor %}
+                    <span style="font-size:0.75rem;color:var(--ds-text-secondary);">({{ s.cantidad_ratings }})</span>
+                </div>
+                {% endif %}
+            </div>
+        </a>
+        {% empty %}
+        <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--ds-text-secondary);">
+            <p>No hay servicios disponibles aún. <a href="{% url 'contratar_servicio' %}" style="color:var(--ds-primary);">¡Publica el tuyo!</a></p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.servicios-home-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.servicio-home-card {
+    background: var(--ds-bg);
+    border: 1px solid var(--ds-border-light);
+    border-radius: var(--ds-radius-md);
+    overflow: hidden;
+    transition: all var(--ds-transition-base);
+}
+.servicio-home-card:hover {
+    box-shadow: var(--ds-shadow-md);
+    transform: translateY(-2px);
+}
+.servicio-home-img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+.servicio-home-body {
+    padding: 8px 10px;
+}
+.servicio-home-categoria {
+    font-size: 0.7rem;
+    color: var(--ds-primary);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.servicio-home-titulo {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ds-text);
+    line-height: 1.2;
+    margin-bottom: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.servicio-home-publicante {
+    font-size: 0.7rem;
+    color: var(--ds-text-secondary);
+}
+.servicio-home-rating {
+    font-size: 0.7rem;
+    margin-top: 2px;
+}
+@media (max-width: 768px) {
+    .servicios-home-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 480px) {
+    .servicios-home-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

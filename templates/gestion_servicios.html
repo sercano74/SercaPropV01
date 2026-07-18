@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>🔧 Servicios de propiedades</h1>
+    <p>Administra las características disponibles</p>
+</div>
+<div class="card-modern" style="margin-bottom:20px;">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">➕ Nuevo servicio</div>
+        <form method="POST" style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="crear">
+            <input type="text" name="nombre" placeholder="Nombre del servicio" required style="flex:1;min-width:150px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
+            <input type="text" name="icono" placeholder="Icono (emoji/clase CSS)" style="width:120px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
+            <button type="submit" class="btn btn-primary btn-sm">Crear</button>
+        </form>
+    </div>
+</div>
+<div class="card-modern">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📋 Servicios existentes</div>
+        <table class="table-modern">
+            <thead><tr><th>Icono</th><th>Nombre</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+            {% for s in servicios %}
+            <tr>
+                <td>{{ s.icono|default:"-" }}</td>
+                <td>{{ s.nombre }}</td>
+                <td>{% if s.is_active %}<span class="badge-modern badge-modern-success">Activo</span>{% else %}<span class="badge-modern badge-modern-error">Inactivo</span>{% endif %}</td>
+                <td>
+                    <form method="POST" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="toggle">
+                        <input type="hidden" name="servicio_id" value="{{ s.id }}">
+                        <button type="submit" class="btn btn-sm {% if s.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                            {% if s.is_active %}Desactivar{% else %}Activar{% endif %}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="empty-state-modern">No hay servicios creados.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern">
+    <div style="display:flex;align-items:center;gap:24px;justify-content:center;flex-wrap:wrap;">
+        {% if user.foto %}
+        <div class="avatar-circle">
+            <img src="{{ user.foto.url }}" alt="{{ user.get_full_name }}" class="avatar-img">
+        </div>
+        {% else %}
+        <div class="avatar-circle" style="background:var(--ds-bg-secondary);font-size:2.5rem;display:flex;align-items:center;justify-content:center;">
+            👤
+        </div>
+        {% endif %}
+        <div style="text-align:left;">
+            <h1 style="margin:0;font-size:2rem;">{{ user.get_full_name|default:user.username }}</h1>
+            <p style="margin:4px 0 0 0;font-size:1rem;color:rgba(255,255,255,0.8);">{{ user.get_rol_display }} · {{ user.email }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="card-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:16px;">📝 Datos personales</div>
+            <form method="POST" enctype="multipart/form-data" class="form-modern">
+                {% csrf_token %}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nombres</label>
+                        <input type="text" name="first_name" value="{{ user.first_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Apellidos</label>
+                        <input type="text" name="last_name" value="{{ user.last_name }}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ user.email }}" disabled style="background:var(--ds-bg-secondary);cursor:not-allowed;">
+                    <div class="form-hint">El email no se puede modificar.</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>RUT / DNI</label>
+                        <input type="text" name="dni" value="{{ user.dni|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" name="cel_phone" value="{{ user.cel_phone|default:'' }}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Domicilio</label>
+                    <input type="text" name="domicilio" value="{{ user.domicilio|default:'' }}">
+                </div>
+
+                <!-- Región (para filtrar comunas) -->
+                <div class="form-group">
+                    <label>Región</label>
+                    <select name="region" id="perfil-region-select">
+                        <option value="">Seleccionar región...</option>
+                        {% for r in regiones %}
+                        <option value="{{ r.id }}" {% if user.comuna and user.comuna.region.id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Comuna (filtrada por región vía JS) -->
+                <div class="form-group">
+                    <label>Comuna</label>
+                    <select name="comuna" id="perfil-comuna-select">
+                        <option value="">Seleccionar...</option>
+                        {% for c in comunas %}
+                        <option value="{{ c.id }}" data-region="{{ c.region.id }}" {% if user.comuna_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Currículo: solo para corredores -->
+                {% if user.rol == 'corredor' %}
+                <div class="form-group">
+                    <label>Currículo</label>
+                    <textarea name="curriculo" rows="4" placeholder="Describe tu experiencia como corredor...">{{ user.curriculo|default:'' }}</textarea>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label>Foto de perfil</label>
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+                        {% if user.foto %}
+                        <div class="avatar-circle" style="width:80px;height:80px;flex-shrink:0;">
+                            <img src="{{ user.foto.url }}" alt="{{ user.get_full_name }}" class="avatar-img">
+                        </div>
+                        {% else %}
+                        <div class="avatar-circle" style="width:80px;height:80px;flex-shrink:0;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">
+                            👤
+                        </div>
+                        {% endif %}
+                        <div>
+                            <input type="file" name="foto" accept="image/*" id="foto-input">
+                            <div class="form-hint">JPG, PNG o GIF. Se verá en un círculo.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📬 Últimas comunicaciones</div>
+                {% for com in comunicaciones %}
+                <div class="card-modern" style="margin-bottom:8px;font-size:0.85rem;{% if not com.is_read %}background:var(--ds-primary-light);border-color:var(--ds-primary);{% endif %}">
+                    <div class="card-modern-body" style="padding:10px;">
+                        <div class="card-modern-title" style="font-size:0.9rem;">{{ com.title }}</div>
+                        <div style="font-size:0.8rem;color:var(--ds-text-secondary);">{{ com.created_at|date:"d/m/Y H:i" }} · {{ com.emitter_user.get_full_name|default:com.emitter_user.username }}</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state-modern" style="padding:16px;">No tienes comunicaciones.</div>
+                {% endfor %}
+                <a href="{% url 'centro_comunicaciones' %}" class="btn btn-ghost btn-sm" style="margin-top:4px;">Ver todas →</a>
+            </div>
+        </div>
+
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">🏠 Mis propiedades</div>
+                {% for p in mis_propiedades %}
+                <div style="padding:8px 0;border-bottom:1px solid var(--ds-border-light);font-size:0.85rem;display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <strong>{{ p.get_tipo_prop_display }}</strong> - {{ p.calle }} #{{ p.numero_calle }}
+                    </div>
+                    <span class="badge-modern badge-modern-neutral">{{ p.get_estado_display }}</span>
+                </div>
+                {% empty %}
+                <div class="empty-state-modern" style="padding:16px;">Aún no tienes propiedades registradas.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if suscripcion %}
+        <div class="card-modern" style="border-color:var(--ds-primary);">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">⭐ Mi Plan Vigente</div>
+
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <span style="font-size:1.5rem;">📦</span>
+                    <div>
+                        <strong style="font-size:1.2rem;">{{ suscripcion.plan.nombre }}</strong>
+                        <span class="badge-modern badge-modern-success" style="margin-left:8px;">Activo</span>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.9rem;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Inicio</div>
+                        <div>{{ suscripcion.fecha_inicio|date:"d/m/Y" }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Término</div>
+                        <div>{{ suscripcion.fecha_fin|date:"d/m/Y" }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Precio</div>
+                        <div style="font-weight:700;">${{ suscripcion.plan.precio|floatformat:0 }} / {{ suscripcion.plan.duracion_meses }} año</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;font-weight:600;">Comisión</div>
+                        <div>{{ suscripcion.plan.comision_porcentaje }}%</div>
+                    </div>
+                </div>
+
+                <!-- Barra de uso de propiedades -->
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px;">
+                        <span>Propiedades en gestión</span>
+                        <span>{{ props_usadas }} de {{ props_max }}</span>
+                    </div>
+                    <div style="height:8px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-pill);overflow:hidden;">
+                        {% if props_max > 0 %}
+                        <div style="height:100%;width:{% widthratio props_usadas props_max 100 %}%;background:{% if props_usadas >= props_max %}var(--ds-error){% else %}var(--ds-primary){% endif %};border-radius:var(--ds-radius-pill);transition:width 0.3s;"></div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <a href="{% url 'planes' %}" class="btn btn-primary btn-sm" style="text-decoration:none;">
+                        🔄 Extender / Cambiar plan
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% elif user.rol == "corredor" and not suscripcion %}
+        <div class="card-modern" style="border-color:var(--ds-warning);">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:8px;">⚠️ Sin plan activo</div>
+                <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin-bottom:12px;">Aún no tienes un plan de suscripción contratado. Para operar como corredor necesitas un plan vigente.</p>
+                <a href="{% url 'planes' %}" class="btn btn-primary btn-sm" style="text-decoration:none;">📦 Ver planes disponibles →</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Filtro dinámico de comunas por región
+document.addEventListener('DOMContentLoaded', function() {
+    const regionSelect = document.getElementById('perfil-region-select');
+    const comunaSelect = document.getElementById('perfil-comuna-select');
+    const todasLasComunas = Array.from(comunaSelect.options);
+
+    function filtrarComunas() {
+        const regionId = regionSelect.value;
+        // Guardar selección actual
+        const selectedValue = comunaSelect.value;
+
+        // Limpiar
+        comunaSelect.innerHTML = '';
+
+        if (!regionId) {
+            // Mostrar todas
+            todasLasComunas.forEach(opt => comunaSelect.appendChild(opt.cloneNode(true)));
+        } else {
+            // Mostrar solo las de la región seleccionada
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'Seleccionar...';
+            comunaSelect.appendChild(defaultOpt);
+
+            todasLasComunas.forEach(function(opt) {
+                if (opt.getAttribute('data-region') === regionId) {
+                    const clone = opt.cloneNode(true);
+                    comunaSelect.appendChild(clone);
+                }
+            });
+        }
+
+        // Restaurar selección si aún existe
+        if (selectedValue) {
+            const exists = Array.from(comunaSelect.options).some(o => o.value === selectedValue);
+            if (exists) comunaSelect.value = selectedValue;
+        }
+    }
+
+    regionSelect.addEventListener('change', filtrarComunas);
+
+    // Filtro inicial
+    if (regionSelect.value) {
+        filtrarComunas();
+    }
+});
+</script>
+
+<style>
+/* Avatar circular profesional */
+.avatar-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--ds-text-inverse);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    flex-shrink: 0;
+}
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+</style>
+{% endblock %}

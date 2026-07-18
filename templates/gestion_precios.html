@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="hero-modern">
+    <h1>💰 Precios de publicación</h1>
+    <p>Gestiona los valores de publicación y datos bancarios</p>
+</div>
+
+{% if config %}
+<!-- FORMULARIO DE EDICIÓN -->
+<div class="card-modern" style="max-width:800px;margin:0 auto;">
+    <div class="card-modern-body">
+        <h3 style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">✏️ Editar valores de publicación</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="actualizar">
+
+            <h4 style="margin:16px 0 8px;font-size:0.95rem;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🏠 Venta</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Normal venta ($/mes)</label>
+                    <input type="number" name="valor_pub_venta_mensual" value="{{ config.valor_pub_venta_mensual }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Destacada venta ($/mes)</label>
+                    <input type="number" name="valor_destacado_venta_mensual" value="{{ config.valor_destacado_venta_mensual }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+            </div>
+
+            <h4 style="margin:16px 0 8px;font-size:0.95rem;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🔑 Arriendo</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Normal arriendo ($/mes)</label>
+                    <input type="number" name="valor_pub_arriendo_mensual" value="{{ config.valor_pub_arriendo_mensual }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Destacada arriendo ($/mes)</label>
+                    <input type="number" name="valor_destacado_arriendo_mensual" value="{{ config.valor_destacado_arriendo_mensual }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+            </div>
+
+            <h4 style="margin:16px 0 8px;font-size:0.95rem;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🏨 SRT</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Normal SRT ($/día)</label>
+                    <input type="number" name="valor_pub_str_dia" value="{{ config.valor_pub_str_dia }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Destacada SRT ($/día)</label>
+                    <input type="number" name="valor_destacado_str_dia" value="{{ config.valor_destacado_str_dia }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+            </div>
+
+            <h4 style="margin:16px 0 8px;font-size:0.95rem;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🏦 Datos bancarios</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Banco</label>
+                    <input type="text" name="banco_nombre" value="{{ config.banco_nombre }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Tipo cuenta</label>
+                    <select name="tipo_cuenta" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                        <option value="vista" {% if config.tipo_cuenta == 'vista' %}selected{% endif %}>Cuenta Vista</option>
+                        <option value="corriente" {% if config.tipo_cuenta == 'corriente' %}selected{% endif %}>Cuenta Corriente</option>
+                        <option value="vale_vista" {% if config.tipo_cuenta == 'vale_vista' %}selected{% endif %}>Vale Vista</option>
+                        <option value="otras" {% if config.tipo_cuenta == 'otras' %}selected{% endif %}>Otras</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">N° Cuenta</label>
+                    <input type="text" name="numero_cuenta" value="{{ config.numero_cuenta }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">RUT Titular</label>
+                    <input type="text" name="dni_titular" value="{{ config.dni_titular }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Titular</label>
+                    <input type="text" name="titular" value="{{ config.titular }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem;font-weight:600;">Email confirmación</label>
+                    <input type="email" name="email_confirmacion" value="{{ config.email_confirmacion }}" class="form-modern" style="width:100%;padding:8px 10px;border:1px solid var(--ds-border);border-radius:6px;">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">💾 Guardar cambios</button>
+        </form>
+    </div>
+</div>
+
+<!-- VISTA ACTUAL (readonly) -->
+<div class="card-modern" style="max-width:800px;margin:20px auto 0;">
+    <div class="card-modern-body">
+        <h3 style="margin-bottom:12px;">📊 Valores actuales</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div><strong>Normal venta:</strong> ${{ config.valor_pub_venta_mensual|intcomma }}/mes</div>
+            <div><strong>Destacada venta:</strong> ${{ config.valor_destacado_venta_mensual|intcomma }}/mes</div>
+            <div><strong>Normal arriendo:</strong> ${{ config.valor_pub_arriendo_mensual|intcomma }}/mes</div>
+            <div><strong>Destacada arriendo:</strong> ${{ config.valor_destacado_arriendo_mensual|intcomma }}/mes</div>
+            <div><strong>Normal SRT:</strong> ${{ config.valor_pub_str_dia|intcomma }}/día</div>
+            <div><strong>Destacada SRT:</strong> ${{ config.valor_destacado_str_dia|intcomma }}/día</div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- FORMULARIO DE CREACIÓN -->
+<div class="card-modern" style="max-width:800px;margin:0 auto;">
+    <div class="card-modern-body">
+        <h3 style="margin-bottom:16px;">🆕 Crear configuración de precios</h3>
+        <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin-bottom:16px;">No hay configuración activa. Completa el formulario para crear una.</p>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="crear">
+
+            <h4 style="margin:12px 0 6px;font-size:0.9rem;">🏠 Venta</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label style="font-size:0.85rem;">Normal ($/mes)</label><input type="number" name="valor_pub_venta_mensual" value="4000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">Destacada ($/mes)</label><input type="number" name="valor_destacado_venta_mensual" value="6000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+            </div>
+
+            <h4 style="margin:12px 0 6px;font-size:0.9rem;">🔑 Arriendo</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label style="font-size:0.85rem;">Normal ($/mes)</label><input type="number" name="valor_pub_arriendo_mensual" value="5000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">Destacada ($/mes)</label><input type="number" name="valor_destacado_arriendo_mensual" value="3000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+            </div>
+
+            <h4 style="margin:12px 0 6px;font-size:0.9rem;">🏨 SRT</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label style="font-size:0.85rem;">Normal ($/día)</label><input type="number" name="valor_pub_str_dia" value="5000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">Destacada ($/día)</label><input type="number" name="valor_destacado_str_dia" value="3000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+            </div>
+
+            <h4 style="margin:12px 0 6px;font-size:0.9rem;">🏦 Datos bancarios</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label style="font-size:0.85rem;">Banco</label><input type="text" name="banco_nombre" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">Tipo cuenta</label>
+                    <select name="tipo_cuenta" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;">
+                        <option value="vista">Cuenta Vista</option>
+                        <option value="corriente" selected>Cuenta Corriente</option>
+                        <option value="vale_vista">Vale Vista</option>
+                        <option value="otras">Otras</option>
+                    </select>
+                </div>
+                <div><label style="font-size:0.85rem;">N° Cuenta</label><input type="text" name="numero_cuenta" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">RUT</label><input type="text" name="dni_titular" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">Titular</label><input type="text" name="titular" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+                <div><label style="font-size:0.85rem;">Email confirmación</label><input type="email" name="email_confirmacion" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">💾 Crear configuración</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div style="text-align:center;margin-top:20px;">
+    <a href="{% url 'gestion' %}" class="btn btn-ghost" style="text-decoration:none;">← Volver a gestión</a>
+</div>
+{% endblock %}

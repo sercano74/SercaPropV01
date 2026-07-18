@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>💰 Nuevo Cierre Económico</h1>
+    <p>{{ propiedad.get_tipo_prop_display }} · {{ propiedad.calle }} #{{ propiedad.numero_calle }}</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+    
+    <!-- ===== COLUMNA IZQUIERDA: FORMULARIO ===== -->
+    <div class="form-modern-container" style="max-width:100%;margin:0;">
+        <h2>📋 Datos del negocio</h2>
+        <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin-bottom:16px;">
+            Propiedad cerrada como <strong>{{ propiedad.get_tipo_cierre_display }}</strong>
+            · Fecha: {{ fecha_cierre|date:"d/m/Y" }}
+            · Corredor: <strong>{{ corredor.get_full_name|default:corredor.email }}</strong>
+            · Plan: <strong>{{ plan_nombre|default:"Sin plan" }}</strong>
+            · Tasa SERCA: <strong>{{ tasa_serca }}%</strong>
+        </p>
+
+        <form method="POST" class="form-modern">
+            {% csrf_token %}
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Precio de venta/arriendo *</label>
+                    <input type="number" name="precio_venta" step="0.01" required
+                        value="{{ propiedad.precio|default:'' }}"
+                        placeholder="Ej: 50000000">
+                </div>
+                <div class="form-group">
+                    <label>Moneda original</label>
+                    <select name="moneda_original">
+                        <option value="PCL" {% if propiedad.tipo_moneda == 'PCL' %}selected{% endif %}>CLP</option>
+                        <option value="UF" {% if propiedad.tipo_moneda == 'UF' %}selected{% endif %}>UF</option>
+                        <option value="USD" {% if propiedad.tipo_moneda == 'USD' %}selected{% endif %}>USD</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Valor UF → CLP (si aplica)</label>
+                    <input type="number" name="factor_uf_clp" step="0.01" placeholder="Ej: 38500">
+                    <div class="form-hint">Si la moneda es UF, ingresa el valor del día del cierre</div>
+                </div>
+                <div class="form-group">
+                    <label>Valor USD → CLP (si aplica)</label>
+                    <input type="number" name="factor_usd_clp" step="0.01" placeholder="Ej: 950">
+                    <div class="form-hint">Si la moneda es USD, ingresa el valor del día del cierre</div>
+                </div>
+            </div>
+
+            <div style="border-top:2px solid var(--ds-border-light);padding-top:16px;margin-top:8px;">
+                <h3 style="font-size:1rem;font-weight:600;margin-bottom:12px;">📊 Comisiones presupuestadas</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>% Comisión vendedor</label>
+                        <input type="number" name="pct_comision_vendedor" step="0.01" value="{{ cp.monto_comision_dueno|default:'2' }}" placeholder="Ej: 2">
+                        <div class="form-hint">Porcentaje que cobra el corredor al vendedor</div>
+                    </div>
+                    <div class="form-group">
+                        <label>% Comisión comprador</label>
+                        <input type="number" name="pct_comision_comprador" step="0.01" value="{{ cp.monto_comision_usu|default:'2' }}" placeholder="Ej: 2">
+                        <div class="form-hint">Porcentaje que cobra el corredor al comprador</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if user.rol in 'gerente,superadmin' %}
+            <div style="border-top:2px solid var(--ds-border-light);padding-top:16px;margin-top:8px;">
+                <h3 style="font-size:1rem;font-weight:600;margin-bottom:12px;">📢 Costos (solo gerente)</h3>
+                <div class="form-group">
+                    <label>Costo de publicación (CLP)</label>
+                    <input type="number" name="costo_publicacion_clp" step="0.01" value="{{ costo_pub|default:'' }}" placeholder="Ej: 252000">
+                    <div class="form-hint">Lo que SERCA erogó por la publicación de esta propiedad</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="margin-top:24px;display:flex;gap:12px;flex-direction:column;">
+                <button type="submit" class="btn btn-primary btn-lg btn-block">✅ Crear Cierre Económico</button>
+                <a href="{% url 'gestion_ingresos' %}" class="btn btn-outline btn-lg btn-block" style="text-decoration:none;text-align:center;">← Volver a Ingresos</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ===== COLUMNA DERECHA: INFO DE LA PROPIEDAD ===== -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        
+        <!-- Card: Detalles de la propiedad -->
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.05rem;margin-bottom:12px;">🏠 Detalles de la propiedad</div>
+                <table style="width:100%;font-size:0.85rem;">
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);width:40%;">Dirección</td><td style="padding:6px 8px;">{{ propiedad.calle }} #{{ propiedad.numero_calle }}{% if propiedad.num_tipo_prop %}, {{ propiedad.num_tipo_prop }}{% endif %}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Tipo</td><td style="padding:6px 8px;">{{ propiedad.get_tipo_prop_display }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Acción</td><td style="padding:6px 8px;">{{ propiedad.get_tipo_accion_display }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Comuna</td><td style="padding:6px 8px;">{{ propiedad.comuna|default:"—" }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Dormitorios</td><td style="padding:6px 8px;">{{ propiedad.numero_dormitorios }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Baños</td><td style="padding:6px 8px;">{{ propiedad.numero_banos }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">M² construidos</td><td style="padding:6px 8px;">{{ propiedad.m_construidos|default:"—" }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">M² terreno</td><td style="padding:6px 8px;">{{ propiedad.m_terreno|default:"—" }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Estacionamientos</td><td style="padding:6px 8px;">{{ propiedad.num_estacionamientos }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Dueño</td><td style="padding:6px 8px;">{{ propiedad.dueno.get_full_name|default:propiedad.dueno.email }}</td></tr>
+                    <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Creada</td><td style="padding:6px 8px;">{{ propiedad.created_at|date:"d/m/Y" }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Card: Precio publicado -->
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.05rem;margin-bottom:12px;">💰 Precio de publicación</div>
+                {% if publicacion %}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.85rem;">
+                    <div><strong>Precio:</strong></div>
+                    <div style="font-weight:700;">${{ propiedad.precio|floatformat:0|intcomma }} {{ propiedad.get_tipo_moneda_display }}</div>
+                    <div><strong>Publicación:</strong></div>
+                    <div><span class="badge-modern {% if publicacion.es_destacada %}badge-modern-primary{% else %}badge-modern-neutral{% endif %}">{{ publicacion.es_destacada|yesno:"⭐ Destacada,Normal" }}</span></div>
+                    <div><strong>Meses:</strong></div>
+                    <div>{{ publicacion.meses }}</div>
+                    <div><strong>Total pagado:</strong></div>
+                    <div>${{ publicacion.total_pago|default:"0"|floatformat:0|intcomma }}</div>
+                    <div><strong>Estado:</strong></div>
+                    <div><span class="badge-modern badge-modern-success">{{ publicacion.get_estado_display }}</span></div>
+                </div>
+                {% else %}
+                <div class="empty-state-modern" style="padding:16px;">
+                    <p style="font-size:0.85rem;margin:0;">No hay publicación activa registrada.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card: Contratos -->
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.05rem;margin-bottom:12px;">📄 Documentos de cierre</div>
+                
+                {% if contratos_arriendo %}
+                <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">📄 Contratos de arriendo</h4>
+                {% for c in contratos_arriendo %}
+                <div style="padding:8px 0;border-bottom:1px solid var(--ds-border-light);font-size:0.8rem;">
+                    <a href="{{ c.contrato_arriendo.url }}" target="_blank" style="color:var(--ds-primary);">📄 Ver contrato de arriendo</a>
+                    <span style="color:var(--ds-text-secondary);margin-left:8px;">· {{ c.created_at|date:"d/m/Y" }}</span>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if procesos_compra %}
+                <h4 style="font-size:0.85rem;font-weight:600;margin:12px 0 8px 0;">📑 Contratos de compraventa</h4>
+                {% for p in procesos_compra %}
+                <div style="padding:8px 0;border-bottom:1px solid var(--ds-border-light);font-size:0.8rem;">
+                    <a href="{{ p.contrato_documento.url }}" target="_blank" style="color:var(--ds-primary);">📑 Ver contrato de compraventa</a>
+                    <span style="color:var(--ds-text-secondary);margin-left:8px;">· {{ p.created_at|date:"d/m/Y" }}</span>
+                    {% if p.notaria_nombre %}
+                    <br><span style="color:var(--ds-text-secondary);">🏛️ {{ p.notaria_nombre }} · {{ p.notaria_fecha|date:"d/m/Y" }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if not contratos_arriendo and not procesos_compra %}
+                <div class="empty-state-modern" style="padding:16px;">
+                    <p style="font-size:0.85rem;margin:0;">No hay contratos digitales asociados a esta propiedad.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card: Corredor y Plan -->
+        <div class="card-modern">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:1.05rem;margin-bottom:12px;">👤 Corredor y Plan</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.85rem;">
+                    <div><strong>Corredor:</strong></div>
+                    <div>{{ corredor.get_full_name|default:corredor.email }}</div>
+                    <div><strong>Plan:</strong></div>
+                    <div><span class="badge-modern badge-modern-info">{{ plan_nombre|default:"Sin plan" }}</span></div>
+                    <div><strong>Tasa SERCA:</strong></div>
+                    <div><span class="badge-modern badge-modern-warning">{{ tasa_serca }}%</span></div>
+                    <div><strong>Tipo comisión:</strong></div>
+                    <div>{{ cp.get_tipo_comision_display|default:"Porcentaje" }}</div>
+                    <div><strong>Comisión vendedor:</strong></div>
+                    <div>{{ cp.monto_comision_dueno|default:"—" }}{% if cp.monto_comision_dueno %}%{% endif %}</div>
+                    <div><strong>Comisión comprador:</strong></div>
+                    <div>{{ cp.monto_comision_usu|default:"—" }}{% if cp.monto_comision_usu %}%{% endif %}</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

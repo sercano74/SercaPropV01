@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-modern">
+    <h1>📋 Postulaciones a Corredor</h1>
+    <p>Revisa, aprueba o rechaza las solicitudes de nuevos corredores</p>
+</div>
+
+<div style="margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="?filtro=pendientes" class="btn {% if filtro_actual == 'pendientes' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">⏳ Pendientes</a>
+    <a href="?filtro=en_dialogo" class="btn {% if filtro_actual == 'en_dialogo' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">💬 En diálogo</a>
+    <a href="?filtro=aprobadas" class="btn {% if filtro_actual == 'aprobadas' %}btn-success{% else %}btn-outline{% endif %} btn-sm">✅ Aprobadas</a>
+    <a href="?filtro=rechazadas" class="btn {% if filtro_actual == 'rechazadas' %}btn-danger{% else %}btn-outline{% endif %} btn-sm">❌ Rechazadas</a>
+    <a href="?filtro=todas" class="btn {% if filtro_actual == 'todas' %}btn-secondary{% else %}btn-outline{% endif %} btn-sm">📋 Todas</a>
+</div>
+
+{% if postulaciones %}
+<div class="table-modern">
+    <table class="table-modern">
+        <thead>
+            <tr>
+                <th>Postulante</th>
+                <th>Email</th>
+                <th>Plan</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sol in postulaciones %}
+            <tr>
+                <td>
+                    <strong>{{ sol.nombres }} {{ sol.apellidos }}</strong>
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">📱 {{ sol.cel_phone|default:"-" }}</div>
+                </td>
+                <td>{{ sol.email }}</td>
+                <td>
+                    <span class="badge-modern badge-modern-info">{{ sol.plan.nombre }}</span>
+                    <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-top:4px;">
+                        ${{ sol.plan.precio|floatformat:0 }}
+                    </div>
+                </td>
+                <td>
+                    {% if sol.estado == "pendiente" %}
+                    <span class="badge-modern badge-modern-warning">⏳ Pendiente</span>
+                    {% elif sol.estado == "en_dialogo" %}
+                    <span class="badge-modern badge-modern-info">💬 En diálogo</span>
+                    {% elif sol.estado == "aprobada" %}
+                    <span class="badge-modern badge-modern-success">✅ Aprobada</span>
+                    {% elif sol.estado == "rechazada" %}
+                    <span class="badge-modern badge-modern-error">❌ Rechazada</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:0.85rem;">{{ sol.created_at|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <a href="{% url 'detalle_postulacion' sol.id %}" class="btn btn-ghost btn-sm">Ver →</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state-modern">
+    <div class="empty-icon">📭</div>
+    <h3>No hay postulaciones</h3>
+    <p>No se encontraron postulaciones con el filtro seleccionado.</p>
+</div>
+{% endif %}
+{% endblock %}

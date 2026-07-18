@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>💰 Ingresos por Negocio</h1>
+    <p>{{ user.get_full_name|default:user.username }} · {{ user.get_rol_display|default:user.rol|title }}</p>
+</div>
+
+<!-- ===== FILTROS ===== -->
+<div class="card-modern" style="margin-bottom:20px;">
+    <div class="card-modern-body">
+        <form method="GET" action="{% url 'gestion_ingresos' %}" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+            <div>
+                <label style="font-weight:600;font-size:0.8rem;display:block;margin-bottom:4px;">Año</label>
+                <select name="anio" style="padding:8px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+                    <option value="">Todos</option>
+                    {% for a in anos_disponibles %}
+                    <option value="{{ a }}" {% if filtro_anio|stringformat:"s" == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:0.8rem;display:block;margin-bottom:4px;">Mes</label>
+                <select name="mes" style="padding:8px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+                    <option value="">Todos</option>
+                    {% for num, nom in meses_opciones %}
+                    <option value="{{ num }}" {% if filtro_mes|stringformat:"s" == num|stringformat:"s" %}selected{% endif %}>{{ nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if es_admin %}
+            <div>
+                <label style="font-weight:600;font-size:0.8rem;display:block;margin-bottom:4px;">Corredor</label>
+                <select name="corredor" style="padding:8px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+                    <option value="">Todos</option>
+                    {% for c in corredores_list %}
+                    <option value="{{ c.id }}" {% if filtro_corredor|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.get_full_name|default:c.email }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div>
+                <button type="submit" class="btn btn-primary btn-sm">🔍 Filtrar</button>
+                <a href="{% url 'gestion_ingresos' %}" class="btn btn-ghost btn-sm">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== TABLA DE CIERRES ===== -->
+<div class="card-modern">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">
+            📊 Registros de Ingresos
+            <span class="badge-modern badge-modern-neutral" style="margin-left:8px;">{{ cierres|length }} cierre{{ cierres|pluralize:"s" }}</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Propiedad</th>
+                        <th>Corredor</th>
+                        <th>Precio Venta</th>
+                        <th>Moneda</th>
+                        <th>% Com.V</th>
+                        <th>% Com.C</th>
+                        <th>Com.Vendedor</th>
+                        <th>Com.Comprador</th>
+                        <th>Ing.Bruto</th>
+                        <th>Com.SERCA</th>
+                        <th>Ing.NetO</th>
+                        {% if es_admin %}
+                        <th>Costo Pub.</th>
+                        {% endif %}
+                        <th>Recibido</th>
+                        <th>Pendiente</th>
+                        <th>Perf.</th>
+                        <th>Período</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cierres %}
+                    <tr>
+                        <td><strong>{{ c.id }}</strong></td>
+                        <td>
+                            <a href="{% url 'detalle_propiedad' c.propiedad.id %}" style="font-size:0.85rem;font-weight:600;color:var(--ds-primary);text-decoration:none;">
+                                {{ c.propiedad.get_tipo_prop_display|slice:":8" }} · {{ c.propiedad.calle|truncatechars:15 }}
+                            </a>
+                            {% if c.propiedad.comuna %}
+                            <br><span style="font-size:0.7rem;color:var(--ds-text-secondary);">{{ c.propiedad.comuna }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.8rem;">
+                            {{ c.corredor.get_full_name|default:c.corredor.email }}
+                            {% if c.plan_nombre %}
+                            <br><span class="badge-modern badge-modern-info" style="font-size:0.6rem;">{{ c.plan_nombre }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight:600;font-size:0.85rem;">${{ c.precio_venta|floatformat:0|intcomma }}</td>
+                        <td><span class="badge-modern badge-modern-neutral">{{ c.moneda_original }}</span></td>
+                        <td>{{ c.pct_comision_vendedor }}%</td>
+                        <td>{{ c.pct_comision_comprador }}%</td>
+                        <td style="font-size:0.85rem;">${{ c.comision_vendedor_final_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-size:0.85rem;">${{ c.comision_comprador_final_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-weight:600;font-size:0.85rem;color:var(--ds-success);">${{ c.ingreso_bruto_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-size:0.85rem;color:var(--ds-warning);">${{ c.comision_serca_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-weight:700;font-size:0.85rem;color:var(--ds-primary);">${{ c.ingreso_neto_corredor_clp|floatformat:0|intcomma }}</td>
+                        {% if es_admin %}
+                        <td style="font-size:0.8rem;">${{ c.costo_publicacion_clp|default:"—"|floatformat:0|intcomma }}</td>
+                        {% endif %}
+                        <td style="font-size:0.85rem;color:var(--ds-success);">${{ c.total_recibido_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-size:0.85rem;color:var(--ds-warning)">${{ c.total_por_recibir_clp|floatformat:0|intcomma }}</td>
+                        <td>
+                            {% if c.perfeccionado %}
+                            <span class="badge-modern badge-modern-success" style="font-size:0.6rem;">✅</span>
+                            {% else %}
+                            <span class="badge-modern badge-modern-warning" style="font-size:0.6rem;">⏳</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.8rem;">{{ c.mes }}/{{ c.anio }}</td>
+                        <td>
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                <a href="{% url 'editar_cierre_economico' c.id %}" class="btn btn-outline btn-sm" style="text-decoration:none;font-size:0.65rem;padding:4px 8px;">✏️</a>
+                                {% if es_admin %}
+                                <a href="{% url 'eliminar_cierre_economico' c.id %}" class="btn btn-danger btn-sm" style="text-decoration:none;font-size:0.65rem;padding:4px 8px;" onclick="return confirm('¿Eliminar este cierre económico?')">🗑️</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if es_admin %}18{% else %}17{% endif %}">
+                            <div class="empty-state-modern" style="padding:32px;">
+                                <div style="font-size:2.5rem;margin-bottom:8px;">💰</div>
+                                <h3>No hay cierres económicos registrados</h3>
+                                <p>Los cierres se crean cuando una propiedad es marcada como vendida o arrendada.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PROPIEDADES CERRADAS SIN CIERRE ECONÓMICO ===== -->
+{% if props_sin_cierre %}
+<div class="card-modern" style="margin-bottom:20px;border:2px solid var(--ds-warning);">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">
+            ⏳ Propiedades cerradas pendientes de registro económico
+            <span class="badge-modern badge-modern-warning" style="margin-left:8px;">{{ props_sin_cierre|length }} pendiente{{ props_sin_cierre|pluralize:"s" }}</span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Propiedad</th>
+                        <th>Tipo Cierre</th>
+                        <th>Fecha Cierre</th>
+                        <th>Corredor</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in props_sin_cierre %}
+                    <tr>
+                        <td><strong>{{ p.id }}</strong></td>
+                        <td>
+                            <a href="{% url 'detalle_propiedad' p.id %}" style="font-weight:600;color:var(--ds-primary);text-decoration:none;">
+                                {{ p.get_tipo_prop_display }} · {{ p.calle }} #{{ p.numero_calle }}
+                            </a>
+                            {% if p.comuna %}
+                            <br><span style="font-size:0.75rem;color:var(--ds-text-secondary);">📍 {{ p.comuna }}</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge-cierre {% if p.tipo_cierre == 'vendida' %}badge-cierre-vendida{% else %}badge-cierre-arrendada{% endif %}">{{ p.get_tipo_cierre_display }}</span></td>
+                        <td style="font-size:0.85rem;">{{ p.fecha_cierre|date:"d/m/Y" }}</td>
+                        <td style="font-size:0.8rem;">
+                            {% with cp=p.corredores.all.first %}
+                                {% if cp %}{{ cp.corredor.get_full_name|default:cp.corredor.email }}{% else %}—{% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <a href="{% url 'crear_cierre_economico' p.id %}" class="btn btn-primary btn-sm" style="text-decoration:none;font-size:0.7rem;padding:6px 12px;">💰 Crear Cierre</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card-modern" style="margin-top:20px;">
+    <div class="card-modern-body" style="padding:16px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;font-size:0.8rem;">
+            <div><strong>💰 Ingreso Bruto:</strong> Comisión vendedor + comisión comprador (en CLP)</div>
+            <div><strong>📊 Comisión SERCA:</strong> % del ingreso bruto según plan del corredor (tasa variable por plan)</div>
+            <div><strong>✅ Ingreso Neto:</strong> Ingreso bruto − comisión SERCA</div>
+            <div><strong>⏳ Perfeccionado:</strong> Cuando el corredor ajustó los valores reales recibidos</div>
+            {% if es_admin %}
+            <div><strong>📢 Costo Pub.:</strong> Lo que SERCA erogó por la publicación (solo visible para gerentes)</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

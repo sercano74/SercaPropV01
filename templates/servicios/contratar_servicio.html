@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Publicar Servicio - Dato Constructor{% endblock %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>📢 Publica aquí tus Servicios</h1>
+    <p style="font-size:1rem;margin-bottom:20px;text-align:center;">
+        Promociona tus servicios de construcción y llega a miles de potenciales clientes en <strong>{{ site_name }}</strong>.
+    </p>
+    {% if user.is_authenticated and user.rol in 'gerente,superadmin' %}
+        <a href="{% url 'gestion_admin_servicios' %}" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;gap:6px;">
+            ⚙️ Gestionar precios
+        </a>
+    {% endif %}
+    <a href="{% url 'lista_servicios' %}" class="btn btn-ghost btn-sm">← Vitrina Servicios</a>
+</div>
+
+    <!-- BANNER DE AUTENTICACIÓN (solo si no está logeado) -->
+    {% if not user.is_authenticated %}
+    <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);background:var(--ds-primary-light);">
+        <div class="card-modern-body" style="text-align:center;padding:24px;">
+            <div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">
+                🔐 Inicia sesión para publicar tu servicio
+            </div>
+            <p style="margin-bottom:16px;font-size:0.95rem;">
+                Para publicar un servicio en Dato Constructor debes tener una cuenta en Serca Propiedades.
+                Si ya tienes una cuenta, inicia sesión. Si eres nuevo, regístrate gratis.
+            </p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <a href="{% url 'login' %}?next={% url 'contratar_servicio' %}" class="btn btn-primary">
+                    Iniciar sesión
+                </a>
+                <a href="{% url 'registro' %}?next={% url 'contratar_servicio' %}" class="btn btn-outline">
+                    Crear cuenta gratis
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PLANES -->
+    <div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:stretch;gap:16px;margin-bottom:32px;justify-content:center;">
+        <div class="card-modern" style="border:2px solid var(--ds-border);text-align:center;padding:20px;" id="plan-mensual-card">
+            <div style="font-size:2rem;">💎</div>
+            <h3 style="margin:8px 0;font-size:1.1rem;">Plan Mensual</h3>
+            <div style="font-size:1.8rem;font-weight:700;color:var(--ds-primary);">${{ valores.mensual|floatformat:0 }}</div>
+            <div style="font-size:0.85rem;color:var(--ds-text-secondary);">+ IVA = ${{ valores.mensual|add:valores.mensual|floatformat:0 }}</div>
+            <ul style="text-align:left;font-size:0.75rem;margin:12px 0;padding:0 16px;list-style:none;">
+                <li>✅ Publica hasta 3 de tus propiedades (*)</li>
+                <li>✅ Gestiona hasta 3 propiedades asignadas/mes</li>
+                <li>✅ Acceso a Centro de Comunicaciones </li>
+                <li>✅ Gestiona tu perfil y contenido</li>
+                <li>✅ Acceso a gestión de propiedades e ingresos</li>
+            </ul>
+        </div>
+
+        <div class="card-modern" style="border:2px solid var(--ds-primary);text-align:center;padding:20px;position:relative;" id="plan-anual-card">
+            <div style="position:absolute;top:-2px;right:-2px;background:var(--ds-primary);color:white;padding:4px 12px;border-radius:9999px;font-size:0.7rem;font-weight:700;">Recomendado 21% de ahorro</div>
+            <div style="font-size:2rem;">♦️</div>
+            <h3 style="margin:8px 0;font-size:1.1rem;">Plan Anual</h3>
+            <div style="font-size:1.8rem;font-weight:700;color:var(--ds-primary);">${{ valores.anual|floatformat:0 }}</div>
+            <div style="font-size:0.85rem;color:var(--ds-text-secondary);">+ IVA = ${{ valores.anual|add:valores.anual|floatformat:0 }}</div>
+            <div style="font-size:0.75rem;color:var(--ds-success);font-weight:600;">${{ valores.mensual|floatformat:0 }}/mes</div>
+            <ul style="text-align:left;font-size:0.75rem;margin:12px 0;padding:0 16px;list-style:none;">
+                <li>✅ Suscripción 12 meses</li>
+                <li>✅ Publica hasta 6 de tus propiedades (*)</li>
+                <li>✅ Gestiona hasta 6 propiedades asignadas/mes</li>
+                <li>✅ Acceso a Centro de Comunicaciones </li>
+                <li>✅ Gestiona tu perfil y contenido</li>
+                <li>✅ Acceso a gestión de propiedades e ingresos</li>
+            </ul>
+            
+        </div>
+        
+    </div>
+    <p style="font-size:0.75rem;color:var(--ds-text-secondary);"> (*) Publicaciones destacadas, sin costo</p>
+
+    <!-- FORMULARIO (solo si está autenticado) -->
+    {% if user.is_authenticated %}
+    <div class="form-modern-container">
+        <h2>Datos del servicio</h2>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label>Plan seleccionado *</label>
+                <div style="display:flex;gap:12px;">
+                    <label style="flex:1;padding:12px;border:2px solid var(--ds-border);border-radius:8px;text-align:center;cursor:pointer;" class="plan-option" data-plan="mensual">
+                        <input type="radio" name="tipo_plan" value="mensual" class="plan-radio" {% if datos.tipo_plan == 'mensual' %}checked{% endif %}>
+                        <div style="font-weight:600;">Mensual</div>
+                        <div style="font-size:0.85rem;color:var(--ds-primary);font-weight:700;">${{ valores.mensual|floatformat:0 }}/mes</div>
+                    </label>
+                    <label style="flex:1;padding:12px;border:2px solid var(--ds-primary);border-radius:8px;text-align:center;cursor:pointer;" class="plan-option" data-plan="anual">
+                        <input type="radio" name="tipo_plan" value="anual" class="plan-radio" {% if datos.tipo_plan == 'anual' %}checked{% endif %}>
+                        <div style="font-weight:600;">Anual</div>
+                        <div style="font-size:0.85rem;color:var(--ds-primary);font-weight:700;">${{ valores.anual|floatformat:0 }}/año</div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Categoría *</label>
+                <select name="categoria" required>
+                    <option value="">Selecciona una categoría</option>
+                    {% for cat in categorias %}
+                    <option value="{{ cat.id }}" {% if datos.categoria|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cat.icono|default:'🔧' }} {{ cat.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Título del servicio *</label>
+                <input type="text" name="titulo" value="{{ datos.titulo|default:'' }}" required placeholder="Ej: Instalación de cerámicas profesionales">
+            </div>
+
+            <div class="form-group">
+                <label>Descripción *</label>
+                <textarea name="descripcion" rows="4" required placeholder="Describe tu servicio, experiencia, cobertura geográfica...">{{ datos.descripcion|default:'' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Imagen del servicio *</label>
+                <input type="file" name="imagen" accept="image/*" required>
+                <div class="form-hint">Sube una foto representativa de tu trabajo.</div>
+            </div>
+
+            <div class="form-group">
+                <label>Sitio web (opcional)</label>
+                <input type="url" name="sitio_web" value="{{ datos.sitio_web|default:'' }}" placeholder="https://tusitio.cl">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Teléfono de contacto (opcional)</label>
+                    <input type="tel" name="telefono" value="{{ datos.telefono|default:'' }}" placeholder="+56 9 1234 5678">
+                </div>
+                <div class="form-group">
+                    <label>Email de contacto (opcional)</label>
+                    <input type="email" name="email_contacto" value="{{ datos.email_contacto|default:'' }}" placeholder="contacto@email.cl">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">Continuar al pago →</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.plan-option { transition: all 0.2s; }
+.plan-option:hover { border-color: var(--ds-primary) !important; }
+.plan-option input[type="radio"] { position:absolute;opacity:0; }
+.plan-option:has(input:checked) { border-color: var(--ds-primary) !important; background: var(--ds-primary-light); }
+</style>
+
+{% endblock %}

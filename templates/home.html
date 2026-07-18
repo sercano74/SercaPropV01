@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% load servicios_extras %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>Encuentra tu propiedad ideal</h1>
+    <p>Venta   ·   Arriendo   ·   Short Rental Time</p>
+</div>
+
+{% comment %} {% bloque_home_servicios %} {% endcomment %}
+
+<div class="layout-3col">
+    <!-- ASIDE IZQUIERDO: Destacadas (Carousel) -->
+    <aside class="aside-modern">
+        <h3 class="aside-modern-title"><strong>⭐ Destacadas</strong></h3>
+        {% if destacadas %}
+        <div class="carousel-destacadas" id="carousel-destacadas">
+            <div class="carousel-destacadas-track" id="carousel-track">
+                {% for pub in destacadas %}
+                <div class="carousel-destacadas-slide">
+                    <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="card-modern" style="text-decoration:none;color:inherit;display:block;">
+                        {% with primera_foto=pub.propiedad.fotos.first %}
+                            {% if primera_foto %}
+                                <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-modern-img">
+                            {% else %}
+                                <div class="card-modern-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:2rem;">🏠</div>
+                            {% endif %}
+                        {% endwith %}
+                        <div class="card-modern-body">
+                            <span class="card-modern-badge">
+                                {% if pub.propiedad.tipo_cierre == "vendida" %}✅ Vendida{% elif pub.propiedad.tipo_cierre == "arrendada" %}✅ Arrendada{% else %}{{ pub.propiedad.get_tipo_accion_display }}{% endif %}
+                            </span>
+                            <div class="card-modern-title">🆔 {{pub.propiedad.id}} · {{ pub.propiedad.get_tipo_prop_display }}</div>
+                            {% comment %} <div class="card-modern-subtitle">{{ pub.propiedad.calle }} #{{ pub.propiedad.numero_calle }}</div> {% endcomment %}
+                            <div class="card-modern-location">🗺️ {{pub.propiedad.comuna}}</div>
+                            <div class="card-modern-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|floatformat:0 }}</div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="carousel-destacadas-btn carousel-destacadas-btn-prev" id="carousel-prev" type="button">‹</button>
+            <button class="carousel-destacadas-btn carousel-destacadas-btn-next" id="carousel-next" type="button">›</button>
+            <div class="carousel-destacadas-dots" id="carousel-dots"></div>
+        </div>
+        {% else %}
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);">No hay propiedades destacadas en este momento.</p>
+        {% endif %}
+    </aside>
+
+    <!-- CENTRO: Vitrina -->
+    <section>
+        <!-- FILTROS (elegant card) -->
+        <form method="GET" class="filter-card-modern">
+            <div class="filter-card-modern-header">
+                <span>🔍</span> <strong>Filtros de búsqueda</strong>
+            </div>
+            <hr style="margin: 15px 0;color: red;"></hr>
+            <div class="filter-card-modern-row">
+                <select name="tipo_accion">
+                    <option value="">Acción</option>
+                    <option value="venta" {% if current_filters.tipo_accion == 'venta' %}selected{% endif %}>Venta</option>
+                    <option value="arriendo" {% if current_filters.tipo_accion == 'arriendo' %}selected{% endif %}>Arriendo</option>
+                    <option value="srt" {% if current_filters.tipo_accion == 'srt' %}selected{% endif %}>SRT</option>
+                </select>
+                <select name="tipo_prop">
+                    <option value="">Tipo</option>
+                    <option value="casa" {% if current_filters.tipo_prop == 'casa' %}selected{% endif %}>Casa</option>
+                    <option value="departamento" {% if current_filters.tipo_prop == 'departamento' %}selected{% endif %}>Departamento</option>
+                    <option value="local" {% if current_filters.tipo_prop == 'local' %}selected{% endif %}>Local</option>
+                    <option value="terreno" {% if current_filters.tipo_prop == 'terreno' %}selected{% endif %}>Terreno</option>
+                    <option value="oficina" {% if current_filters.tipo_prop == 'oficina' %}selected{% endif %}>Oficina</option>
+                    <option value="otro" {% if current_filters.tipo_prop == 'otro' %}selected{% endif %}>Otro</option>
+                </select>
+                <select name="comuna">
+                    <option value="">Comuna</option>
+                    {% for c in comunas %}
+                    <option value="{{ c.id }}" {% if current_filters.comuna|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <select name="precio_moneda" style="min-width:90px;">
+                    <option value="">Moneda</option>
+                    <option value="PCL" {% if current_filters.precio_moneda == 'PCL' %}selected{% endif %}>CLP</option>
+                    <option value="UF" {% if current_filters.precio_moneda == 'UF' %}selected{% endif %}>UF</option>
+                    <option value="USD" {% if current_filters.precio_moneda == 'USD' %}selected{% endif %}>USD</option>
+                </select>
+                <input type="number" name="precio_min" placeholder="Precio desde" value="{{ current_filters.precio_min|default:'' }}">
+                <input type="number" name="precio_max" placeholder="Precio hasta" value="{{ current_filters.precio_max|default:'' }}">
+                {% comment %} <input type="text" name="q" placeholder="Buscar dirección..." value="{{ current_filters.q|default:'' }}"> {% endcomment %}
+            </div>
+            <div class="filter-card-modern-footer">
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary btn-sm">🔍 Filtrar</button>
+                    <a href="{% url 'home' %}" class="btn btn-ghost btn-sm" style="text-decoration:none;">❌ Limpiar</a>
+                </div>
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div class="paginator-modern">
+                    {% if page_obj.has_previous %}
+                    <a href="?page=1{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" class="paginator-arrow" title="Primera">««</a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" class="paginator-arrow" title="Anterior">«</a>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num == page_obj.number %}
+                        <span class="paginator-current">{{ num }}</span>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" class="paginator-arrow" title="Siguiente">»</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}" class="paginator-arrow" title="Última">»»</a>
+                    {% endif %}
+                    <span class="paginator-info">{{ page_obj.paginator.count }} props</span>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- GRID DE PROPIEDADES -->
+        <div class="filter-card-modern-header">
+            <span>🏡</span> <strong>Propiedades</strong>
+        </div>
+        <hr style="margin: 15px 0;color: red;"></hr>
+        <div class="card-grid vitrina-grid">
+            {% for pub in publicadas %}
+            <div class="property-card-modern" style="position:relative;">
+                {% if pub.es_destacada %}<div class="badge-destacada">⭐ Destacada</div>{% endif %}
+                {% if user.is_authenticated %}
+                <a href="{% url 'toggle_favorita' pub.propiedad.id %}" class="btn-fav" style="position:absolute;top:10px;right:10px;z-index:10;background:rgba(255,255,255,0.9);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:1.3rem;box-shadow:0 2px 6px rgba(0,0,0,0.15);transition:transform 0.2s;border:none;" title="{% if pub.propiedad.id in favoritas_ids %}Quitar de favoritas{% else %}Agregar a favoritas{% endif %}">
+                    {% if pub.propiedad.id in favoritas_ids %}
+                    <i class="bi bi-house-heart-fill" style="color:#ff385c;"></i>
+                    {% else %}
+                    <i class="bi bi-house-heart"></i>
+                    {% endif %}
+                </a>
+                {% endif %}
+                {% with primera_foto=pub.propiedad.fotos.first %}
+                    {% if primera_foto %}
+                        <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img">
+                    {% else %}
+                        <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;">🏠</div>
+                    {% endif %}
+                {% endwith %}
+                <div class="card-body">
+                    <span class="card-badge">{% if pub.propiedad.tipo_cierre == "vendida" %}✅ Vendida{% elif pub.propiedad.tipo_cierre == "arrendada" %}✅ Arrendada{% else %}{{ pub.propiedad.get_tipo_accion_display }}{% endif %}</span>
+                    <div class="card-title">🆔 <strong>{{ pub.propiedad.id }} - {{ pub.propiedad.get_tipo_prop_display }}</strong></div>
+                    {% if user == pub.propiedad.publicante or user.rol in 'gerente,superadmin' %}
+                    <div class="card-subtitle"><strong>{{ pub.propiedad.calle }} #{{ pub.propiedad.numero_calle }}</strong></div>
+                    {% endif %}
+                    {% if pub.propiedad.comuna %}<div class="card-location"><strong>📍 {{ pub.propiedad.comuna }}</strong></div>{% endif %}
+                    <div class="card-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|floatformat:0 }}</div>
+                    <div class="card-details">
+                        {% if pub.propiedad.numero_dormitorios %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Dormitorios">🛏️ {{ pub.propiedad.numero_dormitorios }}</span>{% endif %}
+                        {% if pub.propiedad.numero_banos %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Baños">🛁 {{ pub.propiedad.numero_banos }}</span>{% endif %}
+                        {% if pub.propiedad.m_construidos %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Metros construídos">📐 {{ pub.propiedad.m_construidos }} m²</span>{% endif %}
+                    </div>
+                    
+                    {% if pub.propiedad.tipo_cierre != "vendida" and pub.propiedad.tipo_cierre != "arrendada" %}
+                    <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver detalle →</a>
+                    {% endif %}
+
+
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state-modern" style="grid-column:1/-1;">
+                <div class="empty-icon">🏠</div>
+                <h3>No hay propiedades publicadas</h3>
+                <p>Vuelve pronto o <a href="{% url 'publica' %}" style="color:var(--ds-primary);text-decoration:underline;">publica aquí</a>.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+    </section>
+    
+    <!-- ######################### -->
+    <!-- ASIDE DERECHO: Publicidad -->
+    <aside class="aside-modern">
+        <h3 class="aside-modern-title"><strong>📢 Publicidad</strong></h3>
+        <div class="card-modern" style="text-align:center;margin-bottom:12px;">
+            <div class="card-modern-body">
+                <div style="font-size:2rem;">🛠️</div>
+                <div class="card-modern-title" style="font-size:0.85rem;">Necesitas un plomero ?</div>
+                <div class="card-modern-text" style="font-size:0.8rem;">Aquí encontrarás profesionales calificados en cada área de la construcción y afines.</div>
+                <a href="{% url 'lista_servicios' %}" class="btn btn-outline btn-sm">Ver todos →</a>
+            </div>
+        </div>
+        
+        <div class="card-modern" style="text-align:center;margin-bottom:12px;">
+            <div class="card-modern-body">
+                <div style="font-size:2rem;">🏢</div>
+                <div class="card-modern-title" style="font-size:0.85rem;">¿Eres corredor?</div>
+                <div class="card-modern-text" style="font-size:0.8rem;">Publica propiedades y llega a más clientes.</div>
+                <a href="{% url 'planes' %}" class="btn btn-primary btn-sm" style="margin-top:8px;">Ver planes</a>
+            </div>
+        </div>
+        
+        <div class="card-modern" style="text-align:center;margin-bottom:12px;">
+            <div class="card-modern-body">
+                <div style="font-size:2rem;">📋</div>
+                <div class="card-modern-title" style="font-size:0.85rem;">¿Quieres vender o arrendar?</div>
+                <div class="card-modern-text" style="font-size:0.8rem;">Publica tu propiedad en nuestra plataforma.</div>
+                <a href="{% url 'publica' %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Publicar</a>
+            </div>
+        </div>
+
+        <div class="card-modern" style="text-align:center;background:var(--ds-primary-light);border-color:var(--ds-primary);">
+            <div class="card-modern-body">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--ds-primary);">🔔 ¿Sabías que...</div>
+                <div class="card-modern-text" style="font-size:0.8rem;margin-top:4px;">Las propiedades destacadas tienen 3x más visitas.</div>
+            </div>
+        </div>
+        
+        <div class="card-modern mt-2" style="text-align:center;">
+            <div class="card-modern-body">
+                <div style="font-size:2rem;">💬</div>
+                <div class="card-modern-title" style="font-size:0.85rem;">¿Tienes dudas?</div>
+                <div class="card-modern-text" style="font-size:0.8rem;">Contáctanos y te ayudaremos.</div>
+                <a href="#" class="btn btn-outline btn-sm" style="margin-top:8px;">Contactar</a>
+            </div>
+        </div>
+
+    </aside>
+</div>
+
+<script>
+(function() {
+    const container = document.getElementById('carousel-destacadas');
+    const track = document.getElementById('carousel-track');
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+    const dotsContainer = document.getElementById('carousel-dots');
+    if (!track || !prevBtn || !nextBtn || !dotsContainer) return;
+
+    const slides = Array.from(track.querySelectorAll('.carousel-destacadas-slide'));
+    const totalSlides = slides.length;
+    const visible = 3; // siempre mostrar 3 slides
+    const slideH = 240; // altura de cada slide
+
+    if (totalSlides <= visible) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        return;
+    }
+
+    // Duplicar slides para efecto infinito: clonamos los primeros N y los agregamos al final
+    for (let i = 0; i < visible; i++) {
+        const clone = slides[i].cloneNode(true);
+        track.appendChild(clone);
+    }
+    // Ahora tenemos totalSlides + visible slides en el track
+    const allSlides = track.querySelectorAll('.carousel-destacadas-slide');
+    const totalSteps = totalSlides; // cada paso avanza 1 slide
+    let currentStep = 0;
+
+    // Altura total del track en px
+    function getTrackHeight() {
+        return allSlides.length * slideH;
+    }
+
+    // Crear dots — uno por slide real
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'carousel-destacadas-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Ir a slide ' + (i + 1));
+        dot.dataset.index = i;
+        dot.addEventListener('click', function() { goTo(parseInt(this.dataset.index)); });
+        dotsContainer.appendChild(dot);
+    }
+
+    function goTo(step, animate) {
+        if (animate === undefined) animate = true;
+        // Wrap around
+        if (step < 0) step = totalSteps - 1;
+        if (step >= totalSteps) step = 0;
+        currentStep = step;
+
+        // Aplicar transición
+        if (!animate) {
+            track.style.transition = 'none';
+        } else {
+            track.style.transition = 'transform 0.4s ease';
+        }
+        track.style.transform = 'translateY(-' + (currentStep * slideH) + 'px)';
+
+        // Si llegamos al último paso que muestra clones, saltar al primer paso sin transición
+        if (currentStep >= totalSteps) {
+            // Esto ocurre cuando animate es true y llegamos al clone
+            setTimeout(function() {
+                track.style.transition = 'none';
+                currentStep = 0;
+                track.style.transform = 'translateY(0px)';
+                // Forzar reflow
+                void track.offsetHeight;
+                track.style.transition = 'transform 0.4s ease';
+            }, 400);
+        }
+
+        // Actualizar dots
+        const realStep = currentStep % totalSlides;
+        dotsContainer.querySelectorAll('.carousel-destacadas-dot').forEach((d, i) => {
+            d.classList.toggle('active', i === realStep);
+        });
+    }
+
+    prevBtn.addEventListener('click', function() { goTo(currentStep - 1); });
+    nextBtn.addEventListener('click', function() { goTo(currentStep + 1); });
+
+    // Auto-play cada 5 segundos
+    let autoInterval = setInterval(function() { goTo(currentStep + 1); }, 5000);
+    container.addEventListener('mouseenter', function() { clearInterval(autoInterval); });
+    container.addEventListener('mouseleave', function() {
+        autoInterval = setInterval(function() { goTo(currentStep + 1); }, 5000);
+    });
+
+    container.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowUp') { e.preventDefault(); goTo(currentStep - 1); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); goTo(currentStep + 1); }
+    });
+    container.setAttribute('tabindex', '0');
+})();
+</script>
+{% endblock %}

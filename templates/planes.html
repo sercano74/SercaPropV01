@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>📊 Planes Para Publicación de Propiedades</h1>
+    <p style="font-size:1rem;margin-bottom:20px;text-align:center;">
+        Publica tu propiedad en <strong>{{ site_name }}</strong> y llega a miles de potenciales interesados.
+    </p>
+    <p style="font-size:1rem;margin-bottom:20px;text-align:center;">
+        Elige el plan que mejor se adapte a tus necesidades
+    </p>
+    {% if user.is_authenticated and user.rol in 'gerente,superadmin' %}
+        <a href="{% url 'gestion_precios_publicacion' %}" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;gap:6px;">
+            ⚙️ Gestionar precios
+        </a>
+        {% endif %}
+    <a href="{% url 'home' %}" class="btn btn-ghost btn-sm">← Vitrina Propiedades</a>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 1: PLANES SEGÚN ACCIÓN                              -->
+<!-- ============================================================ -->
+<section style="margin-bottom:48px;">
+
+    <!-- BANNER DE AUTENTICACIÓN (solo si no está logeado) -->
+    {% if not user.is_authenticated %}
+    <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);background:var(--ds-primary-light);">
+        <div class="card-modern-body" style="text-align:center;padding:24px;">
+            <div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">
+                🔐 Inicia sesión para publicar tu propiedad
+            </div>
+            <p style="margin-bottom:16px;font-size:0.95rem;">
+                Para publicar tu propiedad debes tener una cuenta en Serca Propiedades.
+                Si ya tienes una cuenta, inicia sesión. Si eres nuevo, regístrate gratis.
+            </p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <a href="{% url 'login' %}?next={% url 'contratar_servicio' %}" class="btn btn-primary">
+                    Iniciar sesión
+                </a>
+                <a href="{% url 'registro' %}?next={% url 'contratar_servicio' %}" class="btn btn-outline">
+                    Crear cuenta gratis
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if config_pago %}
+
+    <!-- 3 COLUMNAS: Venta · Arriendo · SRT -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+
+        <!-- Venta -->
+        <div class="card-modern" style="text-align:center;border:2px solid var(--ds-border-light);">
+            <div class="card-modern-body">
+                <div style="font-size:2.2rem;margin-bottom:6px;">🏠</div>
+                <div class="card-modern-title" style="font-size:1.2rem;font-weight:700;">Venta</div>
+                <div style="margin:14px 0;">
+                    <div style="font-size:1rem;padding:6px 0;">
+                        <span class="badge-modern badge-modern-neutral" style="font-size:0.7rem;">NORMAL</span>
+                        <span style="font-weight:700;color:var(--ds-success);font-size:1.3rem;">${{ config_pago.valor_pub_venta_mensual|floatformat:0|intcomma }}</span>
+                        <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/mes</span>
+                    </div>
+                    <div style="font-size:1rem;padding:6px 0;">
+                        <span class="badge-modern badge-modern-primary" style="font-size:0.7rem;">⭐ DESTACADA</span>
+                        <span style="font-weight:700;color:var(--ds-primary);font-size:1.3rem;">${{ config_pago.valor_destacado_venta_mensual|floatformat:0|intcomma }}</span>
+                        <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/mes</span>
+                    </div>
+                </div>
+                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
+                    <li style="padding:3px 0;">✅ Publicación en vitrina principal</li>
+                    <li style="padding:3px 0;">✅ Gestión de contactos e interesados</li>
+                </ul>
+                {% if user.is_authenticated %}
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <a href="{% url 'publica' %}?tipo_accion=venta" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Publicar Normal</a>
+                    <a href="{% url 'publica' %}?tipo_accion=venta&destacada=1" class="btn btn-primary btn-sm" style="text-decoration:none;">⭐ Publicar Destacada</a>
+                </div>
+                
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Arriendo -->
+        <div class="card-modern" style="text-align:center;border:2px solid var(--ds-border-light);">
+            <div class="card-modern-body">
+                <div style="font-size:2.2rem;margin-bottom:6px;">🔑</div>
+                <div class="card-modern-title" style="font-size:1.2rem;font-weight:700;">Arriendo</div>
+                <div style="margin:14px 0;">
+                    <div style="font-size:1rem;padding:6px 0;">
+                        <span class="badge-modern badge-modern-neutral" style="font-size:0.7rem;">NORMAL</span>
+                        <span style="font-weight:700;color:var(--ds-success);font-size:1.3rem;">${{ config_pago.valor_pub_arriendo_mensual|floatformat:0|intcomma }}</span>
+                        <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/mes</span>
+                    </div>
+                    <div style="font-size:1rem;padding:6px 0;">
+                        <span class="badge-modern badge-modern-primary" style="font-size:0.7rem;">⭐ DESTACADA</span>
+                        <span style="font-weight:700;color:var(--ds-primary);font-size:1.3rem;">${{ config_pago.valor_destacado_arriendo_mensual|floatformat:0|intcomma }}</span>
+                        <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/mes</span>
+                    </div>
+                </div>
+                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
+                    <li style="padding:3px 0;">✅ Publicación en vitrina principal</li>
+                    <li style="padding:3px 0;">✅ Gestión de contactos e interesados</li>
+                </ul>
+                {% if user.is_authenticated %}
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <a href="{% url 'publica' %}?tipo_accion=arriendo" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Publicar Normal</a>
+                    <a href="{% url 'publica' %}?tipo_accion=arriendo&destacada=1" class="btn btn-primary btn-sm" style="text-decoration:none;">⭐ Publicar Destacada</a>
+                </div>
+                
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- SRT -->
+        <div class="card-modern" style="text-align:center;border:2px solid var(--ds-border-light);">
+            <div class="card-modern-body">
+                <div style="font-size:2.2rem;margin-bottom:6px;">🏨</div>
+                <div class="card-modern-title" style="font-size:1.2rem;font-weight:700;">Short Rental Time</div>
+                <div style="margin:14px 0;">
+                    <div style="font-size:1rem;padding:6px 0;">
+                        <span class="badge-modern badge-modern-neutral" style="font-size:0.7rem;">NORMAL</span>
+                        <span style="font-weight:700;color:var(--ds-success);font-size:1.3rem;">${{ config_pago.valor_pub_str_dia|floatformat:0|intcomma }}</span>
+                        <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/día</span>
+                    </div>
+                    <div style="font-size:1rem;padding:6px 0;">
+                        <span class="badge-modern badge-modern-primary" style="font-size:0.7rem;">⭐ DESTACADA</span>
+                        <span style="font-weight:700;color:var(--ds-primary);font-size:1.3rem;">${{ config_pago.valor_destacado_str_dia|floatformat:0|intcomma }}</span>
+                        <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/día</span>
+                    </div>
+                </div>
+                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
+                    <li style="padding:3px 0;">✅ Publicación en vitrina principal</li>
+                    <li style="padding:3px 0;">✅ Gestión de reservas e interesados</li>
+                </ul>
+                {% if user.is_authenticated %}
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <a href="{% url 'publica' %}?tipo_accion=srt" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Publicar Normal</a>
+                    <a href="{% url 'publica' %}?tipo_accion=srt&destacada=1" class="btn btn-primary btn-sm" style="text-decoration:none;">⭐ Publicar Destacada</a>
+                </div>
+                
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Explicación Normal vs Destacada -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+        <div class="card-modern mt-3" style="border-left:4px solid var(--ds-border);">
+            <div class="card-modern-body">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:1.5rem;">📄</span>
+                    <span class="badge-modern badge-modern-neutral" style="font-size:0.85rem;">PUBLICACIÓN NORMAL</span>
+                </div>
+                <ul style="margin:0;padding:0 0 0 18px;font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.7;">
+                    <li>Aparece en resultados de búsqueda y vitrina general.</li>
+                    <li>Hasta <strong>5 fotos</strong> de tu propiedad.</li>
+                    <li>Visibilidad estándar en la plataforma.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="card-modern mt-3" style="border-left:4px solid var(--ds-primary);background:var(--ds-primary-light);">
+            <div class="card-modern-body">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:1.5rem;">⭐</span>
+                    <span class="badge-modern badge-modern-primary" style="font-size:0.85rem;">PUBLICACIÓN DESTACADA</span>
+                </div>
+                <ul style="margin:0;padding:0 0 0 18px;font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.7;">
+                    <li>Aparece <strong>primero</strong> en resultados y en la sección ⭐ Destacadas del home.</li>
+                    <li>Hasta <strong>15 fotos</strong> de tu propiedad.</li>
+                    <li>Vitrina <strong>mejorada y permanente</strong> con máxima exposición al público objetivo.</li>
+                    <li>Distintivo <span class="badge-modern badge-modern-primary">⭐ Destacada</span> que atrae más miradas.</li>
+                    <li>Recibe <strong>hasta 3x más visitas</strong> que una normal.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state-modern">
+        <p>No hay configuración de precios disponible. Contacta al administrador.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 2: SÉ NUESTRO AGENTE (CORREDORES)                   -->
+<!-- ============================================================ -->
+{% comment %} <section>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <h2 style="font-size:1.5rem;font-weight:700;margin:0;display:flex;align-items:center;gap:10px;">
+            🤝 Sé nuestro agente
+        </h2>
+        <a href="{% url 'se_nuestro_agente' %}" class="btn btn-outline btn-sm" style="text-decoration:none;">Ver detalles →</a>
+    </div>
+
+    <p style="font-size:1rem;color:var(--ds-text-secondary);margin-bottom:20px;text-align:center;">
+        Únete al equipo de corredores de <strong>{{ site_name }}</strong> y haz crecer tu negocio inmobiliario.
+    </p>
+
+    {% if planes_corredor %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px;margin:0 auto;">
+        {% for plan in planes_corredor %}
+        <div class="card-modern" style="text-align:center;border:2px solid {% if plan.nombre|lower == 'prime' %}var(--ds-primary){% else %}var(--ds-border-light){% endif %};position:relative;overflow:visible;">
+            {% if plan.nombre|lower == 'prime' %}
+            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ds-primary);color:white;padding:4px 18px;border-radius:9999px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;border:2px solid var(--ds-primary-dark);">
+                ⭐ RECOMENDADO
+            </div>
+            {% endif %}
+            <div class="card-modern-body" style="padding-top:{% if plan.nombre|lower == 'prime' %}28px{% else %}20px{% endif %};">
+                <div style="font-size:2.5rem;margin-bottom:4px;">
+                    {% if plan.nombre|lower == 'prime' %}👑{% else %}🥈{% endif %}
+                </div>
+                <div class="card-modern-title" style="font-size:1.3rem;font-weight:700;">{{ plan.nombre }}</div>
+                <div style="font-size:2.2rem;font-weight:700;color:var(--ds-success);margin:10px 0;">
+                    ${{ plan.precio|floatformat:0|intcomma }}
+                    <span style="font-size:0.9rem;color:var(--ds-text-secondary);font-weight:400;">/{{ plan.duracion_meses }} mes(es)</span>
+                </div>
+
+                <!-- Comisión -->
+                <div style="background:var(--ds-bg-secondary);border-radius:10px;padding:10px;margin:12px 0;">
+                    <div style="font-size:1rem;font-weight:700;color:var(--ds-primary);">
+                        {% if plan.nombre|lower == 'prime' %}70{% else %}60{% endif %}% de comisión
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">
+                        {% if plan.nombre|lower == 'prime' %}
+                        Tasa preferencial — ganas más por cada operación
+                        {% else %}
+                        Tasa estándar del mercado
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Beneficios comparativos -->
+                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
+                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
+                        <span style="color:var(--ds-success);font-weight:700;">
+                            {% if plan.nombre|lower == 'prime' %}✅{% else %}✅{% endif %}
+                        </span>
+                        <span>
+                            <strong>{% if plan.nombre|lower == 'prime' %}Hasta 10{% else %}Hasta 3{% endif %}</strong> negocios asignados por SERCAPROP en simultáneo
+                        </span>
+                    </li>
+                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
+                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
+                        <span>Comisión del <strong>{% if plan.nombre|lower == 'prime' %}70%{% else %}60%{% endif %}</strong> por operación</span>
+                    </li>
+                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
+                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
+                        <span>Soporte prioritario{% if plan.nombre|lower == 'prime' %} 24/7{% endif %}</span>
+                    </li>
+                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
+                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
+                        <span>Acceso a herramientas de gestión</span>
+                    </li>
+                    {% if plan.nombre|lower == 'prime' %}
+                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
+                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
+                        <span><strong>Mayor exposición</strong> en vitrina para tus propiedades</span>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                {% if user.is_authenticated %}
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_id" value="{{ plan.id }}">
+                    <button type="submit" class="btn {% if plan.nombre|lower == 'prime' %}btn-primary{% else %}btn-outline{% endif %} btn-block" style="margin-top:8px;">
+                        {% if plan.nombre|lower == 'prime' %}⭐ Contratar Prime{% else %}Contratar {{ plan.nombre }}{% endif %}
+                    </button>
+                </form>
+                {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;">Ingresa para contratar</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state-modern">
+        <p>No hay planes disponibles para corredores en este momento.</p>
+    </div>
+    {% endif %}
+</section> {% endcomment %}
+
+{% if suscripcion %}
+<div class="card-modern" style="margin-top:32px;">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.2rem;margin-bottom:12px;">📋 Mi suscripción actual</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+            <div><strong>Plan:</strong> {{ suscripcion.plan.nombre }}</div>
+            <div><strong>Vence:</strong> {{ suscripcion.fecha_fin|date:"d/m/Y" }}</div>
+            <div><strong>Días restantes:</strong> {{ suscripcion.dias_restantes }}</div>
+            <div><strong>Comisión:</strong> {{ suscripcion.plan.comision_porcentaje }}%</div>
+            <div><strong>Máx. propiedades:</strong> {{ suscripcion.plan.max_propiedades_simultaneas }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
