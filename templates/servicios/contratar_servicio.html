@@ -43,38 +43,36 @@
     <div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:stretch;gap:16px;margin-bottom:32px;justify-content:center;">
         <div class="card-modern" style="border:2px solid var(--ds-border);text-align:center;padding:20px;" id="plan-mensual-card">
             <div style="font-size:2rem;">💎</div>
-            <h3 style="margin:8px 0;font-size:1.1rem;">Plan Mensual</h3>
-            <div style="font-size:1.8rem;font-weight:700;color:var(--ds-primary);">${{ valores.mensual|floatformat:0 }}</div>
-            <div style="font-size:0.85rem;color:var(--ds-text-secondary);">+ IVA = ${{ valores.mensual|add:valores.mensual|floatformat:0 }}</div>
-            <ul style="text-align:left;font-size:0.75rem;margin:12px 0;padding:0 16px;list-style:none;">
-                <li>✅ Publica hasta 3 de tus propiedades (*)</li>
-                <li>✅ Gestiona hasta 3 propiedades asignadas/mes</li>
-                <li>✅ Acceso a Centro de Comunicaciones </li>
-                <li>✅ Gestiona tu perfil y contenido</li>
-                <li>✅ Acceso a gestión de propiedades e ingresos</li>
+            <h3 style="margin:8px 0;font-size:1.8rem;">Plan Mensual</h3>
+            <div style="font-size:1.8rem;font-weight:700;color:var(--ds-primary);">${{ valores.mensual|floatformat:0 }} + IVA /mes</div>
+            {% comment %} <div style="font-size:0.85rem;color:var(--ds-text-secondary);">+ IVA = ${{ valores.mensual|add:valores.mensual|floatformat:0 }}</div> {% endcomment %}
+            <ul style="text-align:left;font-size:0.85rem;margin:20px 0;padding:0 100px;list-style:none;">
+                <li>✅ Publica tu aviso por un mes.</li>
+                <li>✅ Recibe notificaciones de interesados vía multicanal y de manera directa.</li>
+                <li>✅ Recibe y comparte tus calificaciones.</li>
             </ul>
         </div>
 
         <div class="card-modern" style="border:2px solid var(--ds-primary);text-align:center;padding:20px;position:relative;" id="plan-anual-card">
-            <div style="position:absolute;top:-2px;right:-2px;background:var(--ds-primary);color:white;padding:4px 12px;border-radius:9999px;font-size:0.7rem;font-weight:700;">Recomendado 21% de ahorro</div>
+            <div style="position:absolute;top:-2px;right:-2px;background:var(--ds-primary);color:white;padding:4px 12px;border-radius:9999px;font-size:1.2rem;font-weight:700;">Recomendado 21% de ahorro</div>
             <div style="font-size:2rem;">♦️</div>
-            <h3 style="margin:8px 0;font-size:1.1rem;">Plan Anual</h3>
-            <div style="font-size:1.8rem;font-weight:700;color:var(--ds-primary);">${{ valores.anual|floatformat:0 }}</div>
-            <div style="font-size:0.85rem;color:var(--ds-text-secondary);">+ IVA = ${{ valores.anual|add:valores.anual|floatformat:0 }}</div>
-            <div style="font-size:0.75rem;color:var(--ds-success);font-weight:600;">${{ valores.mensual|floatformat:0 }}/mes</div>
-            <ul style="text-align:left;font-size:0.75rem;margin:12px 0;padding:0 16px;list-style:none;">
-                <li>✅ Suscripción 12 meses</li>
-                <li>✅ Publica hasta 6 de tus propiedades (*)</li>
-                <li>✅ Gestiona hasta 6 propiedades asignadas/mes</li>
-                <li>✅ Acceso a Centro de Comunicaciones </li>
-                <li>✅ Gestiona tu perfil y contenido</li>
-                <li>✅ Acceso a gestión de propiedades e ingresos</li>
+            <h3 style="margin:8px 0;font-size:1.8rem;">Plan Anual</h3>
+
+            {% comment %} {% with valores.anual|floatformat:0 as anual_value %}
+            <div style="font-size:0.75rem;color:var(--ds-success);font-weight:600;">${{ anual_value  }} anual</div>
+            {% endwith %} {% endcomment %}
+
+            <div style="font-size:1.8rem;font-weight:700;color:var(--ds-primary);">${{ valores.anual|floatformat:0  }} + IVA /año</div>
+            {% comment %} <div style="font-size:0.85rem;color:var(--ds-text-secondary);">+ IVA = ${{ valores.anual|add:valores.anual|floatformat:0 }}</div> {% endcomment %}
+            <ul style="text-align:left;font-size:0.85rem;margin:20px 0;padding:0 100px;list-style:none;">
+                <p> Además de todas las ventajas del plan mensual:</p>
+                <li>✅ Aumenta a 12 meses y con un importante ahorro.</li>
+                <li>✅ Puedes publicar 1 caso de éxito de tu trabajo.</li>
             </ul>
             
         </div>
         
     </div>
-    <p style="font-size:0.75rem;color:var(--ds-text-secondary);"> (*) Publicaciones destacadas, sin costo</p>
 
     <!-- FORMULARIO (solo si está autenticado) -->
     {% if user.is_authenticated %}

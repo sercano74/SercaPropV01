@@ -68,10 +68,7 @@
                         <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/mes</span>
                     </div>
                 </div>
-                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
-                    <li style="padding:3px 0;">✅ Publicación en vitrina principal</li>
-                    <li style="padding:3px 0;">✅ Gestión de contactos e interesados</li>
-                </ul>
+                
                 {% if user.is_authenticated %}
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     <a href="{% url 'publica' %}?tipo_accion=venta" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Publicar Normal</a>
@@ -99,10 +96,7 @@
                         <span style="font-size:0.8rem;color:var(--ds-text-secondary);">/mes</span>
                     </div>
                 </div>
-                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
-                    <li style="padding:3px 0;">✅ Publicación en vitrina principal</li>
-                    <li style="padding:3px 0;">✅ Gestión de contactos e interesados</li>
-                </ul>
+                
                 {% if user.is_authenticated %}
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     <a href="{% url 'publica' %}?tipo_accion=arriendo" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Publicar Normal</a>
@@ -116,6 +110,7 @@
         <!-- SRT -->
         <div class="card-modern" style="text-align:center;border:2px solid var(--ds-border-light);">
             <div class="card-modern-body">
+                <span class="badge-modern badge-modern-primary" style="font-size:0.85rem;"><strong>PROXIMAMENTE</strong></span>
                 <div style="font-size:2.2rem;margin-bottom:6px;">🏨</div>
                 <div class="card-modern-title" style="font-size:1.2rem;font-weight:700;">Short Rental Time</div>
                 <div style="margin:14px 0;">
@@ -148,31 +143,35 @@
 
     <!-- Explicación Normal vs Destacada -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-        <div class="card-modern mt-3" style="border-left:4px solid var(--ds-border);">
+        <div class="card-modern mt-3" style="border-left:4px solid var(--ds-border);weight:200px;background:var(--ds-bg-secondary);">
             <div class="card-modern-body">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                     <span style="font-size:1.5rem;">📄</span>
-                    <span class="badge-modern badge-modern-neutral" style="font-size:0.85rem;">PUBLICACIÓN NORMAL</span>
+                    <span class="badge-modern badge-modern-neutral" style="font-size:0.85rem;"><strong>PUBLICACIÓN NORMAL</strong></span>
                 </div>
                 <ul style="margin:0;padding:0 0 0 18px;font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.7;">
-                    <li>Aparece en resultados de búsqueda y vitrina general.</li>
-                    <li>Hasta <strong>5 fotos</strong> de tu propiedad.</li>
-                    <li>Visibilidad estándar en la plataforma.</li>
+                    <li>✅ Posiciona tu publicación en la vitrina general.</li>
+                    <li>✅ Puedes adjuntar hasta <strong>5 fotos</strong> de tu propiedad.</li>
+                    <li>✅ Mantén la información de tu propiedad permanentemente actualizada.</li>
+                    <li>✅ Gestiona contactos e interesados vía multicanal.</li>
+                    <li>✅ Recibe y emite notificaciones a interesados y mensajes.</li>
+                    <li>✅ Accede a tu historial de publicaciones y contactos.</li>
                 </ul>
             </div>
         </div>
+        
         <div class="card-modern mt-3" style="border-left:4px solid var(--ds-primary);background:var(--ds-primary-light);">
             <div class="card-modern-body">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                     <span style="font-size:1.5rem;">⭐</span>
-                    <span class="badge-modern badge-modern-primary" style="font-size:0.85rem;">PUBLICACIÓN DESTACADA</span>
+                    <span class="badge-modern badge-modern-primary" style="font-size:0.85rem;"><strong>PUBLICACIÓN DESTACADA</strong></span>
                 </div>
                 <ul style="margin:0;padding:0 0 0 18px;font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.7;">
-                    <li>Aparece <strong>primero</strong> en resultados y en la sección ⭐ Destacadas del home.</li>
-                    <li>Hasta <strong>15 fotos</strong> de tu propiedad.</li>
-                    <li>Vitrina <strong>mejorada y permanente</strong> con máxima exposición al público objetivo.</li>
-                    <li>Distintivo <span class="badge-modern badge-modern-primary">⭐ Destacada</span> que atrae más miradas.</li>
-                    <li>Recibe <strong>hasta 3x más visitas</strong> que una normal.</li>
+                    <p> Además de todas las ventajas de una publicación normal.</p>
+                    <li>✅ <strong>Aumenta x7</strong> las visualizaciones en la vitrina <strong>⭐ Destacadas</strong>.</li>
+                    <li>✅ Puedes adjuntar hasta <strong>15 fotos</strong> de tu propiedad.</li>
+                    <li>✅ Agente corredor permanente.</li>
+                    <li>✅ Tu aviso en nuestras redes sociales.</li>
                 </ul>
             </div>
         </div>

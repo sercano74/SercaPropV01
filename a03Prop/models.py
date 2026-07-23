@@ -654,6 +654,19 @@ class SolicitudVisita(models.Model):
         related_name="ordenes_visita_subidas",
         verbose_name="Subida por",
     )
+    # Orden de Visita Firmada (PDF con firma del comprador)
+    orden_visita_firmada = models.FileField(
+        upload_to="ordenes_visita_firmadas/",
+        blank=True, null=True,
+        verbose_name="Orden de Visita Firmada (PDF)",
+    )
+    orden_visita_firmada_subida_por = models.ForeignKey(
+        "a00seg.User",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="ordenes_visita_firmadas_subidas",
+        verbose_name="OV Firmada subida por",
+    )
     clausulas_aceptadas = models.BooleanField(default=False, verbose_name="Cláusulas de OV aceptadas")
     clausulas_aceptadas_at = models.DateTimeField(null=True, blank=True, verbose_name="Aceptadas el")
 
@@ -761,6 +774,10 @@ class PropuestaCompra(models.Model):
         ],
         default="pendiente",
         verbose_name="Estado",
+    )
+    motivo_rechazo = models.TextField(
+        blank=True, verbose_name="Motivo del rechazo",
+        help_text="Razón por la que el dueño/corredor rechazó esta propuesta"
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Actualizada el")

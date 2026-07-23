@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/agenda-disponible/<int:prop_id>/', views.agenda_disponible_api, name='agenda_disponible_api'),
     path('detalle/<int:prop_id>/solicitar-visita/', views.solicitar_visita, name='solicitar_visita'),
     path('visita/<int:visita_id>/subir-orden/', views.subir_orden_visita, name='subir_orden_visita'),
+    path('visita/<int:visita_id>/subir-orden-firmada/', views.subir_orden_visita_firmada, name='subir_orden_visita_firmada'),
     path('visita/<int:visita_id>/aceptar-orden/', views.aceptar_orden_visita, name='aceptar_orden_visita'),
     path('visita/<int:visita_id>/gestionar/', views.gestionar_solicitud_visita, name='gestionar_solicitud_visita'),
     path('visita/<int:visita_id>/realizada/', views.marcar_visita_realizada, name='marcar_visita_realizada'),
@@ -24,6 +25,7 @@ urlpatterns = [
     path('proceso/<int:proceso_id>/aceptar-documento/<str:etapa>/', views.aceptar_documento_proceso, name='aceptar_documento_proceso'),
     path('proceso/<int:proceso_id>/objetar-documento/<str:etapa>/', views.objetar_documento_proceso, name='objetar_documento_proceso'),
     path('proceso/<int:proceso_id>/observar/<str:etapa>/', views.agregar_observacion_proceso, name='agregar_observacion_proceso'),
+    path('proceso/<int:proceso_id>/avanzar-instrucciones/', views.avanzar_a_instrucciones, name='avanzar_a_instrucciones'),
     # Instrucciones Notariales
     path('proceso/<int:proceso_id>/subir-instrucciones/', views.subir_instrucciones_notariales, name='subir_instrucciones_notariales'),
     # Contrato de Compraventa + Notaría
@@ -34,6 +36,8 @@ urlpatterns = [
     path('proceso/<int:proceso_id>/inscripcion-cbr/', views.iniciar_inscripcion_cbr, name='iniciar_inscripcion_cbr'),
     # Reactivar competidores
     path('proceso/<int:proceso_id>/reactivar/', views.reactivar_competidores, name='reactivar_competidores'),
+    # Declarar ronda no superada (corredor fuerza nueva versión)
+    path('proceso/<int:proceso_id>/declarar-ronda-no-superada/<str:etapa>/', views.declarar_ronda_no_superada, name='declarar_ronda_no_superada'),
 
     path('asignar-corredor/<int:prop_id>/', views.asignar_corredor, name='asignar_corredor'),
     path('aprobar-publicacion/<int:pub_id>/', views.aprobar_publicacion, name='aprobar_publicacion'),
@@ -71,4 +75,11 @@ urlpatterns = [
 
     # Favoritas
     path('toggle-favorita/<int:prop_id>/', views.toggle_favorita, name='toggle_favorita'),
+
+    # ===== AFICHE / POSTER PDF =====
+    path('afiche/<int:prop_id>/', views.generar_afiche, name='generar_afiche'),
+
+    # ===== MARKETING IMAGES (Instagram Story + Facebook Afiche) =====
+    path('story-ig/<int:prop_id>/', views.generar_story_instagram, name='generar_story_instagram'),
+    path('afiche-fb/<int:prop_id>/', views.generar_afiche_facebook, name='generar_afiche_facebook'),
 ]

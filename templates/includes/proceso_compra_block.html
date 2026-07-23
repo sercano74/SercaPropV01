@@ -1,301 +1,496 @@
 {% load humanize %}
 {% load prop_extras %}
 
-<div class="proceso-stepper">
-    {% with estados_proceso='propuesta_aceptada,promesa_observacion,promesa_aceptada,instrucciones_observacion,instrucciones_aceptada,contrato_pendiente,contrato_listo,firma_notarial,escritura_cbr,escritura_aprobada,escritura_rechazada,finalizado' %}
-    <div class="proceso-step {% if proceso.estado == 'propuesta_aceptada' or proceso.estado == 'promesa_observacion' %}current{% elif proceso.promesa_aceptado_at %}done{% else %}pending{% endif %}">
-        📄 Promesa
-    </div>
-    <div class="proceso-step {% if proceso.estado == 'instrucciones_observacion' %}current{% elif proceso.instrucciones_aceptado_at %}done{% elif proceso.promesa_aceptado_at %}pending{% else %}pending{% endif %}">
-        📋 Instrucciones
-    </div>
-    <div class="proceso-step {% if proceso.estado == 'contrato_listo' or proceso.estado == 'contrato_pendiente' %}current{% elif proceso.contrato_firmado %}done{% elif proceso.instrucciones_aceptado_at %}pending{% else %}pending{% endif %}">
-        📝 Contrato
-    </div>
-    <div class="proceso-step {% if proceso.estado == 'firma_notarial' %}current{% elif proceso.contrato_firmado %}done{% else %}pending{% endif %}">
-        ✍️ Firma
-    </div>
-    <div class="proceso-step {% if proceso.estado == 'escritura_cbr' or proceso.estado == 'escritura_rechazada' %}current{% elif proceso.escritura_aprobada or proceso.estado == 'finalizado' %}done{% else %}pending{% endif %}">
-        🏛️ CBR
-    </div>
-    <div class="proceso-step {% if proceso.estado == 'escritura_aprobada' or proceso.estado == 'finalizado' %}done{% else %}pending{% endif %}">
-        ✅ Fin
-    </div>
-    {% endwith %}
-</div>
+<style>
+.proceso-card-principal {
+  border: 3px solid var(--ds-border);
+  border-radius: 16px;
+  background: var(--ds-bg);
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 4px 4px 0 var(--ds-border);
+}
+.proceso-card-header {
+  background: var(--ds-primary);
+  color: white;
+  padding: 14px 20px;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.etapa-card {
+  margin: 12px;
+  border: 2px solid var(--ds-border-light);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.etapa-card-header {
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 2px solid var(--ds-border-light);
+}
+.etapa-card-header.done { background: #e8f5e9; color: #2e7d32; border-bottom-color: #a5d6a7; }
+.etapa-card-header.pendiente { background: #f5f5f5; color: var(--ds-text-muted); }
+.whatsapp-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin: 0; }
+.whatsapp-col { border-right: 1px solid var(--ds-border-light); background: var(--ds-bg); min-height: 80px; }
+.whatsapp-container .whatsapp-col:last-child { border-right: none; }
+.whatsapp-col-header { padding: 6px 10px; font-weight: 700; font-size: 0.7rem; text-align: center; border-bottom: 1px solid var(--ds-border-light); }
+.col-corredor .whatsapp-col-header { background: #e3f2fd; color: #1565c0; }
+.col-vendedor .whatsapp-col-header { background: #fff3e0; color: #e65100; }
+.col-comprador .whatsapp-col-header { background: #f3e5f5; color: #7b1fa2; }
+.whatsapp-col-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.whatsapp-bubble { padding: 8px 10px; border-radius: 10px; font-size: 0.73rem; line-height: 1.4; border: 2px solid; box-shadow: 1px 1px 0 rgba(0,0,0,0.04); }
+.whatsapp-bubble.corredor { background: #e3f2fd; border-color: #90caf9; border-radius: 10px 10px 4px 10px; }
+.whatsapp-bubble.vendedor { background: #fff3e0; border-color: #ffcc80; }
+.whatsapp-bubble.comprador { background: #f3e5f5; border-color: #ce93d8; }
+.whatsapp-bubble.objetado { background: #ffebee; border-color: #ef9a9a; }
+.whatsapp-bubble.system { background: #f5f5f5; border-color: var(--ds-border-light); border-radius: 10px; text-align: center; font-size: 0.7rem; color: var(--ds-text-muted); }
+.whatsapp-bubble .bubble-author { font-weight: 700; font-size: 0.63rem; margin-bottom: 2px; }
+.whatsapp-bubble .bubble-time { font-size: 0.55rem; color: var(--ds-text-muted); margin-top: 3px; }
+.whatsapp-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.whatsapp-actions form { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.whatsapp-actions input[type="text"], .whatsapp-actions input[type="file"] { padding: 2px 4px; border: 1px solid var(--ds-border); border-radius: 4px; font-size: 0.63rem; }
+.whatsapp-actions .btn-sm { font-size: 0.63rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; cursor: pointer; }
+.obs-list { max-height: 120px; overflow-y: auto; margin-top: 4px; }
+.obs-item { font-size: 0.63rem; padding: 3px 6px; margin-bottom: 3px; border-left: 3px solid var(--ds-border); background: var(--ds-bg-secondary); border-radius: 0 4px 4px 0; }
+.obs-item.obs-corredor { border-left-color: #1565c0; }
+.obs-item.obs-vendedor { border-left-color: #e65100; }
+.obs-item.obs-comprador { border-left-color: #7b1fa2; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.status-dot.done { background: #4caf50; }
+.status-dot.current { background: #2196f3; animation: pulse 1.5s infinite; }
+.status-dot.pending { background: #bdbdbd; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@media (max-width: 768px) { .whatsapp-container { grid-template-columns: 1fr; } .whatsapp-col { border-right: none; border-bottom: 1px solid var(--ds-border-light); } }
+</style>
 
-<div style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">
-    Proceso de Compra #{{ proceso.id }}
-    <span class="badge-modern {% if proceso.estado == 'escritura_aprobada' or proceso.estado == 'finalizado' %}badge-modern-success{% elif proceso.estado == 'escritura_rechazada' or proceso.estado == 'cancelado' %}badge-modern-error{% else %}badge-modern-primary{% endif %}">
-        {{ proceso.get_estado_display }}
-    </span>
-</div>
-
-<div style="font-size:0.75rem;color:var(--ds-text-muted);margin-bottom:8px;padding:6px 10px;background:var(--ds-bg-secondary);border-radius:6px;border:1px solid var(--ds-border-light);">
-    🏠 Propiedad #<strong>{{ proceso.propiedad.id }}</strong> · {{ proceso.propiedad.display_name_public }}
-</div>
-
-<div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:8px;">
-    Comprador: <strong>{{ proceso.comprador.get_full_name|default:proceso.comprador.email }}</strong>
-    {% if user != proceso.comprador %} · Vendedor: <strong>{{ proceso.vendedor.get_full_name|default:proceso.vendedor.email }}</strong>{% endif %}
+<div class="proceso-card-principal">
+<div class="proceso-card-header">
+    <span>📋 Proceso de Compra #{{ proceso.id }} — Propiedad #{{ proceso.propiedad.id }}</span>
+    <span class="badge-modern {% if proceso.estado in 'escritura_aprobada,finalizado' %}badge-modern-success{% elif proceso.estado == 'escritura_rechazada' or proceso.estado == 'cancelado' %}badge-modern-error{% else %}badge-modern-primary{% endif %}">{{ proceso.get_estado_display }}</span>
 </div>
 
 {% if proceso.otros_pausados %}
-<div class="alert-modern" style="background:#fff3cd;border:1px solid #ffc107;padding:8px;border-radius:6px;font-size:0.8rem;margin-bottom:8px;">
-    🔒 Otros procesos de esta propiedad están <strong>pausados</strong> debido a este proceso activo.
-</div>
+<div style="margin:12px 12px 0;padding:8px 12px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.8rem;">🔒 Este proceso activo mantiene <strong>pausados</strong> los demas procesos de esta propiedad.</div>
 {% endif %}
 
-<!-- ===== ETAPA 1: PROMESA DE COMPRAVENTA ===== -->
-<div style="margin-bottom:10px;">
-    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">📄 <u>Promesa de Compraventa</u>
-        {% if proceso.promesa_aceptado_at %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Aceptada {{ proceso.promesa_aceptado_at|date:'d/m/Y H:i' }}</span>{% endif %}
+<!-- ETAPA 1: PROMESA -->
+<div class="etapa-card">
+    <div class="etapa-card-header {% if proceso.promesa_aceptado_at %}done{% elif proceso.promesa_documento %}{% else %}pendiente{% endif %}">
+        <span><span class="status-dot {% if proceso.promesa_aceptado_at %}done{% elif proceso.promesa_documento %}current{% else %}pending{% endif %}"></span> 1. Promesa de Compraventa</span>
+        <span style="font-size:0.7rem;font-weight:400;">
+            {% if proceso.promesa_aceptado_at %}✅ Aceptada {{ proceso.promesa_aceptado_at|date:'d/m/Y' }}
+            {% elif proceso.promesa_documento %}📄 Subida — Ronda {{ proceso.promesa_ronda }}
+            {% else %}⏳ Pendiente{% endif %}
+        </span>
     </div>
-
-    {% if not proceso.promesa_documento %}
-        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'subir_promesa_compraventa' proceso.id %}" enctype="multipart/form-data" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-            {% csrf_token %}
-            <input type="file" name="documento" accept=".pdf" required style="font-size:0.75rem;">
-            <button type="submit" class="btn btn-primary btn-sm">📄 Subir Promesa</button>
-        </form>
-        {% else %}
-        <div style="font-size:0.8rem;color:var(--ds-text-secondary);">⏳ El corredor debe subir la Promesa de Compraventa.</div>
-        {% endif %}
-    {% else %}
-        <div style="font-size:0.8rem;">📄 <a href="{{ proceso.promesa_documento.url }}" target="_blank">Descargar Promesa (PDF)</a></div>
-        <div style="font-size:0.75rem;color:var(--ds-text-secondary);">Ronda: {{ proceso.promesa_ronda }} · Subido por: {{ proceso.promesa_subido_por.get_full_name|default:proceso.promesa_subido_por.email }}
-
-        <!-- Estado de aceptaciones -->
-        <div style="display:flex;gap:12px;margin-top:4px;font-size:0.8rem;">
-            <span>Vendedor: {% if proceso.promesa_aceptado_vendedor %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
-            <span>Comprador: {% if proceso.promesa_aceptado_comprador %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
-        </div>
-
-        {% if not proceso.promesa_aceptado_comprador and user == proceso.comprador and proceso.estado in 'propuesta_aceptada,promesa_observacion' %}
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
-            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'promesa' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm">✅ Aceptar Promesa (Comprador)</button>
-            </form>
-            <button onclick="document.getElementById('obj-promesa-{{ proceso.id }}-comprador').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
-            <div id="obj-promesa-{{ proceso.id }}-comprador" style="display:none;width:100%;margin-top:4px;">
-                <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-                    {% csrf_token %}
-                    <input type="text" name="texto" placeholder="Razón de la objeción*" required style="flex:1;min-width:150px;padding:4px 6px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.75rem;">
-                    <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
-                    <button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button>
-                </form>
+    <div class="whatsapp-container">
+        <!-- COLUMNA CORREDOR -->
+        <div class="whatsapp-col col-corredor">
+            <div class="whatsapp-col-header">🏢 Corredor</div>
+            <div class="whatsapp-col-body">
+                {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+                    {% if not proceso.promesa_documento %}
+                        <div class="whatsapp-bubble corredor">
+                            <div class="bubble-author">📤 Subir Promesa de Compraventa</div>
+                            <form method="POST" action="{% url 'subir_promesa_compraventa' proceso.id %}" enctype="multipart/form-data" style="margin-top:4px;">
+                                {% csrf_token %}
+                                <input type="file" name="documento" accept=".pdf" required style="font-size:0.63rem;max-width:120px;">
+                                <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">📤 Subir</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <div class="whatsapp-bubble corredor">
+                            <div class="bubble-author">📄 Promesa subida (R{{ proceso.promesa_ronda }})</div>
+                            <a href="{{ proceso.promesa_documento.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver PDF</a>
+                            <div class="bubble-time">Subio {{ proceso.promesa_subido_por.get_full_name|default:proceso.promesa_subido_por.email }} · {{ proceso.created_at|date:'d/m/Y' }}</div>
+                            <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">
+                                Vendedor: {% if proceso.promesa_aceptado_vendedor %}✅ Acepto{% else %}❌ Objeto / ⏳ Pendiente{% endif %}
+                                · Comprador: {% if proceso.promesa_aceptado_comprador %}✅ Acepto{% else %}❌ Objeto / ⏳ Pendiente{% endif %}
+                            </div>
+                            {% if not proceso.promesa_aceptado_at %}
+                                <div style="margin-top:6px;padding-top:6px;border-top:1px solid #90caf9;">
+                                    <button onclick="document.getElementById('reemplazo-promesa-{{ proceso.id }}').style.display='block'" class="btn btn-outline btn-sm" style="font-size:0.6rem;">🔄 Reemplazar documento</button>
+                                    <div id="reemplazo-promesa-{{ proceso.id }}" style="display:none;margin-top:4px;">
+                                        <form method="POST" action="{% url 'subir_promesa_compraventa' proceso.id %}" enctype="multipart/form-data">
+                                            {% csrf_token %}
+                                            <input type="file" name="documento" accept=".pdf" required style="font-size:0.63rem;max-width:120px;">
+                                            <button type="submit" class="btn btn-primary btn-sm">📤 Subir nueva version</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% if proceso.promesa_aceptado_at and proceso.estado == 'promesa_aceptada' %}
+                            <div class="whatsapp-bubble corredor" style="margin-top:2px;">
+                                <div class="bubble-author">✅ Promesa aceptada por ambas partes</div>
+                                <div class="bubble-time">{{ proceso.promesa_aceptado_at|date:'d/m/Y H:i' }}</div>
+                                <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">
+                                    <form method="POST" action="{% url 'avanzar_a_instrucciones' proceso.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success btn-sm">📋 Avanzar a Instrucciones Notariales</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% elif proceso.promesa_aceptado_at %}
+                            <div class="whatsapp-bubble corredor" style="margin-top:2px;">
+                                <div class="bubble-author">✅ Promesa aceptada por ambas partes</div>
+                                <div class="bubble-time">{{ proceso.promesa_aceptado_at|date:'d/m/Y H:i' }}</div>
+                                <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">➡️ Avanzada a Instrucciones Notariales</div>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    {% if not proceso.promesa_documento %}
+                        <div class="whatsapp-bubble system">⏳ Corredor subira la Promesa proximamente...</div>
+                    {% else %}
+                        <div class="whatsapp-bubble corredor">
+                            <div class="bubble-author">📄 Promesa subida (R{{ proceso.promesa_ronda }})</div>
+                            <a href="{{ proceso.promesa_documento.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver PDF</a>
+                            <div class="bubble-time">Subio {{ proceso.promesa_subido_por.get_full_name|default:proceso.promesa_subido_por.email }}</div>
+                        </div>
+                    {% endif %}
+                {% endif %}
             </div>
         </div>
-        {% endif %}
-        {% if not proceso.promesa_aceptado_vendedor and user == proceso.vendedor and proceso.estado in 'propuesta_aceptada,promesa_observacion' %}
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
-            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'promesa' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm">✅ Aceptar Promesa (Vendedor)</button>
-            </form>
-            <button onclick="document.getElementById('obj-promesa-{{ proceso.id }}-vendedor').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
-            <div id="obj-promesa-{{ proceso.id }}-vendedor" style="display:none;width:100%;margin-top:4px;">
-                <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-                    {% csrf_token %}
-                    <input type="text" name="texto" placeholder="Razón de la objeción*" required style="flex:1;min-width:150px;padding:4px 6px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.75rem;">
-                    <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
-                    <button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button>
-                </form>
+        <!-- COLUMNA VENDEDOR -->
+        <div class="whatsapp-col col-vendedor">
+            <div class="whatsapp-col-header">👤 Vendedor</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.promesa_documento %}
+                    <div class="whatsapp-bubble system">⏳ Esperando que el corredor suba la Promesa...</div>
+                {% elif proceso.promesa_aceptado_vendedor %}
+                    <div class="whatsapp-bubble vendedor"><div class="bubble-author">✅ Aceptaste la Promesa</div><div class="bubble-time">{{ proceso.promesa_aceptado_vendedor_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == proceso.vendedor %}
+                    <div class="whatsapp-bubble vendedor"><div class="bubble-author">📄 Revisa la Promesa (R{{ proceso.promesa_ronda }})</div>
+                    <div class="whatsapp-actions">
+                        <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'promesa' %}">{% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                        <button onclick="document.getElementById('obj-pv-{{ proceso.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                    </div>
+                    <div id="obj-pv-{{ proceso.id }}" style="display:none;margin-top:4px;">
+                        <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data">{% csrf_token %}<input type="text" name="texto" placeholder="Razon*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><input type="file" name="archivo" accept=".pdf" style="font-size:0.6rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar</button></form>
+                    </div>
+                    </div>
+                {% else %}
+                    {% if proceso.promesa_aceptado_vendedor %}
+                    <div class="whatsapp-bubble vendedor"><div class="bubble-author">✅ Vendedor acepto</div><div class="bubble-time">{{ proceso.promesa_aceptado_vendedor_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}
+                    <div class="whatsapp-bubble vendedor"><div class="bubble-author">⏳ Pendiente</div></div>
+                    {% endif %}
+                {% endif %}
             </div>
         </div>
-        {% endif %}
-
-        <!-- Observaciones en Promesa -->
-        {% if proceso.estado in 'propuesta_aceptada,promesa_observacion' and user == proceso.comprador or user == proceso.vendedor or user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'agregar_observacion_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-            {% csrf_token %}
-            <input type="text" name="texto" placeholder="Observación (opcional para corredor)" style="width:100%;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-            <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
-            <button type="submit" class="btn btn-outline btn-sm">💬 Agregar</button>
-        </form>
-        {% endif %}
-        {% endif %}
-</div>
-
-<!-- ===== ETAPA 2: INSTRUCCIONES NOTARIALES ===== -->
-<div style="margin-bottom:10px;">
-    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">📋 <u>Instrucciones Notariales</u>
-        {% if proceso.instrucciones_aceptado_at %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Aceptadas {{ proceso.instrucciones_aceptado_at|date:'d/m/Y H:i' }}</span>{% endif %}
-    </div>
-
-    {% if proceso.estado == 'promesa_aceptada' or proceso.estado == 'instrucciones_observacion' %}
-        {% if not proceso.instrucciones_documento %}
-            {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-            <form method="POST" action="{% url 'subir_instrucciones_notariales' proceso.id %}" enctype="multipart/form-data" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="file" name="documento" accept=".pdf" required style="font-size:0.75rem;">
-                <button type="submit" class="btn btn-primary btn-sm">📋 Subir Instrucciones</button>
-            </form>
-            {% endif %}
-        {% else %}
-            <div style="font-size:0.8rem;">📋 <a href="{{ proceso.instrucciones_documento.url }}" target="_blank">Descargar Instrucciones (PDF)</a></div>
-            <div style="font-size:0.75rem;color:var(--ds-text-secondary);">Ronda: {{ proceso.instrucciones_ronda }}</div>
-
-            <div style="display:flex;gap:12px;margin-top:4px;font-size:0.8rem;">
-                <span>Vendedor: {% if proceso.instrucciones_aceptado_vendedor %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
-                <span>Comprador: {% if proceso.instrucciones_aceptado_comprador %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}</span>
+        <!-- COLUMNA COMPRADOR -->
+        <div class="whatsapp-col col-comprador">
+            <div class="whatsapp-col-header">👤 Comprador</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.promesa_documento %}
+                    <div class="whatsapp-bubble system">⏳ Esperando que el corredor suba la Promesa...</div>
+                {% elif proceso.promesa_aceptado_comprador %}
+                    <div class="whatsapp-bubble comprador"><div class="bubble-author">✅ Aceptaste la Promesa</div><div class="bubble-time">{{ proceso.promesa_aceptado_comprador_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == proceso.comprador %}
+                    <div class="whatsapp-bubble comprador"><div class="bubble-author">📄 Revisa la Promesa (R{{ proceso.promesa_ronda }})</div>
+                    <div class="whatsapp-actions">
+                        <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'promesa' %}">{% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                        <button onclick="document.getElementById('obj-pc-{{ proceso.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                    </div>
+                    <div id="obj-pc-{{ proceso.id }}" style="display:none;margin-top:4px;">
+                        <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'promesa' %}" enctype="multipart/form-data">{% csrf_token %}<input type="text" name="texto" placeholder="Razon*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><input type="file" name="archivo" accept=".pdf" style="font-size:0.6rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar</button></form>
+                    </div>
+                    </div>
+                {% else %}
+                    {% if proceso.promesa_aceptado_comprador %}
+                    <div class="whatsapp-bubble comprador"><div class="bubble-author">✅ Comprador acepto</div><div class="bubble-time">{{ proceso.promesa_aceptado_comprador_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}
+                    <div class="whatsapp-bubble comprador"><div class="bubble-author">⏳ Pendiente</div></div>
+                    {% endif %}
+                {% endif %}
             </div>
-
-            {% if not proceso.instrucciones_aceptado_comprador and user == proceso.comprador %}
-            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'instrucciones' %}" style="margin-top:4px;">
-                {% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar Instrucciones (Comprador)</button>
-            </form>
-            {% endif %}
-            {% if not proceso.instrucciones_aceptado_vendedor and user == proceso.vendedor %}
-            <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'instrucciones' %}" style="margin-top:4px;">
-                {% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar Instrucciones (Vendedor)</button>
-            </form>
-            {% endif %}
-
-            {% if proceso.estado == 'instrucciones_observacion' and user == proceso.comprador or user == proceso.vendedor or user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-            <form method="POST" action="{% url 'agregar_observacion_proceso' proceso.id 'instrucciones' %}" enctype="multipart/form-data" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-                {% csrf_token %}
-                <input type="text" name="texto" placeholder="Observación" style="width:100%;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-                <input type="file" name="archivo" accept=".pdf" style="font-size:0.7rem;max-width:100px;">
-                <button type="submit" class="btn btn-outline btn-sm">💬 Agregar</button>
-            </form>
-            {% endif %}
-        {% endif %}
-    {% elif proceso.estado == 'instrucciones_aceptada' or proceso.estado == 'contrato_pendiente' or proceso.estado == 'contrato_listo' or proceso.estado == 'firma_notarial' or proceso.estado == 'escritura_cbr' or proceso.estado == 'escritura_aprobada' or proceso.estado == 'escritura_rechazada' or proceso.estado == 'cancelado' or proceso.estado == 'finalizado' %}
-        {% if proceso.instrucciones_documento %}
-        <div style="font-size:0.8rem;">📋 <a href="{{ proceso.instrucciones_documento.url }}" target="_blank">Descargar Instrucciones (PDF)</a></div>
-        <span style="color:var(--ds-success);font-size:0.75rem;">✅ Aceptadas</span>
-        {% endif %}
-    {% endif %}
+        </div>
+    </div>
 </div>
 
-<!-- ===== ETAPA 3: CONTRATO DE COMPRAVENTA + NOTARÍA ===== -->
-<div style="margin-bottom:10px;">
-    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">📝 <u>Contrato de Compraventa</u>
-        {% if proceso.contrato_firmado %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Firmado {{ proceso.contrato_firmado_at|date:'d/m/Y' }}</span>{% endif %}
+<!-- ETAPA 2: INSTRUCCIONES -->
+<div class="etapa-card">
+    <div class="etapa-card-header {% if proceso.instrucciones_aceptado_at %}done{% elif proceso.instrucciones_documento %}{% else %}pendiente{% endif %}">
+        <span><span class="status-dot {% if proceso.instrucciones_aceptado_at %}done{% elif proceso.instrucciones_documento %}current{% else %}pending{% endif %}"></span> 2. Instrucciones Notariales</span>
+        <span style="font-size:0.7rem;font-weight:400;">{% if proceso.instrucciones_aceptado_at %}✅ Aceptadas {{ proceso.instrucciones_aceptado_at|date:'d/m/Y' }}{% elif proceso.instrucciones_documento %}📋 Subidas — R{{ proceso.instrucciones_ronda }}{% else %}⏳ Pendiente{% endif %}</span>
     </div>
-
-    {% if proceso.estado == 'instrucciones_aceptada' or proceso.estado == 'contrato_pendiente' %}
-        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'subir_contrato_notaria' proceso.id %}" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-            {% csrf_token %}
-            <input type="file" name="contrato_documento" accept=".pdf" required style="font-size:0.75rem;">
-            <input type="text" name="notaria_nombre" placeholder="Nombre notaría" required style="width:120px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
-            <input type="text" name="notaria_direccion" placeholder="Dirección" required style="width:120px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
-            <input type="date" name="notaria_fecha" required style="width:110px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
-            <input type="time" name="notaria_hora" required style="width:80px;padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.7rem;">
-            <button type="submit" class="btn btn-primary btn-sm">💾 Guardar todo</button>
-        </form>
-        {% endif %}
-    {% endif %}
-
-    {% if proceso.contrato_documento %}
-    <div style="font-size:0.8rem;">📝 <a href="{{ proceso.contrato_documento.url }}" target="_blank">Descargar Contrato (PDF)</a></div>
-    {% endif %}
-
-    {% if proceso.notaria_nombre %}
-    <div style="font-size:0.8rem;padding:6px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);margin-top:4px;">
-        🏛️ <strong>{{ proceso.notaria_nombre }}</strong> · 📍 {{ proceso.notaria_direccion }}<br>
-        📆 {{ proceso.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ proceso.notaria_hora|time:'H:i' }}
+    <div class="whatsapp-container">
+        <div class="whatsapp-col col-corredor">
+            <div class="whatsapp-col-header">🏢 Corredor</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.promesa_aceptado_at %}<div class="whatsapp-bubble system">⏳ Pendiente de Promesa...</div>
+                {% elif not proceso.instrucciones_documento %}
+                    {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+                    <div class="whatsapp-bubble corredor">📤 Subir Instrucciones<form method="POST" action="{% url 'subir_instrucciones_notariales' proceso.id %}" enctype="multipart/form-data" style="margin-top:4px;">{% csrf_token %}<input type="file" name="documento" accept=".pdf" required style="font-size:0.63rem;max-width:120px;"><button type="submit" class="btn btn-primary btn-sm">📤 Subir</button></form></div>
+                    {% else %}<div class="whatsapp-bubble system">⏳ Corredor subira Instrucciones...</div>{% endif %}
+                {% else %}
+                    <div class="whatsapp-bubble corredor"><div class="bubble-author">📋 Instrucciones (R{{ proceso.instrucciones_ronda }})</div><a href="{{ proceso.instrucciones_documento.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 PDF</a><div class="bubble-time">Subio {{ proceso.instrucciones_subido_por.get_full_name|default:proceso.instrucciones_subido_por.email }}</div>
+                    {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}<div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">V: {% if proceso.instrucciones_aceptado_vendedor %}✅{% else %}❌/⏳{% endif %} · C: {% if proceso.instrucciones_aceptado_comprador %}✅{% else %}❌/⏳{% endif %}</div>
+                    {% if not proceso.instrucciones_aceptado_at %}<div style="margin-top:6px;padding-top:6px;border-top:1px solid #90caf9;">
+                    <button onclick="document.getElementById('reemplazo-inst-{{ proceso.id }}').style.display='block'" class="btn btn-outline btn-sm" style="font-size:0.6rem;">🔄 Reemplazar documento</button>
+                    <div id="reemplazo-inst-{{ proceso.id }}" style="display:none;margin-top:4px;">
+                        <form method="POST" action="{% url 'subir_instrucciones_notariales' proceso.id %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="file" name="documento" accept=".pdf" required style="font-size:0.63rem;max-width:120px;">
+                            <button type="submit" class="btn btn-primary btn-sm">📤 Subir nueva version</button>
+                        </form>
+                    </div>
+                    </div>{% endif %}{% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="whatsapp-col col-vendedor">
+            <div class="whatsapp-col-header">👤 Vendedor</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.promesa_aceptado_at %}<div class="whatsapp-bubble system">⏳ Pendiente de Promesa...</div>
+                {% elif not proceso.instrucciones_documento %}<div class="whatsapp-bubble system">⏳ Esperando Instrucciones...</div>
+                {% elif proceso.instrucciones_aceptado_vendedor %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">✅ Aceptaste las Instrucciones</div><div class="bubble-time">{{ proceso.instrucciones_aceptado_vendedor_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == proceso.vendedor %}
+                    <div class="whatsapp-bubble vendedor"><div class="bubble-author">📋 Revisa Instrucciones (R{{ proceso.instrucciones_ronda }})</div>
+                    <div class="whatsapp-actions">
+                        <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'instrucciones' %}">{% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                        <button onclick="document.getElementById('obj-iv-{{ proceso.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                    </div>
+                    <div id="obj-iv-{{ proceso.id }}" style="display:none;margin-top:4px;">
+                        <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'instrucciones' %}" enctype="multipart/form-data">{% csrf_token %}<input type="text" name="texto" placeholder="Razon*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><input type="file" name="archivo" accept=".pdf" style="font-size:0.6rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar</button></form>
+                    </div>
+                    </div>
+                {% else %}
+                    {% if proceso.instrucciones_aceptado_vendedor %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">✅ Vendedor acepto</div><div class="bubble-time">{{ proceso.instrucciones_aceptado_vendedor_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">⏳ Pendiente</div></div>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <div class="whatsapp-col col-comprador">
+            <div class="whatsapp-col-header">👤 Comprador</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.promesa_aceptado_at %}<div class="whatsapp-bubble system">⏳ Pendiente de Promesa...</div>
+                {% elif not proceso.instrucciones_documento %}<div class="whatsapp-bubble system">⏳ Esperando Instrucciones...</div>
+                {% elif proceso.instrucciones_aceptado_comprador %}<div class="whatsapp-bubble comprador"><div class="bubble-author">✅ Aceptaste las Instrucciones</div><div class="bubble-time">{{ proceso.instrucciones_aceptado_comprador_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == proceso.comprador %}
+                    <div class="whatsapp-bubble comprador"><div class="bubble-author">📋 Revisa Instrucciones (R{{ proceso.instrucciones_ronda }})</div>
+                    <div class="whatsapp-actions">
+                        <form method="POST" action="{% url 'aceptar_documento_proceso' proceso.id 'instrucciones' %}">{% csrf_token %}<button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                        <button onclick="document.getElementById('obj-ic-{{ proceso.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                    </div>
+                    <div id="obj-ic-{{ proceso.id }}" style="display:none;margin-top:4px;">
+                        <form method="POST" action="{% url 'objetar_documento_proceso' proceso.id 'instrucciones' %}" enctype="multipart/form-data">{% csrf_token %}<input type="text" name="texto" placeholder="Razon*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><input type="file" name="archivo" accept=".pdf" style="font-size:0.6rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar</button></form>
+                    </div>
+                    </div>
+                {% else %}
+                    {% if proceso.instrucciones_aceptado_comprador %}<div class="whatsapp-bubble comprador"><div class="bubble-author">✅ Comprador acepto</div><div class="bubble-time">{{ proceso.instrucciones_aceptado_comprador_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}<div class="whatsapp-bubble comprador"><div class="bubble-author">⏳ Pendiente</div></div>{% endif %}
+                {% endif %}
+            </div>
+        </div>
     </div>
-    {% endif %}
-
-    {% if proceso.estado == 'contrato_listo' and not proceso.contrato_firmado %}
-        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'marcar_firma_notarial' proceso.id %}" style="margin-top:4px;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-success btn-sm">✅ Marcar firma notarial realizada</button>
-        </form>
-        {% endif %}
-    {% endif %}
-
-    {% if proceso.contrato_firmado %}
-    <div style="font-size:0.8rem;color:var(--ds-success);">✅ Firma notarial realizada {{ proceso.contrato_firmado_at|date:'d/m/Y H:i' }}</div>
-    {% endif %}
 </div>
 
-<!-- ===== ETAPA 4: INSCRIPCIÓN CBR ===== -->
-<div style="margin-bottom:10px;">
-    <div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">🏛️ <u>Conservador de Bienes Raíces</u>
-        {% if proceso.escritura_aprobada %}<span style="color:var(--ds-success);font-size:0.75rem;">✅ Inscrita {{ proceso.escritura_resultado_at|date:'d/m/Y' }}</span>{% endif %}
-        {% if proceso.estado == 'escritura_rechazada' %}<span style="color:var(--ds-error);font-size:0.75rem;">❌ Rechazada</span>{% endif %}
+<!-- ETAPA 3: CONTRATO + FIRMA NOTARIAL + PAGOS -->
+<div class="etapa-card">
+    <div class="etapa-card-header {% if proceso.contrato_firmado %}done{% elif proceso.contrato_documento %}{% else %}pendiente{% endif %}">
+        <span><span class="status-dot {% if proceso.contrato_firmado %}done{% elif proceso.contrato_documento %}current{% else %}pending{% endif %}"></span> 3. Validacion Contrato Compraventa y Pagos</span>
+        <span style="font-size:0.7rem;font-weight:400;">
+            {% if proceso.contrato_firmado %}✅ Firmado {{ proceso.contrato_firmado_at|date:'d/m/Y' }}
+            {% elif proceso.contrato_documento %}📝 Contrato + Notaria listos
+            {% else %}⏳ Pendiente{% endif %}
+        </span>
     </div>
-
-    {% if proceso.estado == 'firma_notarial' %}
-        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="margin-top:4px;">
-            {% csrf_token %}
-            <input type="hidden" name="accion" value="iniciar">
-            <button type="submit" class="btn btn-primary btn-sm">🏛️ Marcar ingreso a CBR</button>
-        </form>
-        {% endif %}
-    {% endif %}
-
-    {% if proceso.escritura_ingresada_at %}
-    <div style="font-size:0.8rem;">📋 Ingresada a CBR: {{ proceso.escritura_ingresada_at|date:'d/m/Y H:i' }}</div>
-    {% endif %}
-
-    {% if proceso.estado == 'escritura_cbr' or proceso.estado == 'escritura_rechazada' %}
-        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="display:flex;gap:4px;align-items:center;margin-top:4px;">
-            {% csrf_token %}
-            <input type="hidden" name="accion" value="resultado">
-            <select name="resultado" required style="padding:4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-                <option value="">Seleccionar resultado...</option>
-                <option value="aprobada">✅ Aprobada</option>
-                <option value="rechazada">❌ Rechazada</option>
-            </select>
-            <button type="submit" class="btn btn-primary btn-sm">💾 Registrar resultado</button>
-        </form>
-        {% endif %}
-    {% endif %}
-
-    {% if proceso.estado == 'escritura_aprobada' and not proceso.escritura_comunicado %}
-        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="margin-top:4px;">
-            {% csrf_token %}
-            <input type="hidden" name="accion" value="comunicar_aprobacion">
-            <button type="submit" class="btn btn-success btn-sm">📢 Comunicar aprobación y finalizar</button>
-        </form>
-        {% endif %}
-    {% endif %}
-
-    {% if proceso.escritura_comunicado %}
-    <div style="font-size:0.8rem;color:var(--ds-success);font-weight:600;">✅ Resultado comunicado a las partes {{ proceso.escritura_comunicado_at|date:'d/m/Y H:i' }}</div>
-    {% endif %}
+    <div class="whatsapp-container">
+        <div class="whatsapp-col col-corredor">
+            <div class="whatsapp-col-header">🏢 Corredor</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.instrucciones_aceptado_at %}<div class="whatsapp-bubble system">⏳ Pendiente Instrucciones Notariales...</div>
+                {% elif not proceso.contrato_documento %}
+                    {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📝 Subir Contrato + Datos Notaria</div>
+                        <form method="POST" action="{% url 'subir_contrato_notaria' proceso.id %}" enctype="multipart/form-data" style="margin-top:4px;">
+                            {% csrf_token %}
+                            <input type="file" name="contrato_documento" accept=".pdf" required style="font-size:0.63rem;max-width:120px;">
+                            <input type="text" name="notaria_nombre" placeholder="Notaria" required style="font-size:0.63rem;width:100%;margin-top:3px;">
+                            <input type="text" name="notaria_direccion" placeholder="Direccion" required style="font-size:0.63rem;width:100%;margin-top:3px;">
+                            <div style="display:flex;gap:4px;margin-top:3px;">
+                                <input type="date" name="notaria_fecha" required style="font-size:0.63rem;flex:1;">
+                                <input type="time" name="notaria_hora" required style="font-size:0.63rem;width:60px;">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">💾 Guardar</button>
+                        </form>
+                    </div>
+                    {% else %}<div class="whatsapp-bubble system">⏳ Corredor preparara Contrato + Notaria...</div>{% endif %}
+                {% else %}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📝 Contrato subido</div>
+                        <a href="{{ proceso.contrato_documento.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 PDF</a>
+                    </div>
+                    {% if proceso.notaria_nombre %}
+                    <div class="whatsapp-bubble corredor" style="margin-top:2px;">
+                        <div class="bubble-author">🏛️ {{ proceso.notaria_nombre }}</div>
+                        <div>📍 {{ proceso.notaria_direccion }}</div>
+                        <div>📆 {{ proceso.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ proceso.notaria_hora|time:'H:i' }}</div>
+                    </div>{% endif %}
+                    {% if not proceso.contrato_firmado %}
+                        {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+                        <div style="margin-top:4px;padding-top:6px;border-top:1px solid #90caf9;">
+                            <div style="font-size:0.65rem;color:var(--ds-text-muted);margin-bottom:4px;">Las partes firman en Notaria y entregan vales vista. Marca cuando este realizado:</div>
+                            <form method="POST" action="{% url 'marcar_firma_notarial' proceso.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">✅ Contrato Firmado</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="whatsapp-bubble corredor" style="background:#e8f5e9;border-color:#a5d6a7;margin-top:2px;">
+                            <div class="bubble-author">✅ Contrato firmado en Notaria</div>
+                            <div class="bubble-time">{{ proceso.contrato_firmado_at|date:'d/m/Y H:i' }}</div>
+                            <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:2px;">➡️ Avanzar a Inscripcion CBR</div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <div class="whatsapp-col col-vendedor">
+            <div class="whatsapp-col-header">👤 Vendedor</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.instrucciones_aceptado_at %}<div class="whatsapp-bubble system">⏳ Pendiente...</div>
+                {% elif not proceso.contrato_documento %}<div class="whatsapp-bubble system">⏳ Corredor preparara Contrato + Notaria...</div>
+                {% else %}
+                    <div class="whatsapp-bubble vendedor">
+                        <div class="bubble-author">📝 Contrato listo</div>
+                        {% if proceso.notaria_nombre %}<div class="bubble-time">Notaria: {{ proceso.notaria_nombre }}</div>{% endif %}
+                    </div>
+                    {% if proceso.contrato_firmado %}<div class="whatsapp-bubble system" style="margin-top:4px;background:#e8f5e9;border-color:#a5d6a7;">✅ Firmado {{ proceso.contrato_firmado_at|date:'d/m/Y' }}</div>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <div class="whatsapp-col col-comprador">
+            <div class="whatsapp-col-header">👤 Comprador</div>
+            <div class="whatsapp-col-body">
+                {% if not proceso.instrucciones_aceptado_at %}<div class="whatsapp-bubble system">⏳ Pendiente...</div>
+                {% elif not proceso.contrato_documento %}<div class="whatsapp-bubble system">⏳ Corredor preparara Contrato + Notaria...</div>
+                {% else %}
+                    <div class="whatsapp-bubble comprador">
+                        <div class="bubble-author">📝 Contrato listo</div>
+                        {% if proceso.notaria_nombre %}<div class="bubble-time">Notaria: {{ proceso.notaria_nombre }}</div>{% endif %}
+                    </div>
+                    {% if proceso.contrato_firmado %}<div class="whatsapp-bubble system" style="margin-top:4px;background:#e8f5e9;border-color:#a5d6a7;">✅ Firmado {{ proceso.contrato_firmado_at|date:'d/m/Y' }}</div>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- ===== REACTIVAR COMPETIDORES (SOLO CORREDOR) ===== -->
-{% if proceso.otros_pausados %}
-    {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
-    <hr style="margin:8px 0;border:none;border-top:1px solid var(--ds-error);">
-    <div style="background:#fff0f0;padding:10px;border-radius:8px;border:2px solid var(--ds-error);">
-        <div style="font-weight:700;font-size:0.85rem;color:var(--ds-error);margin-bottom:6px;">⚠️ Reactivar competidores</div>
-        <p style="font-size:0.75rem;margin:0 0 6px;">Si el comprador <strong>no cumple</strong> con la Promesa de Compraventa, puedes reactivar los otros procesos y cancelar este.</p>
-        <form method="POST" action="{% url 'reactivar_competidores' proceso.id %}" onsubmit="return confirm('¿Estás seguro? Se cancelará este proceso y se reactivarán todos los demás interesados. Esta acción no se puede deshacer.');">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger btn-sm">🔄 Reactivar competidores y cancelar proceso</button>
-        </form>
+<!-- ETAPA 4: INSCRIPCION CBR + CIERRE -->
+<div class="etapa-card">
+    <div class="etapa-card-header {% if proceso.estado == 'finalizado' %}done{% elif proceso.escritura_ingresada_at or proceso.estado in 'escritura_cbr,escritura_rechazada' %}{% else %}pendiente{% endif %}">
+        <span><span class="status-dot {% if proceso.estado == 'finalizado' %}done{% elif proceso.escritura_ingresada_at %}current{% else %}pending{% endif %}"></span> 4. Inscripcion CBR y Cierre</span>
+        <span style="font-size:0.7rem;font-weight:400;">
+            {% if proceso.estado == 'finalizado' %}✅ Completado {{ proceso.completado_at|date:'d/m/Y' }}
+            {% elif proceso.estado == 'cancelado' %}❌ Cancelado
+            {% elif proceso.escritura_resultado == 'aprobada' %}✅ Inscrita {{ proceso.escritura_resultado_at|date:'d/m/Y' }}
+            {% elif proceso.estado == 'escritura_rechazada' %}❌ Rechazada {{ proceso.escritura_resultado_at|date:'d/m/Y' }}
+            {% elif proceso.escritura_ingresada_at %}📋 Ingresada {{ proceso.escritura_ingresada_at|date:'d/m/Y' }}
+            {% else %}⏳ Pendiente{% endif %}
+        </span>
     </div>
-    {% endif %}
-{% endif %}
-
-<!-- ===== OBSERVACIONES DEL PROCESO ===== -->
-{% with obs_promesa=proceso.observaciones.all|dictsortreversed:"created_at" %}
-{% if obs_promesa %}
-<hr style="margin:8px 0;border:none;border-top:1px solid var(--ds-border-light);">
-<div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">💬 Observaciones</div>
-{% for obs in obs_promesa|slice:":5" %}
-<div style="font-size:0.75rem;padding:4px 0;border-bottom:1px solid var(--ds-border-light);">
-    <strong>{{ obs.autor.get_full_name|default:obs.autor.email }}</strong>
-    <span style="color:var(--ds-text-secondary);">({{ obs.get_etapa_display }} R{{ obs.ronda }})</span>
-    <span style="color:var(--ds-text-secondary);">{{ obs.created_at|date:'d/m/Y H:i' }}</span>
-    <div>{{ obs.texto|truncatechars:120 }}</div>
-    {% if obs.archivo %}<div>📎 <a href="{{ obs.archivo.url }}" target="_blank">Descargar adjunto</a></div>{% endif %}
+    <div class="whatsapp-container">
+        <div class="whatsapp-col col-corredor">
+            <div class="whatsapp-col-header">🏢 Corredor</div>
+            <div class="whatsapp-col-body">
+                {% if proceso.estado == 'finalizado' %}
+                    <div class="whatsapp-bubble corredor" style="background:#e8f5e9;border-color:#a5d6a7;">
+                        <div class="bubble-author">🎉 Proceso completado</div>
+                        <div class="bubble-time">{{ proceso.completado_at|date:'d/m/Y H:i' }}</div>
+                    </div>
+                {% elif proceso.estado == 'cancelado' %}
+                    <div class="whatsapp-bubble corredor" style="background:#ffebee;border-color:#ef9a9a;">
+                        <div class="bubble-author" style="color:#c62828;">❌ Cancelado</div>
+                    </div>
+                {% elif not proceso.contrato_firmado %}
+                    <div class="whatsapp-bubble system">⏳ Pendiente firma en Notaria...</div>
+                {% elif not proceso.escritura_ingresada_at %}
+                    {# --- PASO 1: Boton unico "Inscripcion iniciada" (desaparece al usarse) --- #}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">🏛️ Ingresar expediente al CBR</div>
+                        <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-bottom:4px;">Indica a las partes que el expediente fue ingresado al Conservador de Bienes Raices:</div>
+                        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="iniciar">
+                            <button type="submit" class="btn btn-primary btn-sm">📋 Inscripcion iniciada</button>
+                        </form>
+                    </div>
+                {% else %}
+                    {# --- PASO 2: Aviso ingreso + Input docs CBR + Select resultado + Boton de cierre --- #}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📋 Inscripcion iniciada</div>
+                        <div class="bubble-time">{{ proceso.escritura_ingresada_at|date:'d/m/Y H:i' }}</div>
+                    </div>
+                    <div class="whatsapp-bubble corredor" style="margin-top:4px;">
+                        <div class="bubble-author">📬 Documentos del CBR</div>
+                        <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-bottom:4px;">Adjunta los documentos emitidos por el Conservador como respuesta del proceso. Puedes seleccionar varios archivos manteniendo presionada la tecla <strong>Ctrl</strong> (Windows) o <strong>Cmd</strong> (Mac) mientras haces clic en cada archivo.</div>
+                        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="cerrar">
+                            <input type="file" name="docs_cbr" accept=".pdf" multiple required style="font-size:0.63rem;max-width:100%;">
+                            <div style="margin-top:4px;">
+                                <select name="resultado" required style="font-size:0.63rem;padding:2px;width:100%;">
+                                    <option value="">Resultado del CBR...</option>
+                                    <option value="aprobada">✅ Aprobada</option>
+                                    <option value="rechazada">❌ Rechazada</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">📤 Subir documentos y cerrar proceso</button>
+                        </form>
+                    </div>
+                {% endif %}
+                {% if proceso.otros_pausados %}{% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+                <div class="whatsapp-bubble corredor" style="margin-top:8px;background:#ffebee;border-color:#ef9a9a;">
+                    <div class="bubble-author" style="color:#c62828;">⚠️ Reactivar competidores</div>
+                    <form method="POST" action="{% url 'reactivar_competidores' proceso.id %}" style="margin-top:4px;" onsubmit="return confirm('¿Cancelar este proceso y reactivar los demas?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">🔄 Reactivar</button>
+                    </form>
+                </div>{% endif %}{% endif %}
+            </div>
+        </div>
+        <div class="whatsapp-col col-vendedor">
+            <div class="whatsapp-col-header">👤 Vendedor</div>
+            <div class="whatsapp-col-body">
+                {% if proceso.estado == 'finalizado' %}<div class="whatsapp-bubble vendedor" style="background:#e8f5e9;"><div class="bubble-author">🎉 Operacion finalizada</div></div>
+                {% elif proceso.estado == 'cancelado' %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">❌ Cancelado</div></div>
+                {% elif not proceso.contrato_firmado %}<div class="whatsapp-bubble system">⏳ Pendiente firma...</div>
+                {% elif proceso.escritura_resultado == 'aprobada' %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">🏛️ ✅ Inscripcion aprobada</div><div class="bubble-time">{{ proceso.escritura_resultado_at|date:'d/m/Y' }}</div></div>
+                {% elif proceso.estado == 'escritura_rechazada' %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">🏛️ ❌ Rechazada</div><div class="bubble-time">{{ proceso.escritura_resultado_at|date:'d/m/Y' }}</div></div>
+                {% elif proceso.escritura_ingresada_at %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">📋 En tramite</div><div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:2px;">⏳ Esperando respuesta del CBR</div></div>
+                {% else %}<div class="whatsapp-bubble system">⏳ Pendiente ingreso</div>{% endif %}
+            </div>
+        </div>
+        <div class="whatsapp-col col-comprador">
+            <div class="whatsapp-col-header">👤 Comprador</div>
+            <div class="whatsapp-col-body">
+                {% if proceso.estado == 'finalizado' %}<div class="whatsapp-bubble comprador" style="background:#e8f5e9;"><div class="bubble-author">🎉 Operacion finalizada</div></div>
+                {% elif proceso.estado == 'cancelado' %}<div class="whatsapp-bubble comprador"><div class="bubble-author">❌ Cancelado</div></div>
+                {% elif not proceso.contrato_firmado %}<div class="whatsapp-bubble system">⏳ Pendiente firma...</div>
+                {% elif proceso.escritura_resultado == 'aprobada' %}<div class="whatsapp-bubble comprador"><div class="bubble-author">🏛️ ✅ Inscripcion aprobada</div><div class="bubble-time">{{ proceso.escritura_resultado_at|date:'d/m/Y' }}</div></div>
+                {% elif proceso.estado == 'escritura_rechazada' %}<div class="whatsapp-bubble comprador"><div class="bubble-author">🏛️ ❌ Rechazada</div><div class="bubble-time">{{ proceso.escritura_resultado_at|date:'d/m/Y' }}</div></div>
+                {% elif proceso.escritura_ingresada_at %}<div class="whatsapp-bubble comprador"><div class="bubble-author">📋 En tramite</div><div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:2px;">⏳ Esperando respuesta del CBR</div></div>
+                {% else %}<div class="whatsapp-bubble system">⏳ Pendiente ingreso</div>{% endif %}
+            </div>
+        </div>
+    </div>
 </div>
-{% endfor %}
-{% endif %}
-{% endwith %}
+
 </div>

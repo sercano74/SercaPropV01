@@ -150,10 +150,26 @@ def detalle_propiedad(request, prop_id):
     # Indexar propuestas por visita_id para acceso rápido
     propuestas_por_visita = {p.solicitud_visita_id: p for p in propuestas}
 
-    # Procesos de compra activos para esta propiedad
+    # Procesos de compra visibles: los activos (cualquier estado no terminal)
+    # + los finalizados/cancelados de los últimos 15 días desde su completado
+    quince_dias_atras = timezone.now() - timezone.timedelta(days=15)
     procesos_compra = ProcesoCompra.objects.filter(
         propiedad=propiedad
-    ).exclude(estado__in=["cancelado", "finalizado"]).select_related(
+    ).filter(
+        # Activos: cualquier estado excepto finalizado/cancelado
+        ~Q(estado__in=["finalizado", "cancelado"])
+        # O finalizados/cancelados pero dentro de los últimos 15 días
+        | Q(
+            estado__in=["finalizado", "cancelado"],
+            completado_at__gte=quince_dias_atras,
+        )
+        # O finalizados/cancelados sin completado_at pero con fecha_cierre de la propiedad dentro de 15 días
+        | Q(
+            estado__in=["finalizado", "cancelado"],
+            completado_at__isnull=True,
+            propiedad__fecha_cierre__gte=quince_dias_atras,
+        )
+    ).select_related(
         "propuesta__solicitud_visita__usuario", "comprador", "corredor"
     ).order_by("-created_at")
 
@@ -2660,121 +2676,148 @@ def marcar_firma_notarial(request, proceso_id):
 @login_required
 def iniciar_inscripcion_cbr(request, proceso_id):
     """
-    Corredor marca el inicio de la inscripción en el Conservador de Bienes Raíces.
+    Etapa 4 - Paso 1: Boton unico "Ingresar al CBR" que desaparece.
+    Paso 2: Input docs CBR + Select resultado + Boton de cierre.
+    Si aprobada -> finalizado, si rechazada -> escritura_rechazada.
     """
     proceso = get_object_or_404(ProcesoCompra, id=proceso_id)
 
     if not _puede_gestionar_proceso(request, proceso):
-        messages.error(request, "Solo el corredor puede gestionar la inscripción en CBR.")
-        return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
+        messages.error(request, 'No tienes permiso para gestionar este proceso.')
+        return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
 
-    if proceso.estado not in ("firma_notarial", "escritura_cbr", "escritura_rechazada"):
-        messages.error(request, "La firma notarial debe estar realizada primero.")
-        return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
+    if request.method == 'POST':
+        accion = request.POST.get('accion', '')
 
-    if request.method == "POST":
-        accion = request.POST.get("accion")
-
-        if accion == "iniciar":
-            proceso.estado = "escritura_cbr"
+        if accion == 'iniciar':
+            # Paso 1: Solo marcar que se ingreso al CBR, notificar a las partes
             proceso.escritura_ingresada_at = timezone.now()
-            proceso.save()
+            proceso.estado = 'escritura_cbr'
+            proceso.save(update_fields=['escritura_ingresada_at', 'estado', 'updated_at'])
 
-            _notificar(
-                recipient=proceso.comprador,
-                emitter=request.user,
-                source_type=SourceTypeChoices.CORREDOR,
-                title="📋 Escritura ingresada a CBR",
-                message=f"La escritura de {proceso.propiedad.display_name_public()} ha sido ingresada al Conservador de Bienes Raíces para su inscripción. Te informaremos cuando tengamos el resultado.",
-                property_id=proceso.propiedad.id,
-                related_object_id=proceso.id,
-            )
             _notificar(
                 recipient=proceso.vendedor,
                 emitter=request.user,
                 source_type=SourceTypeChoices.CORREDOR,
-                title="📋 Escritura ingresada a CBR",
-                message=f"La escritura de tu propiedad {proceso.propiedad.display_name_public()} ha sido ingresada al CBR.",
-                property_id=proceso.propiedad.id,
-                related_object_id=proceso.id,
+                title='Inscripcion iniciada en CBR',
+                message=f'La escritura de la propiedad {proceso.propiedad.display_name_public()} ha sido ingresada al Conservador de Bienes Raices.',
+                property_id=proceso.propiedad_id,
+            )
+            _notificar(
+                recipient=proceso.comprador,
+                emitter=request.user,
+                source_type=SourceTypeChoices.CORREDOR,
+                title='Inscripcion iniciada en CBR',
+                message=f'La escritura de la propiedad {proceso.propiedad.display_name_public()} ha sido ingresada al Conservador de Bienes Raices.',
+                property_id=proceso.propiedad_id,
             )
 
-            messages.success(request, "📋 Escritura ingresada a CBR. Debes monitorear hasta obtener el resultado.")
-            return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
+            messages.success(request, 'Inscripcion en CBR registrada. Se notifico a ambas partes.')
+            return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
 
-        elif accion == "resultado":
-            resultado = request.POST.get("resultado")
-            if resultado not in ("aprobada", "rechazada"):
-                messages.error(request, "Resultado inválido.")
-                return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
+        elif accion == 'cerrar':
+            # Paso 2: Subir docs CBR + resultado + cierre definitivo
+            resultado = request.POST.get('resultado', '')
+            if resultado not in ('aprobada', 'rechazada'):
+                messages.error(request, 'Debes seleccionar un resultado valido.')
+                return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
+
+            # Guardar documentos del CBR subidos (multiples archivos)
+            archivos_cbr = request.FILES.getlist('docs_cbr')
+            if not archivos_cbr:
+                messages.error(request, 'Debes subir al menos un documento emitido por el CBR.')
+                return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
+
+            for archivo in archivos_cbr:
+                ObservacionProceso.objects.create(
+                    proceso=proceso,
+                    autor=request.user,
+                    etapa='cierre',
+                    ronda=0,
+                    texto=f'Documento CBR - {resultado}',
+                    archivo=archivo,
+                )
+
+            # ===== MARCAR LA PROPIEDAD COMO VENDIDA SI SE APROBÓ =====
+            propiedad_obj = proceso.propiedad
+            if resultado == 'aprobada':
+                propiedad_obj.tipo_cierre = 'vendida'
+                propiedad_obj.fecha_cierre = timezone.now()
+                propiedad_obj.save(update_fields=['tipo_cierre', 'fecha_cierre', 'updated_at'])
 
             proceso.escritura_resultado = resultado
             proceso.escritura_resultado_at = timezone.now()
-
-            if resultado == "aprobada":
-                proceso.estado = "escritura_aprobada"
-            else:
-                proceso.estado = "escritura_rechazada"
-
-            proceso.save()
-
-            titulo = "✅ Escritura inscrita" if resultado == "aprobada" else "❌ Inscripción rechazada"
-            mensaje = (
-                f"¡La escritura de {proceso.propiedad.display_name_public()} ha sido inscrita exitosamente en el CBR! La operación está finalizada."
-                if resultado == "aprobada"
-                else f"La inscripción de {proceso.propiedad.display_name_public()} en el CBR ha sido rechazada. Se requiere gestionar las correcciones."
-            )
-
-            _notificar(
-                recipient=proceso.comprador,
-                emitter=request.user,
-                source_type=SourceTypeChoices.CORREDOR,
-                title=titulo,
-                message=mensaje,
-                property_id=proceso.propiedad.id,
-                related_object_id=proceso.id,
-            )
-            _notificar(
-                recipient=proceso.vendedor,
-                emitter=request.user,
-                source_type=SourceTypeChoices.CORREDOR,
-                title=titulo,
-                message=mensaje,
-                property_id=proceso.propiedad.id,
-                related_object_id=proceso.id,
-            )
-
-            if resultado == "aprobada":
-                proceso.escritura_comunicado = True
-                proceso.escritura_comunicado_at = timezone.now()
-                proceso.completado_at = timezone.now()
-                proceso.save(update_fields=["escritura_comunicado", "escritura_comunicado_at", "completado_at"])
-                messages.success(request, "✅ ¡Escritura inscrita! Operación finalizada. Se ha comunicado a las partes.")
-            else:
-                messages.warning(request, "❌ Inscripción rechazada. Se ha notificado a las partes.")
-            return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
-
-        elif accion == "comunicar_aprobacion":
-            if proceso.estado != "escritura_aprobada":
-                messages.error(request, "La escritura no está aprobada.")
-                return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
-
             proceso.escritura_comunicado = True
             proceso.escritura_comunicado_at = timezone.now()
             proceso.completado_at = timezone.now()
-            proceso.estado = "finalizado"
-            proceso.save()
+            proceso.estado = 'finalizado' if resultado == 'aprobada' else 'escritura_rechazada'
 
-            # Marcar propiedad como vendida retroactivamente desde completado_at
-            propiedad = proceso.propiedad
-            propiedad.tipo_cierre = "vendida"
-            propiedad.fecha_cierre = proceso.completado_at
-            propiedad.save(update_fields=["tipo_cierre", "fecha_cierre", "updated_at"])
+            proceso.save(update_fields=[
+                'escritura_resultado', 'estado', 'escritura_resultado_at',
+                'escritura_comunicado', 'escritura_comunicado_at', 'completado_at', 'updated_at'
+            ])
 
-            messages.success(request, "✅ Resultado comunicado. Operación finalizada.")
-            return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
+            # Notificar a ambas partes
+            if resultado == 'aprobada':
+                _notificar(
+                    recipient=proceso.vendedor,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.CORREDOR,
+                    title='Proceso de compra completado!',
+                    message=f'Felicitaciones! El proceso de compraventa de {proceso.propiedad.display_name_public()} ha sido completado exitosamente.',
+                    property_id=proceso.propiedad_id,
+                )
+                _notificar(
+                    recipient=proceso.comprador,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.CORREDOR,
+                    title='Proceso de compra completado!',
+                    message=f'Felicitaciones! El proceso de compraventa de {proceso.propiedad.display_name_public()} ha sido completado exitosamente. La propiedad ahora esta inscrita a tu nombre!',
+                    property_id=proceso.propiedad_id,
+                )
+                # Sugerir al gerente crear un Caso de Éxito
+                gerentes = User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True)
+                for gerente in gerentes:
+                    _notificar(
+                        recipient=gerente,
+                        emitter=request.user,
+                        source_type=SourceTypeChoices.CORREDOR,
+                        title='🏆 Sugerencia: Crear Caso de Éxito',
+                        message=(
+                            f'Se ha completado la venta de {proceso.propiedad.display_name_public()}. '
+                            f'¿Te gustaría crear un Caso de Éxito para destacar este logro? '
+                            f'Ingresa a Casos de Éxito y asocia la Propiedad #{proceso.propiedad.id}.'
+                        ),
+                        property_id=proceso.propiedad_id,
+                        related_object_id=proceso.id,
+                    )
+                messages.success(request, 'Proceso de compra completado exitosamente.')
+            else:
+                _notificar(
+                    recipient=proceso.vendedor,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.CORREDOR,
+                    title='Inscripcion rechazada',
+                    message=f'La inscripcion en CBR de {proceso.propiedad.display_name_public()} fue rechazada. Se requiere gestion adicional.',
+                    property_id=proceso.propiedad_id,
+                )
+                _notificar(
+                    recipient=proceso.comprador,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.CORREDOR,
+                    title='Inscripcion rechazada',
+                    message=f'La inscripcion en CBR de {proceso.propiedad.display_name_public()} fue rechazada. Se requiere gestion adicional.',
+                    property_id=proceso.propiedad_id,
+                )
+                messages.warning(request, 'Inscripcion rechazada por el CBR.')
 
-    return redirect("detalle_propiedad", prop_id=proceso.propiedad.id)
+            return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
+
+        messages.error(request, 'Accion no valida.')
+        return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
+
+    messages.error(request, 'Metodo no permitido.')
+    return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
 
 
 @login_required
@@ -2974,3 +3017,40 @@ def toggle_favorita(request, prop_id):
     if ref:
         return redirect(ref)
     return redirect("detalle_propiedad", prop_id=prop.id)
+
+# ===== STUBS for missing view functions =====
+
+@login_required
+def subir_orden_visita_firmada(request, *args, **kwargs):
+    messages.error(request, "Funcionalidad en mantenimiento.")
+    return redirect("home")
+
+
+@login_required
+def avanzar_a_instrucciones(request, *args, **kwargs):
+    messages.error(request, "Funcionalidad en mantenimiento.")
+    return redirect("home")
+
+
+@login_required
+def declarar_ronda_no_superada(request, *args, **kwargs):
+    messages.error(request, "Funcionalidad en mantenimiento.")
+    return redirect("home")
+
+
+@login_required
+def generar_afiche(request, *args, **kwargs):
+    messages.error(request, "Funcionalidad en mantenimiento.")
+    return redirect("home")
+
+
+@login_required
+def generar_story_instagram(request, *args, **kwargs):
+    messages.error(request, "Funcionalidad en mantenimiento.")
+    return redirect("home")
+
+
+@login_required
+def generar_afiche_facebook(request, *args, **kwargs):
+    messages.error(request, "Funcionalidad en mantenimiento.")
+    return redirect("home")

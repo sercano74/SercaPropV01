@@ -60,6 +60,15 @@
 <div class="hero-modern" style="padding:24px 32px;">
     <h1 style="font-size:2rem;">{{ p.comuna }}</h1>
     <h1 style="font-size:2rem;">{{ p.get_tipo_accion_display }} • {{ p.get_tipo_prop_display }} • 🆔{{p.id}}</h1>
+    {% if p.tipo_cierre == "vendida" %}
+    <div style="margin-top:12px;padding:10px 24px;background:#e8f5e9;border:3px solid #4caf50;border-radius:9999px;display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:1.1rem;color:#2e7d32;">
+        ✅ VENDIDA
+    </div>
+    {% elif p.tipo_cierre == "arrendada" %}
+    <div style="margin-top:12px;padding:10px 24px;background:#e8f5e9;border:3px solid #4caf50;border-radius:9999px;display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:1.1rem;color:#2e7d32;">
+        ✅ ARRENDADA
+    </div>
+    {% endif %}
 </div>
 
 <div class="detail-modern-grid">
@@ -196,6 +205,14 @@
                 {% if user == p.dueno and p.estado != 'archivada' %}
                 <button onclick="document.getElementById('modal-archivar').style.display='flex'" class="btn btn-danger btn-sm" style="text-decoration:none;cursor:pointer;">📁 Archivar propiedad</button>
                 {% endif %}
+                <!-- MARKETING MATERIALS (solo corredor, gerente, superadmin) -->
+                {% if user.is_authenticated and user.rol in 'corredor,gerente,superadmin' %}
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;width:100%;">
+                    <a href="{% url 'generar_afiche' p.id %}" class="btn btn-outline btn-sm" style="text-decoration:none;border-color:var(--ds-teal,#00A699);color:var(--ds-teal,#00A699);">🖼️ Afiche PDF</a>
+                    <a href="{% url 'generar_story_instagram' p.id %}" class="btn btn-outline btn-sm" style="text-decoration:none;border-color:var(--ds-teal,#00A699);color:var(--ds-teal,#00A699);">📱 Story IG</a>
+                    <a href="{% url 'generar_afiche_facebook' p.id %}" class="btn btn-outline btn-sm" style="text-decoration:none;border-color:var(--ds-teal,#00A699);color:var(--ds-teal,#00A699);">📘 FB Market</a>
+                </div>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -314,7 +331,17 @@
             <span class="badge-modern badge-modern-neutral" style="font-size:0.7rem;">{{ p.get_tipo_accion_display }}</span>
         </div>
 
-        {% if proceso_activo and proceso_activo.estado in 'promesa_aceptada,instrucciones_aceptada,contrato_pendiente,contrato_listo,firma_notarial,escritura_cbr' %}
+        {% if p.tipo_cierre == "vendida" %}
+        <div class="alert-modern" style="background:#e8f5e9;border:3px solid #4caf50;border-radius:10px;padding:16px;">
+            <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px;">✅ Propiedad VENDIDA</div>
+            <p style="font-size:0.85rem;margin:0;">Esta propiedad ya ha sido vendida exitosamente. No se aceptan nuevas solicitudes de visita.</p>
+        </div>
+        {% elif p.tipo_cierre == "arrendada" %}
+        <div class="alert-modern" style="background:#e8f5e9;border:3px solid #4caf50;border-radius:10px;padding:16px;">
+            <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px;">✅ Propiedad ARRENDADA</div>
+            <p style="font-size:0.85rem;margin:0;">Esta propiedad ya ha sido arrendada exitosamente. No se aceptan nuevas solicitudes de visita.</p>
+        </div>
+        {% elif proceso_activo and proceso_activo.estado in 'propuesta_aceptada,promesa_aceptada,instrucciones_aceptada,contrato_pendiente,contrato_listo,firma_notarial,escritura_cbr' %}
         <div class="alert-modern" style="background:#fff3cd;border:2px solid #ffc107;border-radius:10px;padding:16px;">
             <div style="font-weight:700;font-size:1rem;margin-bottom:4px;">🔒 Propiedad en proceso de compra</div>
             <p style="font-size:0.85rem;margin:0;">Esta propiedad está actualmente en proceso de compra con otro comprador. No se pueden solicitar nuevas visitas por ahora. Si el proceso no se concreta, se reactivarán las solicitudes.</p>
@@ -561,38 +588,107 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             {% endif %}
                         {% endif %}
 
-                        <!-- ===== COMPRADOR: HACER PROPUESTA (SOLO VENTA) ===== -->
+                        <!-- ===== CARD DE PROPUESTA (visible a todos los roles) ===== -->
                         {% if visita.estado == 'realizada' and not visita.pausado %}
-                            {% if user == visita.usuario %}
-                                {% with propuesta=propuestas_por_visita|get_item:visita.id %}
-                                {% if not propuesta %}
-                                <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
-                                    <button onclick="abrirModalPropuesta('{{ visita.id }}')" class="btn btn-primary" style="padding:10px 24px;cursor:pointer;font-weight:600;font-size:0.95rem;">
-                                        💰 Hacer propuesta de {% if visita.propiedad.tipo_accion == 'venta' %}compra{% else %}arriendo{% endif %}
-                                    </button>
-                                    <p style="font-size:0.75rem;color:var(--ds-text-secondary);margin:4px 0 0 0;">La visita ya fue realizada. Puedes hacer una propuesta económica.</p>
-                                </div>
-                                {% else %}
-                                <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
-                                    <div style="background:var(--ds-primary-light);border:2px solid var(--ds-primary);border-radius:10px;padding:12px;">
-                                        <div style="font-weight:600;font-size:0.9rem;">💰 Tu propuesta:</div>
-                                        <div style="font-size:0.85rem;margin-top:4px;">
-                                            <strong>{{ propuesta.moneda }} ${{ propuesta.monto_ofrecido|floatformat:0|intcomma }}</strong>
-                                            {% if propuesta.condiciones %} · {{ propuesta.condiciones|truncatechars:80 }}{% endif %}
-                                        </div>
-                                        <div style="margin-top:4px;">
-                                            <span class="badge-modern {% if propuesta.estado == 'aceptada' %}badge-modern-success{% elif propuesta.estado == 'rechazada' %}badge-modern-error{% elif propuesta.estado == 'contra_oferta' %}badge-modern-warning{% else %}badge-modern-primary{% endif %}" style="font-size:0.65rem;">
-                                                {{ propuesta.get_estado_display }}
-                                            </span>
-                                        </div>
+                            {% with propuesta=propuestas_por_visita|get_item:visita.id %}
+                            <!-- ===== COMPRADOR: sin propuesta, puede crear una ===== -->
+                            {% if not propuesta and user == visita.usuario %}
+                            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
+                                <button onclick="abrirModalPropuesta('{{ visita.id }}')" class="btn btn-primary" style="padding:10px 24px;cursor:pointer;font-weight:600;font-size:0.95rem;">
+                                    💰 Hacer propuesta de {% if visita.propiedad.tipo_accion == 'venta' %}compra{% else %}arriendo{% endif %}
+                                </button>
+                                <p style="font-size:0.75rem;color:var(--ds-text-secondary);margin:4px 0 0 0;">La visita ya fue realizada. Puedes hacer una propuesta económica.</p>
+                            </div>
+                            {% endif %}
+                            {% if propuesta %}
+                            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
+                                <!-- ===== BURBUJA 1: COMPRADOR (izquierda, verde) ===== -->
+                                <div style="display:flex;justify-content:flex-start;margin-bottom:8px;">
+                                    <div style="max-width:85%;background:#e8f5e9;border:2px solid #a5d6a7;border-radius:16px 16px 16px 4px;padding:10px 14px;box-shadow:2px 2px 0 rgba(0,0,0,0.05);">
+                                        <div style="font-size:0.7rem;color:#2e7d32;font-weight:600;margin-bottom:2px;">{{ propuesta.nombre_comprador }} · 💰 Propuesta</div>
+                                        <div style="font-size:0.95rem;font-weight:700;">{{ propuesta.moneda }} ${{ propuesta.monto_ofrecido|floatformat:0|intcomma }}</div>
+                                        {% if propuesta.condiciones %}
+                                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-top:2px;">📝 {{ propuesta.condiciones|truncatechars:100 }}</div>
+                                        {% endif %}
+                                        <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">{{ propuesta.created_at|date:'d/m/Y H:i' }}</div>
                                     </div>
                                 </div>
-                                {% endif %}
-                                {% endwith %}
-                            {% endif %}
-                        {% endif %}
 
-                        <!-- ===== INCLUDE: PROCESO DE COMPRA ===== -->
+                                {% if propuesta.estado == 'pendiente' %}
+                                    <!-- ===== BURBUJA 2: DUEÑO (derecha, amarilla, con acciones) ===== -->
+                                    {% if user == visita.propiedad.dueno or user == visita.corredor or user.rol in 'gerente,superadmin' %}
+                                    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                                        <div style="max-width:85%;background:#fff8e1;border:2px solid #ffe082;border-radius:16px 16px 4px 16px;padding:10px 14px;">
+                                            <div style="font-size:0.7rem;color:#856404;font-weight:600;margin-bottom:6px;">👤 Tú · Dueño</div>
+                                            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                                                {% if user == visita.propiedad.dueno or user.rol in 'gerente,superadmin' %}
+                                                <form method="POST" action="{% url 'gestionar_propuesta' propuesta.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="accion" value="aceptar">
+                                                    <button type="submit" class="btn btn-success btn-sm" style="padding:6px 18px;cursor:pointer;font-weight:600;border-radius:20px;" onclick="return confirm('¿Aceptar esta propuesta? Se iniciará el proceso de compra-venta.')">✅ Aceptar</button>
+                                                </form>
+                                                {% endif %}
+                                                <button onclick="document.getElementById('rechazar-prop-{{ propuesta.id }}').style.display='block'" class="btn btn-danger btn-sm" style="padding:6px 18px;cursor:pointer;font-weight:600;border-radius:20px;">❌ Rechazar</button>
+                                            </div>
+                                            <div id="rechazar-prop-{{ propuesta.id }}" style="display:none;margin-top:6px;">
+                                                <form method="POST" action="{% url 'gestionar_propuesta' propuesta.id %}" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="accion" value="rechazar">
+                                                    <input type="text" name="razon" placeholder="Escribe el motivo del rechazo..." required style="flex:1;min-width:140px;padding:6px 10px;border:2px solid var(--ds-error);border-radius:10px;font-size:0.8rem;">
+                                                    <button type="submit" class="btn btn-danger btn-sm" style="padding:6px 14px;cursor:pointer;border-radius:20px;font-weight:600;">Enviar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <!-- ===== BURBUJA 2: DUEÑO (derecha, gris, pendiente) ===== -->
+                                    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                                        <div style="max-width:85%;background:#f5f5f5;border:2px solid var(--ds-border-light);border-radius:16px 16px 4px 16px;padding:10px 14px;">
+                                            <div style="font-size:0.7rem;color:var(--ds-text-muted);font-weight:600;margin-bottom:4px;">⏳ Dueño</div>
+                                            <div style="font-size:0.8rem;color:var(--ds-text-secondary);">Pendiente de revisión...</div>
+                                            <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:2px;">Esperando respuesta</div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% elif propuesta.estado == 'aceptada' %}
+                                    <!-- ===== BURBUJA 2: DUEÑO (derecha, verde, aceptada) ===== -->
+                                    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                                        <div style="max-width:85%;background:#e8f5e9;border:2px solid var(--ds-success);border-radius:16px 16px 4px 16px;padding:10px 14px;">
+                                            <div style="font-size:0.7rem;color:#2e7d32;font-weight:600;margin-bottom:2px;">✅ Dueño</div>
+                                            <div style="font-size:0.85rem;font-weight:600;color:var(--ds-success);">✅ ¡Propuesta ACEPTADA!</div>
+                                            <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-top:2px;">El corredor preparará la Promesa de Compraventa.</div>
+                                            <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">{{ propuesta.updated_at|date:'d/m/Y H:i' }}</div>
+                                        </div>
+                                    </div>
+                                {% elif propuesta.estado == 'rechazada' %}
+                                    <!-- ===== BURBUJA 2: DUEÑO (derecha, roja, con motivo, SIN botón) ===== -->
+                                    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                                        <div style="max-width:85%;background:#fff3f0;border:2px solid var(--ds-error);border-radius:16px 16px 4px 16px;padding:10px 14px;">
+                                            <div style="font-size:0.7rem;color:var(--ds-error);font-weight:600;margin-bottom:2px;">❌ Dueño</div>
+                                            <div style="font-size:0.85rem;font-weight:600;color:var(--ds-error);">Propuesta rechazada</div>
+                                            {% if propuesta.motivo_rechazo %}
+                                            <div style="font-size:0.8rem;color:var(--ds-text);margin-top:4px;padding:6px 8px;background:white;border-radius:8px;border:1px solid #ffcdd2;">💬 "{{ propuesta.motivo_rechazo }}"</div>
+                                            {% else %}
+                                            <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;font-style:italic;">No se especificó motivo del rechazo.</div>
+                                            {% endif %}
+                                            <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">{{ propuesta.updated_at|date:'d/m/Y H:i' }}</div>
+                                        </div>
+                                    </div>
+                                    <!-- ===== BURBUJA 3: COMPRADOR (izquierda, verde, nueva propuesta) ===== -->
+                                    {% if user == visita.usuario %}
+                                    <div style="display:flex;justify-content:flex-start;margin-bottom:8px;">
+                                        <div style="max-width:85%;background:#e8f5e9;border:2px solid #a5d6a7;border-radius:16px 16px 16px 4px;padding:12px 14px;box-shadow:2px 2px 0 rgba(0,0,0,0.05);">
+                                            <div style="font-size:0.7rem;color:#2e7d32;font-weight:600;margin-bottom:6px;">💬 Tú · Nueva propuesta</div>
+                                            <button onclick="abrirModalPropuesta('{{ visita.id }}')" class="btn btn-primary btn-sm" style="padding:6px 18px;cursor:pointer;border-radius:20px;font-weight:600;">💰 Hacer nueva propuesta</button>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        {% endif %}
+<!-- ===== INCLUDE: PROCESO DE COMPRA ===== -->
                         {% for proceso in procesos_compra %}
                             {% if proceso.propuesta.solicitud_visita_id == visita.id %}
                             <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
