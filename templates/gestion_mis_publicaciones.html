@@ -7,21 +7,42 @@
 <div class="card-modern">
     <div class="card-modern-body">
         <table class="table-modern">
-            <thead><tr><th>Propiedad</th><th>Estado</th><th>Vence</th><th>Destacada</th><th>Acción</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Propiedad</th>
+                    <th>Estado publicación</th>
+                    <th>Inicio publicación</th>
+                    <th>Término publicación</th>
+                    <th>Es destacada?</th>
+                    <th>Estado gestión
+                    <th>Acción</th>
+                </tr></thead>
             <tbody>
             {% for pub in publicaciones %}
-            <tr>
-                <td>{{ pub.propiedad.calle }} #{{ pub.propiedad.numero_calle }}</td>
-                <td><span class="badge-modern badge-modern-primary">{{ pub.get_estado_display }}</span></td>
-                <td style="font-size:0.85rem;">{{ pub.expira_at|date:"d/m/Y"|default:"-" }}</td>
-                <td>{% if pub.es_destacada %}⭐ Sí{% else %}No{% endif %}</td>
-                <td>
-                    <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="btn btn-ghost btn-sm">Ver</a>
-                    {% if pub.estado == 'publicada' or pub.estado == 'renovada' %}
-                    <a href="{% url 'renovar_publicacion' pub.id %}" class="btn btn-success btn-sm">Renovar</a>
-                    {% endif %}
-                </td>
-            </tr>
+                <tr>
+                    <td>{{ pub.propiedad.id }}</td>
+                    <td>{{ pub.propiedad.calle }} #{{ pub.propiedad.numero_calle }} - {{ pub.propiedad.comuna }}</td>
+                    <td><span class="badge-modern badge-modern-success">{{ pub.get_estado_display }}</span></td>
+                    <td style="font-size:0.85rem;">{{ pub.inicia_at|date:"d/m/Y"|default:"-" }}</td>
+                    <td style="font-size:0.85rem;">{{ pub.expira_at|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{% if pub.es_destacada %}⭐ Sí{% else %}No{% endif %}</td>
+                    <td>
+                        {% if pub.propiedad.tipo_cierre == "vendida" %}
+                            <span class="badge-modern badge-modern-success">Vendida</span>
+                        {% elif pub.propiedad.tipo_cierre == "arrendada" %}
+                            <span class="badge-modern badge-modern-success">Arrendada</span>
+                        {% else %}
+                            <span class="badge-modern badge-modern-warning">En gestión</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="btn btn-ghost btn-sm" style="color: #007bff;">Ver</a>
+                        {% if pub.estado == 'publicada' or pub.estado == 'renovada' %}
+                        <a href="{% url 'renovar_publicacion' pub.id %}" class="btn btn-success btn-sm">Renovar</a>
+                        {% endif %}
+                    </td>
+                </tr>
             {% empty %}
             <tr><td colspan="5" class="empty-state-modern">No tienes publicaciones.</td></tr>
             {% endfor %}

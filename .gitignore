@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Media files (user uploads) - keep structure but not files
+media/propiedades/
+media/usuarios/
+media/funcionarios/
+media/contratos_arriendo/
+media/contratos_compraventa/
+media/comprobantes_servicios/
+media/comprobantes_solicitud/
+media/docs_legales_prop/
+media/instrucciones_notariales/
+media/obs_proceso/
+media/ordenes_gestion/
+media/ordenes_visita/
+media/ordenes_visita_firmadas/
+media/promesas_compraventa/
+media/servicios/
+media/temp_servicio/
+media/casos_exito/
+
+# Static files build
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+sent_emails/
+*.log
+
+# Tests / temp
+tmp/
+test_*.pdf
+test_*.png
+
+# Project specific
+cookies.txt
+admin_response.html
+check_props_script.py

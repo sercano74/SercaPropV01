@@ -673,9 +673,39 @@ class SolicitudVisita(models.Model):
     # Motivo de rechazo (se guarda cuando el corredor/gerente rechaza)
     motivo_rechazo = models.TextField(blank=True, verbose_name="Motivo del rechazo")
 
-    # ===== FLUJO DE ARRIENDO =====
+# ===== FLUJO DE ARRIENDO =====
     intencion_arriendo = models.BooleanField(default=False, verbose_name="Intención de arriendo manifestada")
     intencion_arriendo_at = models.DateTimeField(null=True, blank=True, verbose_name="Intención manifestada el")
+
+    # ===== DATOS DE COMISIÓN (rectificados en Contrato de Arriendo, usados en Cierre Económico) =====
+    canon_arriendo_final = models.DecimalField(
+        max_digits=15, decimal_places=2, blank=True, null=True,
+        verbose_name="Canon arriendo final (rectificado en Contrato)",
+        help_text="Precio real del arriendo (puede diferir del publicado)",
+    )
+    tipo_comision_arrendador = models.CharField(
+        max_length=20, blank=True,
+        choices=[("porcentaje", "Porcentaje"), ("fijo", "Monto Fijo")],
+        verbose_name="Tipo comisión arrendador (dueño)",
+    )
+    valor_comision_arrendador = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor comisión arrendador (% o monto fijo)",
+    )
+    tipo_comision_arrendatario = models.CharField(
+        max_length=20, blank=True,
+        choices=[("porcentaje", "Porcentaje"), ("fijo", "Monto Fijo")],
+        verbose_name="Tipo comisión arrendatario (usuario)",
+    )
+    valor_comision_arrendatario = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor comisión arrendatario (% o monto fijo)",
+    )
+    tasa_serca_arriendo = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        verbose_name="Tasa SERCA arriendo (%)",
+        help_text="Se pre-puebla desde OG, editable",
+    )
 
     # Contrato de arriendo (PDF)
     contrato_arriendo = models.FileField(
@@ -690,13 +720,23 @@ class SolicitudVisita(models.Model):
         related_name="contratos_arriendo_subidos",
         verbose_name="Contrato subido por",
     )
+    contrato_arriendo_ronda = models.PositiveIntegerField(default=0, verbose_name="Ronda de revisión (contrato)")
+    contrato_aceptado_arrendador = models.BooleanField(default=False, verbose_name="Arrendador aceptó contrato")
+    contrato_aceptado_arrendador_at = models.DateTimeField(null=True, blank=True)
+    contrato_aceptado_arrendatario = models.BooleanField(default=False, verbose_name="Arrendatario aceptó contrato")
+    contrato_aceptado_arrendatario_at = models.DateTimeField(null=True, blank=True)
+    contrato_aceptado_at = models.DateTimeField(null=True, blank=True, verbose_name="Aceptado por ambos el")
 
     # Cita a notaría
     notaria_nombre = models.CharField(max_length=255, blank=True, verbose_name="Nombre de la notaría")
     notaria_direccion = models.CharField(max_length=255, blank=True, verbose_name="Dirección de la notaría")
     notaria_fecha = models.DateField(null=True, blank=True, verbose_name="Fecha notaría")
     notaria_hora = models.TimeField(null=True, blank=True, verbose_name="Hora notaría")
-    notaria_confirmada = models.BooleanField(default=False, verbose_name="Cita notarial confirmada por el usuario")
+    notaria_aceptada_arrendador = models.BooleanField(default=False, verbose_name="Arrendador aceptó cita notarial")
+    notaria_aceptada_arrendador_at = models.DateTimeField(null=True, blank=True)
+    notaria_aceptada_arrendatario = models.BooleanField(default=False, verbose_name="Arrendatario aceptó cita notarial")
+    notaria_aceptada_arrendatario_at = models.DateTimeField(null=True, blank=True)
+    notaria_confirmada = models.BooleanField(default=False, verbose_name="Cita notarial confirmada (deprecated)")
     notaria_confirmada_at = models.DateTimeField(null=True, blank=True, verbose_name="Cita notarial confirmada el")
 
     # Cierre del caso
@@ -870,6 +910,35 @@ class SolicitudPublicacion(models.Model):
     og_aceptada = models.BooleanField(default=False, verbose_name="Orden de Gestión aceptada")
     og_aceptada_at = models.DateTimeField(blank=True, null=True, verbose_name="Aceptada el")
     # Documentos requeridos que el corredor lista en la OG (separado por comas o JSON)
+    # ===== DATOS DE COMISIÓN DESDE LA OG (para cierre económico) =====
+    precio_referencia_og = models.DecimalField(
+        max_digits=15, decimal_places=2, blank=True, null=True,
+        verbose_name="Precio referencia desde OG",
+        help_text="Precio de venta o canon arriendo al momento de la OG",
+    )
+    tipo_comision_vendedor_og = models.CharField(
+        max_length=20, blank=True,
+        choices=[("porcentaje", "Porcentaje"), ("fijo", "Monto Fijo")],
+        verbose_name="Tipo comisión vendedor (OG)",
+    )
+    valor_comision_vendedor_og = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor comisión vendedor (OG) - % o monto fijo",
+    )
+    tipo_comision_comprador_og = models.CharField(
+        max_length=20, blank=True,
+        choices=[("porcentaje", "Porcentaje"), ("fijo", "Monto Fijo")],
+        verbose_name="Tipo comisión comprador (OG)",
+    )
+    valor_comision_comprador_og = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor comisión comprador (OG) - % o monto fijo",
+    )
+    tasa_serca_og = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        verbose_name="Tasa SERCA desde OG (%)",
+        help_text="Se pre-puebla desde el plan del corredor, editable",
+    )
     docs_requeridos = models.TextField(
         blank=True,
         verbose_name="Documentos requeridos",
@@ -1068,6 +1137,39 @@ class ProcesoCompra(models.Model):
     contrato_firmado = models.BooleanField(default=False)
     contrato_firmado_at = models.DateTimeField(null=True, blank=True)
 
+    # ===== DATOS DE COMISIÓN (rectificados en Promesa, usados en Cierre Económico) =====
+    precio_venta_final = models.DecimalField(
+        max_digits=15, decimal_places=2, blank=True, null=True,
+        verbose_name="Precio venta final (rectificado en Promesa)",
+        help_text="Precio real de la compraventa (puede diferir del publicado)",
+    )
+    tipo_moneda_final = models.CharField(
+        max_length=5, blank=True, choices=Propiedad.TIPO_MONEDA_CHOICES,
+        verbose_name="Moneda final",
+    )
+    tipo_comision_vendedor = models.CharField(
+        max_length=20, blank=True,
+        choices=[("porcentaje", "Porcentaje"), ("fijo", "Monto Fijo")],
+        verbose_name="Tipo comisión vendedor",
+    )
+    valor_comision_vendedor = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor comisión vendedor (% o monto fijo)",
+    )
+    tipo_comision_comprador = models.CharField(
+        max_length=20, blank=True,
+        choices=[("porcentaje", "Porcentaje"), ("fijo", "Monto Fijo")],
+        verbose_name="Tipo comisión comprador",
+    )
+    valor_comision_comprador = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor comisión comprador (% o monto fijo)",
+    )
+    tasa_serca = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        verbose_name="Tasa SERCA (%)",
+        help_text="Se pre-puebla desde OG, editable por gerente",
+    )
     # ----- Datos de Notaría -----
     notaria_nombre = models.CharField(max_length=255, blank=True, verbose_name="Nombre de la notaría")
     notaria_direccion = models.CharField(max_length=255, blank=True, verbose_name="Dirección de la notaría")

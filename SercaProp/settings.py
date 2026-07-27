@@ -19,7 +19,7 @@ Django settings for SercaProp project.
 # kw        : 123
 # ==================================================
 # rol       : corredor
-# usuario   : Danna Smith 
+# usuario   : Danna Smith
 # email     : cannobbiosergio9@gmail.com
 # kw        : 123
 # ==================================================
@@ -37,13 +37,23 @@ Django settings for SercaProp project.
 
 import os
 from pathlib import Path
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-_)doxtosak_g=*ilerp#=6pkm=s_5%ycju13=#lps-hl%v0gaf'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+# ── Seguridad ──────────────────────────────────────
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-_)doxtosak_g=*ilerp#=6pkm=s_5%ycju13=#lps-hl%v0gaf'
+)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
+ALLOWED_HOSTS = os.environ.get(
+    'DJANGO_ALLOWED_HOSTS',
+    '*'
+).split(',')
+
+# ── Apps ───────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -60,6 +70,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # para servir estáticos en prod
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -88,12 +99,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'SercaProp.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# ── Base de datos ──────────────────────────────────
+# En Railway se inyecta DATABASE_URL automáticamente (PostgreSQL).
+# En local sigue usando SQLite.
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -107,10 +127,13 @@ TIME_ZONE = 'America/Santiago'
 USE_I18N = True
 USE_TZ = True
 
+# ── Archivos estáticos (Whitenoise) ───────────────
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# ── Archivos subidos por usuarios ─────────────────
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -120,12 +143,10 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# Almacenamiento local (reemplaza Cloudinary que tenía credenciales placeholder)
+# Almacenamiento local
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
-# ─────────────────────────────────────────────────────────
-# CONFIGURACIÓN DE EMAIL
-# ─────────────────────────────────────────────────────────
+# ── Email ──────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -136,3 +157,10 @@ DEFAULT_FROM_EMAIL = 'Serca Propiedades <ordered.dev.01@gmail.com>'
 
 # Tiempo de expiración del token de confirmación de email (en horas)
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_HOURS = 48
+
+# ── Seguridad para producción ─────────────────────
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

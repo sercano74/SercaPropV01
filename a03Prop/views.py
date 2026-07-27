@@ -22,9 +22,11 @@ from .models import (
     PropuestaCompra,
     ProcesoCompra,
     ObservacionProceso,
+    CierreEconomico,
 )
 from a01Com.models import Communication, SourceTypeChoices
 from a00seg.models import User, Comuna, Region, AgendaCorredor
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +182,7 @@ def detalle_propiedad(request, prop_id):
         visita_activa = SolicitudVisita.objects.filter(
             usuario=request.user,
             propiedad=propiedad,
-            estado__in=["pendiente", "aceptada", "reprogramada"],
+            estado__in=["pendiente", "aceptada", "reprogramada", "realizada"],
         ).first()
         # Ver si hay visitas rechazadas para mostrar mensaje de reintento
         visitas_rechazadas = SolicitudVisita.objects.filter(
@@ -424,17 +426,18 @@ def buscar_propiedades_api(request):
     comuna_id = request.GET.get("comuna")
     search = request.GET.get("q")
 
-    diez_dias_atras = timezone.now() - timezone.timedelta(days=10)
+    treinta_dias_atras = timezone.now() - timezone.timedelta(days=30)
 
     publicadas = PublicacionProp.objects.filter(
         estado="publicada", expira_at__gte=timezone.now()
     ).select_related("propiedad")
 
-    # Incluir propiedades cerradas dentro de los últimos 10 días
+    # Incluir propiedades cerradas dentro de los últimos 30 días (NO destacadas)
     cerradas_recientes = PublicacionProp.objects.filter(
         estado="publicada",
+        es_destacada=False,  # excluir destacadas → la propiedad ya no destaca tras cierre
         propiedad__tipo_cierre__isnull=False,
-        propiedad__fecha_cierre__gte=diez_dias_atras,
+        propiedad__fecha_cierre__gte=treinta_dias_atras,
     ).select_related("propiedad")
     publicadas = (publicadas | cerradas_recientes).distinct()
 
@@ -798,6 +801,110 @@ def _puede_ver_proceso(request, proceso):
     es_comprador = request.user == proceso.comprador
     es_vendedor = request.user == proceso.vendedor
     return es_corredor or es_admin or es_comprador or es_vendedor
+
+
+# ================================================================
+# CIERRE ECONÓMICO AUTOMÁTICO
+# ================================================================
+
+def _get_plan_corredor(corredor):
+    """Obtiene plan y tasa SERCA del corredor."""
+    plan_nombre = ""
+    tasa_serca = Decimal('0')
+    try:
+        if hasattr(corredor, 'plan') and corredor.plan:
+            plan_nombre = corredor.plan.nombre if hasattr(corredor.plan, 'nombre') else str(corredor.plan)
+            tasa_serca = corredor.plan.tasa_serca if hasattr(corredor.plan, 'tasa_serca') else Decimal('0')
+    except Exception:
+        pass
+    return plan_nombre, tasa_serca
+
+
+def _calcular_comision_clp(precio, tipo, valor):
+    """Calcula comisión en CLP según tipo (porcentaje o fijo)."""
+    if not precio or not valor:
+        return Decimal('0')
+    if tipo == "porcentaje":
+        return Decimal(str(precio)) * Decimal(str(valor)) / Decimal('100')
+    return Decimal(str(valor))  # monto fijo
+
+
+def _crear_cierre_automatico(propiedad, corredor, tipo_cierre, precio=None, moneda=None,
+                               tipo_comision_vendedor=None, valor_comision_vendedor=None,
+                               tipo_comision_comprador=None, valor_comision_comprador=None,
+                               fecha_cierre=None):
+    """
+    Crea un CierreEconomico automáticamente al cerrar un caso.
+    Si ya existe uno para el mismo mes/año, no lo duplica.
+    """
+    if fecha_cierre is None:
+        fecha_cierre = timezone.now()
+
+    if precio is None:
+        precio = propiedad.precio
+    if moneda is None:
+        moneda = propiedad.tipo_moneda
+
+    # Fallback a CorredorProp si faltan datos de comisión
+    cp = propiedad.corredores.filter(estado="activa").first()
+    if tipo_comision_vendedor is None and cp:
+        tipo_comision_vendedor = cp.tipo_comision
+        valor_comision_vendedor = cp.monto_comision_dueno
+    if tipo_comision_comprador is None and cp:
+        tipo_comision_comprador = cp.tipo_comision
+        valor_comision_comprador = cp.monto_comision_usu
+
+    # Plan del corredor
+    plan_nombre, tasa_serca = _get_plan_corredor(corredor)
+
+    # Calcular comisiones presupuestadas
+    comision_vendedor = _calcular_comision_clp(precio, tipo_comision_vendedor, valor_comision_vendedor)
+    comision_comprador = _calcular_comision_clp(precio, tipo_comision_comprador, valor_comision_comprador)
+
+    # % reference
+    pct_v = Decimal(str(valor_comision_vendedor)) if tipo_comision_vendedor == "porcentaje" and valor_comision_vendedor else Decimal('0')
+    pct_c = Decimal(str(valor_comision_comprador)) if tipo_comision_comprador == "porcentaje" and valor_comision_comprador else Decimal('0')
+
+    mes = fecha_cierre.month
+    anio = fecha_cierre.year
+
+    cierre, created = CierreEconomico.objects.get_or_create(
+        propiedad=propiedad,
+        corredor=corredor,
+        mes=mes,
+        anio=anio,
+        defaults={
+            'precio_venta': precio,
+            'moneda_original': moneda,
+            'pct_comision_vendedor': pct_v,
+            'pct_comision_comprador': pct_c,
+            'comision_vendedor_presupuestada_clp': comision_vendedor,
+            'comision_comprador_presupuestada_clp': comision_comprador,
+            'plan_nombre': plan_nombre,
+            'tasa_serca': tasa_serca,
+            'fecha_cierre': fecha_cierre,
+            'perfeccionado': False,
+        }
+    )
+    if created:
+        # Notificar a gerentes
+        gerentes = User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True)
+        for g in gerentes:
+            _notificar(
+                recipient=g,
+                emitter=corredor,
+                source_type=SourceTypeChoices.CORREDOR,
+                title="💰 Nuevo cierre económico pendiente",
+                message=(
+                    f"Se ha creado un Cierre Económico pendiente de perfeccionar para "
+                    f"{propiedad.display_name_public()} ({tipo_cierre}). "
+                    f"Monto base: ${float(comision_vendedor + comision_comprador):,.0f} CLP."
+                    f"\n→ Revisa en Gestión de Ingresos."
+                ),
+                property_id=propiedad.id,
+            )
+        logger.info(f"CierreEconomico #{cierre.id} creado automáticamente para propiedad #{propiedad.id}")
+    return cierre
 
 
 # ================================================================
@@ -1501,7 +1608,7 @@ def solicitar_visita(request, prop_id):
     visita_existente = SolicitudVisita.objects.filter(
         usuario=request.user,
         propiedad=propiedad,
-        estado__in=["pendiente", "aceptada"],
+        estado__in=["pendiente", "aceptada", "realizada"],
     ).exists()
     if visita_existente:
         messages.warning(request, "Ya tienes una solicitud de visita activa para esta propiedad.")
@@ -1903,6 +2010,12 @@ def gestionar_arriendo(request, visita_id):
 
         visita.contrato_arriendo = contrato
         visita.contrato_arriendo_subido_por = request.user
+        visita.contrato_arriendo_ronda += 1
+        visita.contrato_aceptado_arrendador = False
+        visita.contrato_aceptado_arrendador_at = None
+        visita.contrato_aceptado_arrendatario = False
+        visita.contrato_aceptado_arrendatario_at = None
+        visita.contrato_aceptado_at = None
         visita.save()
 
         _notificar(
@@ -1914,8 +2027,124 @@ def gestionar_arriendo(request, visita_id):
             property_id=propiedad.id,
             related_object_id=visita.id,
         )
+        _notificar(
+            recipient=propiedad.dueno,
+            emitter=request.user,
+            source_type=SourceTypeChoices.CORREDOR if es_corredor else SourceTypeChoices.GERENTE,
+            title="Contrato de arriendo listo",
+            message=f"El contrato de arriendo para tu propiedad {propiedad.display_name_public()} está listo. Revísalo y acepta las condiciones.",
+            property_id=propiedad.id,
+            related_object_id=visita.id,
+        )
 
-        messages.success(request, "📄 Contrato de arriendo subido.")
+        messages.success(request, "📄 Contrato de arriendo subido. Ambas partes deben aceptarlo.")
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    if accion == "contrato_aceptar":
+        # Una parte (arrendador o arrendatario) acepta el contrato
+        es_arrendador = request.user == propiedad.dueno
+        es_arrendatario = request.user == visita.usuario
+        if not (es_arrendador or es_arrendatario):
+            messages.error(request, "Solo el arrendador o arrendatario puede aceptar el contrato.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if not visita.contrato_arriendo:
+            messages.error(request, "El corredor aún no ha subido el contrato.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if visita.caso_cerrado:
+            messages.error(request, "El caso ya está cerrado.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        ahora = timezone.now()
+        if es_arrendador and not visita.contrato_aceptado_arrendador:
+            visita.contrato_aceptado_arrendador = True
+            visita.contrato_aceptado_arrendador_at = ahora
+        elif es_arrendatario and not visita.contrato_aceptado_arrendatario:
+            visita.contrato_aceptado_arrendatario = True
+            visita.contrato_aceptado_arrendatario_at = ahora
+        else:
+            messages.warning(request, "Ya aceptaste el contrato.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        # Verificar si ambas partes aceptaron
+        if visita.contrato_aceptado_arrendador and visita.contrato_aceptado_arrendatario:
+            visita.contrato_aceptado_at = ahora
+
+            _notificar(
+                recipient=visita.corredor,
+                emitter=request.user,
+                source_type=SourceTypeChoices.USUARIO_BASE,
+                title="✅ Contrato de arriendo aceptado por ambas partes",
+                message=f"Ambas partes aceptaron el contrato de arriendo para {propiedad.display_name_public()}. Ahora puedes proponer la cita notarial.",
+                property_id=propiedad.id,
+                related_object_id=visita.id,
+            )
+            messages.success(request, "✅ Contrato aceptado por ambas partes. Ahora el corredor debe proponer la cita notarial.")
+        else:
+            otra_parte = propiedad.dueno if es_arrendatario else visita.usuario
+            _notificar(
+                recipient=otra_parte,
+                emitter=request.user,
+                source_type=SourceTypeChoices.USUARIO_BASE,
+                title="Contrato de arriendo aceptado",
+                message=f"{request.user.get_full_name() or request.user.email} aceptó el contrato de arriendo para {propiedad.display_name_public()}. Te falta tu aceptación.",
+                property_id=propiedad.id,
+                related_object_id=visita.id,
+            )
+            messages.success(request, "✅ Contrato aceptado. Falta la aceptación de la otra parte.")
+
+        visita.save()
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    if accion == "contrato_objetar":
+        # Una parte objeta el contrato con una razón
+        es_arrendador = request.user == propiedad.dueno
+        es_arrendatario = request.user == visita.usuario
+        if not (es_arrendador or es_arrendatario):
+            messages.error(request, "Solo el arrendador o arrendatario puede objetar el contrato.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if not visita.contrato_arriendo:
+            messages.error(request, "No hay contrato que objetar.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if visita.caso_cerrado:
+            messages.error(request, "El caso ya está cerrado.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        razon = request.POST.get("razon", "").strip()
+        if not razon:
+            messages.error(request, "Debes escribir la razón de la objeción.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        # Resetear aceptaciones de ambas partes
+        visita.contrato_aceptado_arrendador = False
+        visita.contrato_aceptado_arrendador_at = None
+        visita.contrato_aceptado_arrendatario = False
+        visita.contrato_aceptado_arrendatario_at = None
+        visita.contrato_aceptado_at = None
+        visita.save()
+
+        _notificar(
+            recipient=visita.corredor,
+            emitter=request.user,
+            source_type=SourceTypeChoices.USUARIO_BASE,
+            title="❌ Contrato de arriendo objetado",
+            message=f"{request.user.get_full_name() or request.user.email} ha OBJETADO el contrato de arriendo para {propiedad.display_name_public()}. Razón: {razon[:200]}. Debes subir una nueva versión (ronda {visita.contrato_arriendo_ronda + 1}).",
+            property_id=propiedad.id,
+            related_object_id=visita.id,
+        )
+
+        # Notificar a la otra parte
+        otra_parte = propiedad.dueno if es_arrendatario else visita.usuario
+        _notificar(
+            recipient=otra_parte,
+            emitter=request.user,
+            source_type=SourceTypeChoices.USUARIO_BASE,
+            title="❌ Contrato objetado",
+            message=f"{request.user.get_full_name() or request.user.email} ha objetado el contrato de arriendo. El corredor deberá subir una nueva versión.",
+            property_id=propiedad.id,
+            related_object_id=visita.id,
+        )
+
+        messages.warning(request, f"❌ Contrato objetado. El corredor subirá una nueva versión.")
         return redirect("detalle_propiedad", prop_id=propiedad.id)
 
     if accion == "notaria_proponer":
@@ -1950,7 +2179,132 @@ def gestionar_arriendo(request, visita_id):
             related_object_id=visita.id,
         )
 
+        # Al proponer/actualizar notaría, resetear aceptaciones
+        visita.notaria_aceptada_arrendador = False
+        visita.notaria_aceptada_arrendador_at = None
+        visita.notaria_aceptada_arrendatario = False
+        visita.notaria_aceptada_arrendatario_at = None
+        visita.save()
+
+        # Notificar a ambas partes
+        for noti_user in [visita.usuario, propiedad.dueno]:
+            if noti_user != request.user:
+                _notificar(
+                    recipient=noti_user,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.CORREDOR if es_corredor else SourceTypeChoices.GERENTE,
+                    title="Cita notarial propuesta",
+                    message=f"Se ha propuesto una cita notarial para {propiedad.display_name_public()}: {notaria_nombre}, {notaria_direccion}, el {notaria_fecha} a las {notaria_hora}.",
+                    property_id=propiedad.id,
+                    related_object_id=visita.id,
+                )
+
         messages.success(request, "📅 Datos de notaría guardados.")
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    if accion == "notaria_aceptar":
+        es_arrendador = request.user == propiedad.dueno
+        es_arrendatario = request.user == visita.usuario
+        if not (es_arrendador or es_arrendatario):
+            messages.error(request, "Solo el arrendador o arrendatario puede aceptar la cita notarial.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if not visita.notaria_nombre:
+            messages.error(request, "El corredor aún no ha propuesto una cita notarial.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if visita.caso_cerrado:
+            messages.error(request, "El caso ya está cerrado.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        ahora = timezone.now()
+        if es_arrendador and not visita.notaria_aceptada_arrendador:
+            visita.notaria_aceptada_arrendador = True
+            visita.notaria_aceptada_arrendador_at = ahora
+        elif es_arrendatario and not visita.notaria_aceptada_arrendatario:
+            visita.notaria_aceptada_arrendatario = True
+            visita.notaria_aceptada_arrendatario_at = ahora
+        else:
+            messages.warning(request, "Ya aceptaste la cita notarial.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        # Si ambas partes aceptaron → notaria_confirmada = True automáticamente
+        if visita.notaria_aceptada_arrendador and visita.notaria_aceptada_arrendatario:
+            visita.notaria_confirmada = True
+            visita.notaria_confirmada_at = ahora
+            _notificar(
+                recipient=visita.corredor,
+                emitter=request.user,
+                source_type=SourceTypeChoices.USUARIO_BASE,
+                title="✅ Cita notarial aceptada por ambas partes",
+                message=f"Ambas partes aceptaron la cita notarial para {propiedad.display_name_public()}. Puedes cerrar el caso cuando corresponda.",
+                property_id=propiedad.id,
+                related_object_id=visita.id,
+            )
+            messages.success(request, "✅ Cita notarial aceptada por ambas partes. El corredor puede cerrar el caso.")
+        else:
+            otra_parte = propiedad.dueno if es_arrendatario else visita.usuario
+            _notificar(
+                recipient=otra_parte,
+                emitter=request.user,
+                source_type=SourceTypeChoices.USUARIO_BASE,
+                title="Cita notarial aceptada",
+                message=f"{request.user.get_full_name() or request.user.email} aceptó la cita notarial para {propiedad.display_name_public()}. Te falta tu aceptación.",
+                property_id=propiedad.id,
+                related_object_id=visita.id,
+            )
+            messages.success(request, "✅ Cita notarial aceptada. Falta la aceptación de la otra parte.")
+
+        visita.save()
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    if accion == "notaria_objetar":
+        es_arrendador = request.user == propiedad.dueno
+        es_arrendatario = request.user == visita.usuario
+        if not (es_arrendador or es_arrendatario):
+            messages.error(request, "Solo el arrendador o arrendatario puede objetar la cita notarial.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if not visita.notaria_nombre:
+            messages.error(request, "No hay cita notarial que objetar.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+        if visita.caso_cerrado:
+            messages.error(request, "El caso ya está cerrado.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        razon = request.POST.get("razon", "").strip()
+        if not razon:
+            messages.error(request, "Debes escribir la razón de la objeción.")
+            return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+        # Resetear aceptaciones
+        visita.notaria_aceptada_arrendador = False
+        visita.notaria_aceptada_arrendador_at = None
+        visita.notaria_aceptada_arrendatario = False
+        visita.notaria_aceptada_arrendatario_at = None
+        visita.notaria_confirmada = False
+        visita.notaria_confirmada_at = None
+        visita.save()
+
+        _notificar(
+            recipient=visita.corredor,
+            emitter=request.user,
+            source_type=SourceTypeChoices.USUARIO_BASE,
+            title="❌ Cita notarial objetada",
+            message=f"{request.user.get_full_name() or request.user.email} ha OBJETADO la cita notarial para {propiedad.display_name_public()}. Razón: {razon[:200]}. Debes proponer un nuevo horario.",
+            property_id=propiedad.id,
+            related_object_id=visita.id,
+        )
+
+        otra_parte = propiedad.dueno if es_arrendatario else visita.usuario
+        _notificar(
+            recipient=otra_parte,
+            emitter=request.user,
+            source_type=SourceTypeChoices.USUARIO_BASE,
+            title="❌ Cita notarial objetada",
+            message=f"{request.user.get_full_name() or request.user.email} ha objetado la cita notarial. El corredor deberá proponer un nuevo horario.",
+            property_id=propiedad.id,
+            related_object_id=visita.id,
+        )
+
+        messages.warning(request, f"❌ Cita notarial objetada. El corredor propondrá un nuevo horario.")
         return redirect("detalle_propiedad", prop_id=propiedad.id)
 
     if accion == "notaria_confirmar":
@@ -2000,6 +2354,32 @@ def gestionar_arriendo(request, visita_id):
         propiedad.tipo_cierre = "arrendada"
         propiedad.fecha_cierre = visita.caso_cerrado_at
         propiedad.save(update_fields=["tipo_cierre", "fecha_cierre", "updated_at"])
+
+        # Quitar destacada de la publicación (sigue visible en vitrina 30 días, pero no destaca)
+        propiedad.publicaciones.filter(es_destacada=True, estado="publicada").update(
+            es_destacada=False, renovacion_avisada=True
+        )
+
+        # ===== CREAR CIERRE ECONÓMICO AUTOMÁTICO =====
+        try:
+            # Usar canon rectificado desde contrato, o precio de propiedad como fallback
+            precio_final = visita.canon_arriendo_final or propiedad.precio
+            moneda_final = propiedad.tipo_moneda  # asumimos misma moneda
+            _crear_cierre_automatico(
+                propiedad=propiedad,
+                corredor=visita.corredor,
+                tipo_cierre="arriendo",
+                precio=precio_final,
+                moneda=moneda_final,
+                tipo_comision_vendedor=visita.tipo_comision_arrendador,
+                valor_comision_vendedor=visita.valor_comision_arrendador,
+                tipo_comision_comprador=visita.tipo_comision_arrendatario,
+                valor_comision_comprador=visita.valor_comision_arrendatario,
+                fecha_cierre=visita.caso_cerrado_at,
+            )
+            logger.info(f"CierreEconomico creado automáticamente al cerrar caso arriendo #{visita.id}")
+        except Exception as e:
+            logger.error(f"Error creando CierreEconomico para arriendo #{visita.id}: {e}")
 
         _notificar(
             recipient=visita.usuario,
@@ -2083,6 +2463,12 @@ def crear_propuesta(request, visita_id):
             estado="pendiente",
         )
 
+        # Si es propuesta de arriendo, marcar intencion_arriendo automaticamente
+        if tipo_propuesta == "arriendo" and not visita.intencion_arriendo:
+            visita.intencion_arriendo = True
+            visita.intencion_arriendo_at = timezone.now()
+            visita.save(update_fields=["intencion_arriendo", "intencion_arriendo_at", "updated_at"])
+
         _notificar(
             recipient=visita.corredor,
             emitter=request.user,
@@ -2140,37 +2526,67 @@ def gestionar_propuesta(request, propuesta_id):
             propuesta.estado = "aceptada"
             propuesta.save()
 
-            # Crear proceso de compra automáticamente
-            proceso = ProcesoCompra.objects.create(
-                propuesta=propuesta,
-                propiedad=propiedad,
-                comprador=visita.usuario,
-                vendedor=propiedad.dueno,
-                corredor=visita.corredor,
-                estado="propuesta_aceptada",
-            )
+            if propuesta.tipo == "compra":
+                # FLUJO VENTA: crear ProcesoCompra (promesa → instrucciones → contrato → notaría → CBR)
+                proceso = ProcesoCompra.objects.create(
+                    propuesta=propuesta,
+                    propiedad=propiedad,
+                    comprador=visita.usuario,
+                    vendedor=propiedad.dueno,
+                    corredor=visita.corredor,
+                    estado="propuesta_aceptada",
+                )
 
-            _notificar(
-                recipient=visita.usuario,
-                emitter=request.user,
-                source_type=SourceTypeChoices.USUARIO_BASE if es_dueno else SourceTypeChoices.GERENTE,
-                title=f"Propuesta de {propuesta.get_tipo_display()} aceptada",
-                message=f"¡Felicidades! Tu propuesta de {propuesta.get_tipo_display()} por {propuesta.moneda} ${float(propuesta.monto_ofrecido):,.0f} para {propiedad.display_name_public()} ha sido ACEPTADA por el dueño. El corredor preparará la Promesa de Compraventa.",
-                property_id=propiedad.id,
-                related_object_id=propuesta.id,
-            )
+                _notificar(
+                    recipient=visita.usuario,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.USUARIO_BASE if es_dueno else SourceTypeChoices.GERENTE,
+                    title=f"Propuesta de {propuesta.get_tipo_display()} aceptada",
+                    message=f"¡Felicidades! Tu propuesta de {propuesta.get_tipo_display()} por {propuesta.moneda} ${float(propuesta.monto_ofrecido):,.0f} para {propiedad.display_name_public()} ha sido ACEPTADA por el dueño. El corredor preparará la Promesa de Compraventa.",
+                    property_id=propiedad.id,
+                    related_object_id=propuesta.id,
+                )
 
-            _notificar(
-                recipient=visita.corredor,
-                emitter=request.user,
-                source_type=SourceTypeChoices.USUARIO_BASE if es_dueno else SourceTypeChoices.GERENTE,
-                title="Propuesta aceptada - Iniciar proceso",
-                message=f"La propuesta de {visita.usuario.get_full_name() or visita.usuario.email} para {propiedad.display_name_public()} ha sido aceptada. Debes subir la Promesa de Compraventa para continuar.",
-                property_id=propiedad.id,
-                related_object_id=propuesta.id,
-            )
+                _notificar(
+                    recipient=visita.corredor,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.USUARIO_BASE if es_dueno else SourceTypeChoices.GERENTE,
+                    title="Propuesta aceptada - Iniciar proceso",
+                    message=f"La propuesta de {visita.usuario.get_full_name() or visita.usuario.email} para {propiedad.display_name_public()} ha sido aceptada. Debes subir la Promesa de Compraventa para continuar.",
+                    property_id=propiedad.id,
+                    related_object_id=propuesta.id,
+                )
 
-            messages.success(request, "✅ Propuesta aceptada. El proceso de compra ha sido iniciado. El corredor debe subir la Promesa de Compraventa.")
+                messages.success(request, "✅ Propuesta aceptada. El proceso de compra ha sido iniciado. El corredor debe subir la Promesa de Compraventa.")
+            else:
+                # FLUJO ARRIENDO: marcar intención, NO crear ProcesoCompra
+                if not visita.intencion_arriendo:
+                    visita.intencion_arriendo = True
+                    visita.intencion_arriendo_at = timezone.now()
+                    visita.save(update_fields=["intencion_arriendo", "intencion_arriendo_at", "updated_at"])
+
+                _notificar(
+                    recipient=visita.usuario,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.USUARIO_BASE if es_dueno else SourceTypeChoices.GERENTE,
+                    title="✅ Propuesta de arriendo aceptada",
+                    message=f"¡Felicidades! Tu propuesta de arriendo por {propuesta.moneda} ${float(propuesta.monto_ofrecido):,.0f} para {propiedad.display_name_public()} ha sido ACEPTADA por el dueño. El corredor preparará el Contrato de Arriendo.",
+                    property_id=propiedad.id,
+                    related_object_id=propuesta.id,
+                )
+
+                _notificar(
+                    recipient=visita.corredor,
+                    emitter=request.user,
+                    source_type=SourceTypeChoices.USUARIO_BASE if es_dueno else SourceTypeChoices.GERENTE,
+                    title="✅ Propuesta de arriendo aceptada - Subir Contrato",
+                    message=f"La propuesta de arriendo de {visita.usuario.get_full_name() or visita.usuario.email} para {propiedad.display_name_public()} ha sido aceptada. Debes subir el Contrato de Arriendo para continuar.",
+                    property_id=propiedad.id,
+                    related_object_id=propuesta.id,
+                )
+
+                messages.success(request, "✅ Propuesta de arriendo aceptada. El corredor debe subir el Contrato de Arriendo.")
+
             return redirect("detalle_propiedad", prop_id=propiedad.id)
 
         elif accion == "rechazar":
@@ -2676,8 +3092,10 @@ def marcar_firma_notarial(request, proceso_id):
 @login_required
 def iniciar_inscripcion_cbr(request, proceso_id):
     """
-    Etapa 4 - Paso 1: Boton unico "Ingresar al CBR" que desaparece.
-    Paso 2: Input docs CBR + Select resultado + Boton de cierre.
+    Etapa 4:
+    Paso 1: Boton unico "Ingresar al CBR" que desaparece.
+    Paso 2: Subida de documentos uno por uno con nombre + boton "+" (JS dinamico).
+    Paso 3: Boton "Notificar resultado y cerrar proceso" con selector de resultado.
     Si aprobada -> finalizado, si rechazada -> escritura_rechazada.
     """
     proceso = get_object_or_404(ProcesoCompra, id=proceso_id)
@@ -2715,28 +3133,48 @@ def iniciar_inscripcion_cbr(request, proceso_id):
             messages.success(request, 'Inscripcion en CBR registrada. Se notifico a ambas partes.')
             return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
 
+        elif accion in ('subir_doc', 'subir_doc_json'):
+            # Accion AJAX: subir un solo documento con nombre
+            nombre_doc = request.POST.get('nombre_doc', '').strip()
+            archivo = request.FILES.get('archivo')
+            if not nombre_doc or not archivo:
+                if accion == 'subir_doc_json':
+                    return JsonResponse({'success': False, 'error': 'Debes indicar nombre y seleccionar archivo.'})
+                messages.error(request, 'Debes indicar nombre y seleccionar archivo.')
+                return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
+
+            obs = ObservacionProceso.objects.create(
+                proceso=proceso,
+                autor=request.user,
+                etapa='cierre',
+                ronda=0,
+                texto=nombre_doc,
+                archivo=archivo,
+            )
+
+            if accion == 'subir_doc_json':
+                return JsonResponse({
+                    'success': True,
+                    'id': obs.id,
+                    'nombre': obs.texto,
+                    'url': obs.archivo.url,
+                    'creado': obs.created_at.strftime('%d/%m/%Y %H:%M'),
+                })
+            messages.success(request, f'✅ Documento "{nombre_doc}" subido correctamente.')
+            return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
+
         elif accion == 'cerrar':
-            # Paso 2: Subir docs CBR + resultado + cierre definitivo
+            # Paso 3: Resultado + cierre definitivo (no requiere docs, ya se subieron antes)
             resultado = request.POST.get('resultado', '')
             if resultado not in ('aprobada', 'rechazada'):
                 messages.error(request, 'Debes seleccionar un resultado valido.')
                 return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
 
-            # Guardar documentos del CBR subidos (multiples archivos)
-            archivos_cbr = request.FILES.getlist('docs_cbr')
-            if not archivos_cbr:
-                messages.error(request, 'Debes subir al menos un documento emitido por el CBR.')
+            # Verificar que hay al menos un documento subido
+            docs_subidos = ObservacionProceso.objects.filter(proceso=proceso, etapa='cierre', archivo__isnull=False)
+            if not docs_subidos.exists():
+                messages.error(request, 'Debes subir al menos un documento antes de cerrar el proceso.')
                 return redirect('detalle_propiedad', prop_id=proceso.propiedad_id)
-
-            for archivo in archivos_cbr:
-                ObservacionProceso.objects.create(
-                    proceso=proceso,
-                    autor=request.user,
-                    etapa='cierre',
-                    ronda=0,
-                    texto=f'Documento CBR - {resultado}',
-                    archivo=archivo,
-                )
 
             # ===== MARCAR LA PROPIEDAD COMO VENDIDA SI SE APROBÓ =====
             propiedad_obj = proceso.propiedad
@@ -2744,6 +3182,29 @@ def iniciar_inscripcion_cbr(request, proceso_id):
                 propiedad_obj.tipo_cierre = 'vendida'
                 propiedad_obj.fecha_cierre = timezone.now()
                 propiedad_obj.save(update_fields=['tipo_cierre', 'fecha_cierre', 'updated_at'])
+
+                # Quitar destacada de la publicación (sigue visible en vitrina 30 días)
+                propiedad_obj.publicaciones.filter(es_destacada=True, estado="publicada").update(
+                    es_destacada=False, renovacion_avisada=True
+                )
+
+                # ===== CREAR CIERRE ECONÓMICO AUTOMÁTICO PARA VENTA =====
+                try:
+                    _crear_cierre_automatico(
+                        propiedad=propiedad_obj,
+                        corredor=proceso.corredor,
+                        tipo_cierre="venta",
+                        precio=proceso.precio_venta_final or propiedad_obj.precio,
+                        moneda=proceso.tipo_moneda_final or propiedad_obj.tipo_moneda,
+                        tipo_comision_vendedor=proceso.tipo_comision_vendedor,
+                        valor_comision_vendedor=proceso.valor_comision_vendedor,
+                        tipo_comision_comprador=proceso.tipo_comision_comprador,
+                        valor_comision_comprador=proceso.valor_comision_comprador,
+                        fecha_cierre=timezone.now(),
+                    )
+                    logger.info(f"CierreEconomico creado automaticamente al finalizar venta #{proceso.id}")
+                except Exception as e:
+                    logger.error(f"Error creando CierreEconomico para venta #{proceso.id}: {e}")
 
             proceso.escritura_resultado = resultado
             proceso.escritura_resultado_at = timezone.now()
@@ -2757,7 +3218,6 @@ def iniciar_inscripcion_cbr(request, proceso_id):
                 'escritura_comunicado', 'escritura_comunicado_at', 'completado_at', 'updated_at'
             ])
 
-            # Notificar a ambas partes
             if resultado == 'aprobada':
                 _notificar(
                     recipient=proceso.vendedor,
@@ -2775,7 +3235,6 @@ def iniciar_inscripcion_cbr(request, proceso_id):
                     message=f'Felicitaciones! El proceso de compraventa de {proceso.propiedad.display_name_public()} ha sido completado exitosamente. La propiedad ahora esta inscrita a tu nombre!',
                     property_id=proceso.propiedad_id,
                 )
-                # Sugerir al gerente crear un Caso de Éxito
                 gerentes = User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True)
                 for gerente in gerentes:
                     _notificar(

@@ -155,10 +155,7 @@
                         {% if pub.propiedad.m_construidos %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Metros construídos">📐 {{ pub.propiedad.m_construidos }} m²</span>{% endif %}
                     </div>
                     
-                    {% if pub.propiedad.tipo_cierre != "vendida" and pub.propiedad.tipo_cierre != "arrendada" %}
                     <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver detalle →</a>
-                    {% endif %}
-
 
                 </div>
             </div>

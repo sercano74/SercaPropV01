@@ -1,79 +1,344 @@
 {% load humanize %}
 
-<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">
-    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid var(--ds-success);background:var(--ds-success);color:white;">✅ Intención</div>
-    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid {% if visita.contrato_arriendo %}var(--ds-success){% else %}var(--ds-border){% endif %};background:{% if visita.contrato_arriendo %}var(--ds-success){% else %}var(--ds-bg){% endif %};color:{% if visita.contrato_arriendo %}white{% else %}var(--ds-text-secondary){% endif %};">{% if visita.contrato_arriendo %}✅{% else %}2{% endif %} Contrato</div>
-    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid {% if visita.notaria_confirmada %}var(--ds-success){% else %}var(--ds-border){% endif %};background:{% if visita.notaria_confirmada %}var(--ds-success){% else %}var(--ds-bg){% endif %};color:{% if visita.notaria_confirmada %}white{% else %}var(--ds-text-secondary){% endif %};">{% if visita.notaria_confirmada %}✅{% else %}3{% endif %} Notaría</div>
-    <div style="padding:4px 10px;border-radius:9999px;font-size:0.7rem;font-weight:600;border:2px solid {% if visita.caso_cerrado %}var(--ds-success){% else %}var(--ds-border){% endif %};background:{% if visita.caso_cerrado %}var(--ds-success){% else %}var(--ds-bg){% endif %};color:{% if visita.caso_cerrado %}white{% else %}var(--ds-text-secondary){% endif %};">{% if visita.caso_cerrado %}✅{% else %}4{% endif %} Cierre</div>
+<style>
+.arriendo-card {
+  border: 3px solid var(--ds-border);
+  border-radius: 16px;
+  background: var(--ds-bg);
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: 4px 4px 0 var(--ds-border);
+}
+.arriendo-header {
+  background: var(--ds-primary);
+  color: white;
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.whatsapp-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin: 0; }
+.whatsapp-col { border-right: 1px solid var(--ds-border-light); background: var(--ds-bg); min-height: 80px; }
+.whatsapp-container .whatsapp-col:last-child { border-right: none; }
+.whatsapp-col-header { padding: 6px 10px; font-weight: 700; font-size: 0.7rem; text-align: center; border-bottom: 1px solid var(--ds-border-light); }
+.col-corredor .whatsapp-col-header { background: #e3f2fd; color: #1565c0; }
+.col-arrendador .whatsapp-col-header { background: #fff3e0; color: #e65100; }
+.col-arrendatario .whatsapp-col-header { background: #f3e5f5; color: #7b1fa2; }
+.whatsapp-col-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.whatsapp-bubble { padding: 8px 10px; border-radius: 10px; font-size: 0.73rem; line-height: 1.4; border: 2px solid; box-shadow: 1px 1px 0 rgba(0,0,0,0.04); }
+.whatsapp-bubble.corredor { background: #e3f2fd; border-color: #90caf9; border-radius: 10px 10px 4px 10px; }
+.whatsapp-bubble.arrendador { background: #fff3e0; border-color: #ffcc80; }
+.whatsapp-bubble.arrendatario { background: #f3e5f5; border-color: #ce93d8; }
+.whatsapp-bubble.objetado { background: #ffebee; border-color: #ef9a9a; }
+.whatsapp-bubble.system { background: #f5f5f5; border-color: var(--ds-border-light); border-radius: 10px; text-align: center; font-size: 0.7rem; color: var(--ds-text-muted); }
+.whatsapp-bubble .bubble-author { font-weight: 700; font-size: 0.63rem; margin-bottom: 2px; }
+.whatsapp-bubble .bubble-time { font-size: 0.55rem; color: var(--ds-text-muted); margin-top: 3px; }
+.whatsapp-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.whatsapp-actions form { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.whatsapp-actions input[type="text"], .whatsapp-actions input[type="file"] { padding: 2px 4px; border: 1px solid var(--ds-border); border-radius: 4px; font-size: 0.63rem; }
+.whatsapp-actions .btn-sm { font-size: 0.63rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; cursor: pointer; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.status-dot.done { background: #4caf50; }
+.status-dot.current { background: #2196f3; animation: pulse 1.5s infinite; }
+.status-dot.pending { background: #bdbdbd; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@media (max-width: 768px) { .whatsapp-container { grid-template-columns: 1fr; } .whatsapp-col { border-right: none; border-bottom: 1px solid var(--ds-border-light); } }
+</style>
+
+<div class="arriendo-card">
+<div class="arriendo-header">
+    <span>📋 Proceso de Arriendo — Visita #{{ visita.id }}</span>
+    {% if visita.caso_cerrado %}
+    <span class="badge-modern badge-modern-success">✅ Cerrado {{ visita.caso_cerrado_at|date:'d/m/Y' }}</span>
+    {% else %}
+    <span class="badge-modern badge-modern-primary">En curso</span>
+    {% endif %}
 </div>
 
-{% if visita.caso_cerrado %}
-<div style="font-size:0.85rem;color:var(--ds-success);font-weight:600;margin-bottom:8px;">🎉 Caso cerrado {{ visita.caso_cerrado_at|date:'d/m/Y' }}</div>
-{% endif %}
+<!-- STEPPER -->
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin:12px 12px 0;">
+    <div class="{% if visita.contrato_aceptado_at %}done{% elif visita.contrato_arriendo %}current{% else %}pending{% endif %}" style="padding:4px 10px;border-radius:9999px;font-size:0.65rem;font-weight:600;border:2px solid;{% if visita.contrato_aceptado_at %}background:var(--ds-success);color:white;border-color:var(--ds-success){% elif visita.contrato_arriendo %}background:var(--ds-primary);color:white;border-color:var(--ds-primary){% else %}background:var(--ds-bg);color:var(--ds-text-secondary);border-color:var(--ds-border){% endif %}">
+        <span class="status-dot {% if visita.contrato_aceptado_at %}done{% elif visita.contrato_arriendo %}current{% else %}pending{% endif %}"></span>
+        {% if visita.contrato_aceptado_at %}✅{% else %}1{% endif %} Contrato
+    </div>
+    <div class="{% if visita.notaria_confirmada %}done{% elif visita.notaria_nombre %}current{% else %}pending{% endif %}" style="padding:4px 10px;border-radius:9999px;font-size:0.65rem;font-weight:600;border:2px solid;{% if visita.notaria_confirmada %}background:var(--ds-success);color:white;border-color:var(--ds-success){% elif visita.notaria_nombre %}background:var(--ds-primary);color:white;border-color:var(--ds-primary){% else %}background:var(--ds-bg);color:var(--ds-text-secondary);border-color:var(--ds-border){% endif %}">
+        {% if visita.notaria_confirmada %}✅{% else %}2{% endif %} Notaría
+    </div>
+    <div class="{% if visita.caso_cerrado %}done{% else %}pending{% endif %}" style="padding:4px 10px;border-radius:9999px;font-size:0.65rem;font-weight:600;border:2px solid;{% if visita.caso_cerrado %}background:var(--ds-success);color:white;border-color:var(--ds-success){% else %}background:var(--ds-bg);color:var(--ds-text-secondary);border-color:var(--ds-border){% endif %}">
+        {% if visita.caso_cerrado %}✅{% else %}3{% endif %} Cierre
+    </div>
+</div>
 
-{% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
-    {% if not visita.contrato_arriendo and not visita.caso_cerrado %}
-    <div style="margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);">
-        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;">📄 Subir Contrato de Arriendo</div>
-        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-            {% csrf_token %}
-            <input type="hidden" name="accion" value="subir_contrato">
-            <input type="file" name="contrato_arriendo" accept=".pdf" required style="font-size:0.8rem;max-width:160px;">
-            <button type="submit" class="btn btn-primary btn-sm">📤 Subir Contrato</button>
-        </form>
+<!-- ===== ETAPA 1: CONTRATO ===== -->
+<div style="margin:12px;border:2px solid var(--ds-border-light);border-radius:12px;overflow:hidden;">
+    <div class="{% if visita.contrato_aceptado_at %}done{% elif visita.contrato_arriendo %}{% else %}pendiente{% endif %}" style="padding:10px 14px;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-bottom:2px solid var(--ds-border-light);{% if visita.contrato_aceptado_at %}background:#e8f5e9;border-bottom-color:#a5d6a7{% elif visita.contrato_arriendo %}background:white{% else %}background:#f5f5f5{% endif %}">
+        <span>1. Contrato de Arriendo</span>
+        <span style="font-size:0.7rem;font-weight:400;">
+            {% if visita.contrato_aceptado_at %}✅ Aceptado por ambas partes {{ visita.contrato_aceptado_at|date:'d/m/Y' }}
+            {% elif visita.contrato_arriendo %}📄 Subido — Ronda {{ visita.contrato_arriendo_ronda }}
+            {% else %}⏳ Pendiente{% endif %}
+        </span>
+    </div>
+    <div class="whatsapp-container">
+        <!-- COLUMNA CORREDOR -->
+        <div class="whatsapp-col col-corredor">
+            <div class="whatsapp-col-header">🏢 Corredor</div>
+            <div class="whatsapp-col-body">
+                {% if not visita.contrato_arriendo %}
+                    {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📤 Subir Contrato de Arriendo</div>
+                        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" enctype="multipart/form-data" style="margin-top:4px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="subir_contrato">
+                            <input type="file" name="contrato_arriendo" accept=".pdf" required style="font-size:0.63rem;max-width:120px;">
+                            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">📤 Subir</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="whatsapp-bubble system">⏳ Corredor subirá el Contrato próximamente...</div>
+                    {% endif %}
+                {% else %}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📄 Contrato subido (R{{ visita.contrato_arriendo_ronda }})</div>
+                        <a href="{{ visita.contrato_arriendo.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver PDF</a>
+                        <div class="bubble-time">Subió {{ visita.contrato_arriendo_subido_por.get_full_name|default:visita.contrato_arriendo_subido_por.email }}</div>
+                        <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-top:4px;">
+                            Arrendador: {% if visita.contrato_aceptado_arrendador %}✅ Aceptó{% else %}❌ Objeto / ⏳ Pendiente{% endif %}
+                            · Arrendatario: {% if visita.contrato_aceptado_arrendatario %}✅ Aceptó{% else %}❌ Objeto / ⏳ Pendiente{% endif %}
+                        </div>
+                        {% if not visita.contrato_aceptado_at and not visita.caso_cerrado %}
+                            {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+                            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #90caf9;">
+                                <button onclick="document.getElementById('reemplazo-cto-{{ visita.id }}').style.display='block'" class="btn btn-outline btn-sm" style="font-size:0.6rem;">🔄 Reemplazar contrato</button>
+                                <div id="reemplazo-cto-{{ visita.id }}" style="display:none;margin-top:4px;">
+                                    <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="subir_contrato">
+                                        <input type="file" name="contrato_arriendo" accept=".pdf" required style="font-size:0.63rem;max-width:120px;">
+                                        <button type="submit" class="btn btn-primary btn-sm">📤 Subir nueva versión</button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if visita.contrato_aceptado_at %}
+                    <div class="whatsapp-bubble corredor" style="margin-top:2px;background:#e8f5e9;border-color:#a5d6a7;">
+                        <div class="bubble-author">✅ Contrato aceptado por ambas partes</div>
+                        <div class="bubble-time">{{ visita.contrato_aceptado_at|date:'d/m/Y H:i' }}</div>
+                        <div style="margin-top:4px;font-size:0.65rem;">➡️ Avanzar a cita notarial</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <!-- COLUMNA ARRENDADOR (dueño) -->
+        <div class="whatsapp-col col-arrendador">
+            <div class="whatsapp-col-header">👤 Arrendador (Dueño)</div>
+            <div class="whatsapp-col-body">
+                {% if not visita.contrato_arriendo %}
+                    <div class="whatsapp-bubble system">⏳ Esperando que el corredor suba el contrato...</div>
+                {% elif visita.contrato_aceptado_arrendador %}
+                    <div class="whatsapp-bubble arrendador"><div class="bubble-author">✅ Aceptaste el Contrato</div><div class="bubble-time">{{ visita.contrato_aceptado_arrendador_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == propiedad.dueno %}
+                    <div class="whatsapp-bubble arrendador">
+                        <div class="bubble-author">📄 Revisa el Contrato (R{{ visita.contrato_arriendo_ronda }})</div>
+                        <div class="whatsapp-actions">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="contrato_aceptar"><button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                            <button onclick="document.getElementById('obj-arrendador-{{ visita.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                        </div>
+                        <div id="obj-arrendador-{{ visita.id }}" style="display:none;margin-top:4px;">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="contrato_objetar"><input type="text" name="razon" placeholder="Razón de la objeción*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button></form>
+                        </div>
+                    </div>
+                {% else %}
+                    {% if visita.contrato_aceptado_arrendador %}
+                    <div class="whatsapp-bubble arrendador"><div class="bubble-author">✅ Arrendador aceptó</div><div class="bubble-time">{{ visita.contrato_aceptado_arrendador_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}
+                    <div class="whatsapp-bubble arrendador"><div class="bubble-author">⏳ Pendiente</div></div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <!-- COLUMNA ARRENDATARIO (usuario/visitante) -->
+        <div class="whatsapp-col col-arrendatario">
+            <div class="whatsapp-col-header">👤 Arrendatario</div>
+            <div class="whatsapp-col-body">
+                {% if not visita.contrato_arriendo %}
+                    <div class="whatsapp-bubble system">⏳ Esperando que el corredor suba el contrato...</div>
+                {% elif visita.contrato_aceptado_arrendatario %}
+                    <div class="whatsapp-bubble arrendatario"><div class="bubble-author">✅ Aceptaste el Contrato</div><div class="bubble-time">{{ visita.contrato_aceptado_arrendatario_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == visita.usuario %}
+                    <div class="whatsapp-bubble arrendatario">
+                        <div class="bubble-author">📄 Revisa el Contrato (R{{ visita.contrato_arriendo_ronda }})</div>
+                        <div class="whatsapp-actions">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="contrato_aceptar"><button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                            <button onclick="document.getElementById('obj-arrendatario-{{ visita.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                        </div>
+                        <div id="obj-arrendatario-{{ visita.id }}" style="display:none;margin-top:4px;">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="contrato_objetar"><input type="text" name="razon" placeholder="Razón de la objeción*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button></form>
+                        </div>
+                    </div>
+                {% else %}
+                    {% if visita.contrato_aceptado_arrendatario %}
+                    <div class="whatsapp-bubble arrendatario"><div class="bubble-author">✅ Arrendatario aceptó</div><div class="bubble-time">{{ visita.contrato_aceptado_arrendatario_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}
+                    <div class="whatsapp-bubble arrendatario"><div class="bubble-author">⏳ Pendiente</div></div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ETAPA 2: NOTARÍA ===== -->
+<div style="margin:12px;border:2px solid var(--ds-border-light);border-radius:12px;overflow:hidden;">
+    <div class="{% if visita.notaria_confirmada %}done{% elif visita.notaria_nombre %}{% else %}pendiente{% endif %}" style="padding:10px 14px;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-bottom:2px solid var(--ds-border-light);{% if visita.notaria_confirmada %}background:#e8f5e9;border-bottom-color:#a5d6a7{% elif visita.notaria_nombre %}background:white{% else %}background:#f5f5f5{% endif %}">
+        <span>2. Cita Notarial</span>
+        <span style="font-size:0.7rem;font-weight:400;">
+            {% if visita.notaria_confirmada %}✅ Confirmada {{ visita.notaria_confirmada_at|date:'d/m/Y' }}
+            {% elif visita.notaria_nombre %}📅 Propuesta por corredor
+            {% else %}⏳ Pendiente{% endif %}
+        </span>
+    </div>
+    {% if not visita.contrato_aceptado_at %}
+    <div style="padding:12px;text-align:center;color:var(--ds-text-muted);font-size:0.8rem;">⏳ Pendiente de que el Contrato sea aceptado por ambas partes...</div>
+    {% else %}
+    <div class="whatsapp-container">
+        <!-- COLUMNA CORREDOR -->
+        <div class="whatsapp-col col-corredor">
+            <div class="whatsapp-col-header">🏢 Corredor</div>
+            <div class="whatsapp-col-body">
+                {% if not visita.notaria_nombre %}
+                    {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📅 Proponer Cita Notarial</div>
+                        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="margin-top:4px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="notaria_proponer">
+                            <input type="text" name="notaria_nombre" placeholder="Nombre notaría*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                            <input type="text" name="notaria_direccion" placeholder="Dirección*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                            <input type="date" name="notaria_fecha" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                            <input type="time" name="notaria_hora" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:2px;">💾 Proponer</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="whatsapp-bubble system">⏳ Corredor propondrá la cita notarial próximamente...</div>
+                    {% endif %}
+                {% else %}
+                    <div class="whatsapp-bubble corredor">
+                        <div class="bubble-author">📅 Cita Notarial Propuesta</div>
+                        <div style="font-weight:600;">🏛️ {{ visita.notaria_nombre }}</div>
+                        <div>📍 {{ visita.notaria_direccion }}</div>
+                        <div>📆 {{ visita.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ visita.notaria_hora|time:'H:i' }}</div>
+                        <div class="bubble-time" style="margin-top:4px;">
+                            Arrendador: {% if visita.notaria_aceptada_arrendador %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}
+                            · Arrendatario: {% if visita.notaria_aceptada_arrendatario %}✅ Aceptó{% else %}⏳ Pendiente{% endif %}
+                        </div>
+                        {% if not visita.notaria_confirmada %}
+                            {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+                            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #90caf9;">
+                                <button onclick="document.getElementById('cambio-notaria-{{ visita.id }}').style.display='block'" class="btn btn-outline btn-sm" style="font-size:0.6rem;">🔄 Cambiar cita</button>
+                                <div id="cambio-notaria-{{ visita.id }}" style="display:none;margin-top:4px;">
+                                    <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="notaria_proponer">
+                                        <input type="text" name="notaria_nombre" value="{{ visita.notaria_nombre }}" placeholder="Nombre notaría*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                                        <input type="text" name="notaria_direccion" value="{{ visita.notaria_direccion }}" placeholder="Dirección*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                                        <input type="date" name="notaria_fecha" value="{{ visita.notaria_fecha|date:'Y-m-d' }}" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                                        <input type="time" name="notaria_hora" value="{{ visita.notaria_hora|time:'H:i' }}" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.63rem;margin-bottom:2px;">
+                                        <button type="submit" class="btn btn-primary btn-sm">💾 Actualizar propuesta</button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                        {% if visita.notaria_confirmada %}
+                        <div style="margin-top:4px;padding:4px 8px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:4px;font-size:0.65rem;color:#2e7d32;font-weight:600;">✅ Cita confirmada {{ visita.notaria_confirmada_at|date:'d/m/Y H:i' }}</div>
+                        {% endif %}
+                    </div>
+                    {% if visita.notaria_confirmada and not visita.caso_cerrado %}
+                        {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
+                        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="margin-top:2px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="cerrar_caso">
+                            <button type="submit" class="btn btn-success btn-sm" style="font-size:0.6rem;" onclick="return confirm('¿Estás seguro de cerrar este caso de arriendo?')">🎉 Cerrar caso</button>
+                        </form>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <!-- COLUMNA ARRENDADOR (dueño) -->
+        <div class="whatsapp-col col-arrendador">
+            <div class="whatsapp-col-header">👤 Arrendador (Dueño)</div>
+            <div class="whatsapp-col-body">
+                {% if not visita.notaria_nombre %}
+                    <div class="whatsapp-bubble system">⏳ Esperando que el corredor proponga la cita...</div>
+                {% elif visita.notaria_aceptada_arrendador %}
+                    <div class="whatsapp-bubble arrendador"><div class="bubble-author">✅ Aceptaste la Cita Notarial</div><div class="bubble-time">{{ visita.notaria_aceptada_arrendador_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == propiedad.dueno %}
+                    <div class="whatsapp-bubble arrendador">
+                        <div class="bubble-author">📅 Cita Notarial Propuesta</div>
+                        <div>🏛️ {{ visita.notaria_nombre }}</div>
+                        <div>📍 {{ visita.notaria_direccion }}</div>
+                        <div>📆 {{ visita.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ visita.notaria_hora|time:'H:i' }}</div>
+                        <div class="whatsapp-actions" style="margin-top:6px;">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="notaria_aceptar"><button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                            <button onclick="document.getElementById('obj-notaria-arrendador-{{ visita.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                        </div>
+                        <div id="obj-notaria-arrendador-{{ visita.id }}" style="display:none;margin-top:4px;">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="notaria_objetar"><input type="text" name="razon" placeholder="Razón*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button></form>
+                        </div>
+                    </div>
+                {% else %}
+                    {% if visita.notaria_aceptada_arrendador %}
+                    <div class="whatsapp-bubble arrendador"><div class="bubble-author">✅ Arrendador aceptó</div><div class="bubble-time">{{ visita.notaria_aceptada_arrendador_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}
+                    <div class="whatsapp-bubble arrendador"><div class="bubble-author">⏳ Pendiente</div></div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <!-- COLUMNA ARRENDATARIO -->
+        <div class="whatsapp-col col-arrendatario">
+            <div class="whatsapp-col-header">👤 Arrendatario</div>
+            <div class="whatsapp-col-body">
+                {% if not visita.notaria_nombre %}
+                    <div class="whatsapp-bubble system">⏳ Esperando que el corredor proponga la cita...</div>
+                {% elif visita.notaria_aceptada_arrendatario %}
+                    <div class="whatsapp-bubble arrendatario"><div class="bubble-author">✅ Aceptaste la Cita Notarial</div><div class="bubble-time">{{ visita.notaria_aceptada_arrendatario_at|date:'d/m/Y H:i' }}</div></div>
+                {% elif user == visita.usuario %}
+                    <div class="whatsapp-bubble arrendatario">
+                        <div class="bubble-author">📅 Cita Notarial Propuesta</div>
+                        <div>🏛️ {{ visita.notaria_nombre }}</div>
+                        <div>📍 {{ visita.notaria_direccion }}</div>
+                        <div>📆 {{ visita.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ visita.notaria_hora|time:'H:i' }}</div>
+                        <div class="whatsapp-actions" style="margin-top:6px;">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="notaria_aceptar"><button type="submit" class="btn btn-success btn-sm">✅ Aceptar</button></form>
+                            <button onclick="document.getElementById('obj-notaria-arrendatario-{{ visita.id }}').style.display='block'" class="btn btn-danger btn-sm">❌ Objetar</button>
+                        </div>
+                        <div id="obj-notaria-arrendatario-{{ visita.id }}" style="display:none;margin-top:4px;">
+                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}">{% csrf_token %}<input type="hidden" name="accion" value="notaria_objetar"><input type="text" name="razon" placeholder="Razón*" required style="width:100%;padding:2px 4px;border:1px solid var(--ds-error);border-radius:4px;font-size:0.63rem;"><button type="submit" class="btn btn-danger btn-sm">❌ Enviar objeción</button></form>
+                        </div>
+                    </div>
+                {% else %}
+                    {% if visita.notaria_aceptada_arrendatario %}
+                    <div class="whatsapp-bubble arrendatario"><div class="bubble-author">✅ Arrendatario aceptó</div><div class="bubble-time">{{ visita.notaria_aceptada_arrendatario_at|date:'d/m/Y H:i' }}</div></div>
+                    {% else %}
+                    <div class="whatsapp-bubble arrendatario"><div class="bubble-author">⏳ Pendiente</div></div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
     </div>
     {% endif %}
-{% endif %}
-
-{% if visita.contrato_arriendo %}
-<div style="font-size:0.85rem;margin-bottom:8px;">
-    📄 <a href="{{ visita.contrato_arriendo.url }}" target="_blank">Descargar Contrato de Arriendo</a>
-    {% if visita.contrato_arriendo_subido_por %} · Subido por {{ visita.contrato_arriendo_subido_por.get_full_name|default:visita.contrato_arriendo_subido_por.email }}{% endif %}
 </div>
-{% endif %}
 
-{% if visita.contrato_arriendo and not visita.notaria_confirmada and not visita.caso_cerrado %}
-    {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
-    <div style="margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);">
-        <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px;">📅 Proponer Cita Notarial</div>
-        <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-            {% csrf_token %}
-            <input type="hidden" name="accion" value="notaria_proponer">
-            <input type="text" name="notaria_nombre" placeholder="Nombre notaría" value="{{ visita.notaria_nombre }}" required style="width:140px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-            <input type="text" name="notaria_direccion" placeholder="Dirección" value="{{ visita.notaria_direccion }}" required style="width:140px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-            <input type="date" name="notaria_fecha" value="{{ visita.notaria_fecha|date:'Y-m-d' }}" required style="width:130px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-            <input type="time" name="notaria_hora" value="{{ visita.notaria_hora|time:'H:i' }}" required style="width:100px;padding:4px 6px;border:1px solid var(--ds-border);border-radius:4px;font-size:0.75rem;">
-            <button type="submit" class="btn btn-primary btn-sm">💾 Guardar y proponer</button>
-        </form>
-    </div>
-    {% endif %}
-{% endif %}
-
-{% if visita.notaria_nombre %}
-<div style="font-size:0.85rem;margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid var(--ds-border-light);">
-    <div style="font-weight:600;">📅 Cita notarial propuesta:</div>
-    <div>🏛️ {{ visita.notaria_nombre }} · 📍 {{ visita.notaria_direccion }}</div>
-    <div>📆 {{ visita.notaria_fecha|date:'d/m/Y' }} · 🕐 {{ visita.notaria_hora|time:'H:i' }}</div>
-    {% if visita.notaria_confirmada %}
-    <div style="color:var(--ds-success);font-weight:600;margin-top:4px;">✅ Confirmada {{ visita.notaria_confirmada_at|date:'d/m/Y H:i' }}</div>
-    {% endif %}
 </div>
-{% endif %}
-
-{% if visita.notaria_nombre and not visita.notaria_confirmada and visita.usuario == user and not visita.caso_cerrado %}
-<form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="margin-bottom:8px;">
-    {% csrf_token %}
-    <input type="hidden" name="accion" value="notaria_confirmar">
-    <button type="submit" class="btn btn-success btn-sm">✅ Confirmar cita notarial</button>
-</form>
-{% endif %}
-
-{% if visita.notaria_confirmada and not visita.caso_cerrado %}
-    {% if user == visita.corredor or user.rol in 'gerente,superadmin' %}
-    <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="margin-bottom:4px;">
-        {% csrf_token %}
-        <input type="hidden" name="accion" value="cerrar_caso">
-        <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('¿Estás seguro de cerrar este caso de arriendo?')">🎉 Cerrar caso</button>
-    </form>
-    {% endif %}
-{% endif %}

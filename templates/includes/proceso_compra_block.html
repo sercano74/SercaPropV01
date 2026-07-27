@@ -415,6 +415,15 @@
                         <div class="bubble-author">🎉 Proceso completado</div>
                         <div class="bubble-time">{{ proceso.completado_at|date:'d/m/Y H:i' }}</div>
                     </div>
+                    {% for obs in proceso.observaciones.all %}
+                        {% if obs.etapa == 'cierre' and obs.archivo %}
+                        <div class="whatsapp-bubble corredor" style="margin-top:4px;background:#e3f2fd;border-color:#90caf9;">
+                            <div class="bubble-author">📄 {{ obs.texto }}</div>
+                            <a href="{{ obs.archivo.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver documento emitido por CBR- {{ obs.archivo.name }}</a>
+                            <div class="bubble-time">{{ obs.created_at|date:'d/m/Y H:i' }}</div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 {% elif proceso.estado == 'cancelado' %}
                     <div class="whatsapp-bubble corredor" style="background:#ffebee;border-color:#ef9a9a;">
                         <div class="bubble-author" style="color:#c62828;">❌ Cancelado</div>
@@ -433,28 +442,137 @@
                         </form>
                     </div>
                 {% else %}
-                    {# --- PASO 2: Aviso ingreso + Input docs CBR + Select resultado + Boton de cierre --- #}
+                    {# --- PASO 2: Sistema dinamico de subida doc por doc + cierre separado --- #}
                     <div class="whatsapp-bubble corredor">
                         <div class="bubble-author">📋 Inscripcion iniciada</div>
                         <div class="bubble-time">{{ proceso.escritura_ingresada_at|date:'d/m/Y H:i' }}</div>
                     </div>
-                    <div class="whatsapp-bubble corredor" style="margin-top:4px;">
+
+                    {% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
+                    {% csrf_token %}
+                    <input type="hidden" id="csrf-cbr-{{ proceso.id }}" value="{{ csrf_token }}">
+                    <div class="whatsapp-bubble corredor" style="margin-top:4px;" id="cbr-docs-container-{{ proceso.id }}">
                         <div class="bubble-author">📬 Documentos del CBR</div>
-                        <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-bottom:4px;">Adjunta los documentos emitidos por el Conservador como respuesta del proceso. Puedes seleccionar varios archivos manteniendo presionada la tecla <strong>Ctrl</strong> (Windows) o <strong>Cmd</strong> (Mac) mientras haces clic en cada archivo.</div>
-                        <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" enctype="multipart/form-data">
-                            {% csrf_token %}
-                            <input type="hidden" name="accion" value="cerrar">
-                            <input type="file" name="docs_cbr" accept=".pdf" multiple required style="font-size:0.63rem;max-width:100%;">
-                            <div style="margin-top:4px;">
-                                <select name="resultado" required style="font-size:0.63rem;padding:2px;width:100%;">
-                                    <option value="">Resultado del CBR...</option>
+                        <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-bottom:6px;">
+                            Sube cada documento por separado: escribe el nombre, selecciona el archivo y presiona <strong>➕</strong>.
+                            Repite hasta haber subido todos (máx. 8).
+                        </div>
+
+                        <!-- Lista de documentos ya subidos -->
+                        <div id="cbr-subidos-{{ proceso.id }}" style="margin-bottom:6px;">
+                            {% for obs in proceso.observaciones.all %}
+                                {% if obs.etapa == 'cierre' and obs.archivo %}
+                                <div class="cbr-doc-item" style="display:flex;align-items:center;gap:4px;padding:3px 6px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;font-size:0.6rem;margin-bottom:3px;">
+                                    <span style="flex:1;font-weight:600;">📄 {{ obs.texto }}</span>
+                                    <a href="{{ obs.archivo.url }}" target="_blank" style="font-size:0.55rem;">🔗 Ver {{ obs.archivo.name }}</a>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Fila de subida dinamica -->
+                        <div id="cbr-upload-row-{{ proceso.id }}" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                            <input type="text" id="cbr-nombre-{{ proceso.id }}" placeholder="Nombre, ej: Inscripción" style="flex:1;min-width:70px;font-size:0.6rem;padding:3px 5px;border:1px solid var(--ds-border);border-radius:4px;">
+                            <input type="file" id="cbr-file-{{ proceso.id }}" accept=".pdf" style="font-size:0.55rem;flex:1;min-width:70px;">
+                            <button type="button" class="btn btn-success btn-sm" style="font-size:0.7rem;padding:3px 8px;border-radius:9999px;font-weight:700;cursor:pointer;" onclick="subirDocCBR({{ proceso.id }}, '{% url 'iniciar_inscripcion_cbr' proceso.id %}')">➕</button>
+                        </div>
+
+                        <!-- Boton de cierre (siempre visible, no se muestra si ya hay docs en server-render) -->
+                        <div id="cbr-cierre-container-{{ proceso.id }}" style="margin-top:8px;padding-top:6px;border-top:1px solid #90caf9;display:{% if proceso.observaciones.all %}block{% else %}none{% endif %};">
+                            <div style="font-size:0.6rem;color:var(--ds-text-muted);margin-bottom:4px;">Una vez subidos todos los documentos, notifica el resultado a las partes y cierra el proceso:</div>
+                            <form method="POST" action="{% url 'iniciar_inscripcion_cbr' proceso.id %}" style="display:flex;flex-direction:column;gap:4px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="accion" value="cerrar">
+                                <select name="resultado" required style="font-size:0.63rem;padding:3px;width:100%;border:2px solid var(--ds-border);border-radius:6px;">
+                                    <option value="">Selecciona resultado...</option>
                                     <option value="aprobada">✅ Aprobada</option>
                                     <option value="rechazada">❌ Rechazada</option>
                                 </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">📤 Subir documentos y cerrar proceso</button>
-                        </form>
+                                <button type="submit" class="btn btn-primary btn-sm" style="padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">📨 Notificar resultado y cerrar proceso</button>
+                            </form>
+                        </div>
                     </div>
+
+                    <script>
+                    function subirDocCBR(procesoId, url) {
+                        const nombre = document.getElementById('cbr-nombre-' + procesoId).value.trim();
+                        const fileInput = document.getElementById('cbr-file-' + procesoId);
+                        const archivo = fileInput.files[0];
+
+                        if (!nombre) { alert('Debes escribir un nombre para el documento.'); return; }
+                        if (!archivo) { alert('Debes seleccionar un archivo PDF.'); return; }
+                        // Validar tamaño máximo 10MB
+                        if (archivo.size > 10 * 1024 * 1024) { alert('El archivo es demasiado grande (máx. 10MB).'); return; }
+
+                        const formData = new FormData();
+                        // Obtener CSRF desde el meta tag o cookie en vez de un hidden field
+                        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                        formData.append('csrfmiddlewaretoken', csrfToken);
+                        formData.append('accion', 'subir_doc_json');
+                        formData.append('nombre_doc', nombre);
+                        formData.append('archivo', archivo);
+
+                        // Deshabilitar boton mientras sube para evitar doble click
+                        const btn = event.target;
+                        const btnOriginalText = btn.innerHTML;
+                        btn.disabled = true;
+                        btn.innerHTML = '⏳';
+
+                        fetch(url, {
+                            method: 'POST',
+                            body: formData,
+                        })
+                        .then(r => {
+                            if (!r.ok) {
+                                return r.text().then(txt => { throw new Error('HTTP ' + r.status + ': ' + txt.substring(0,200)); });
+                            }
+                            return r.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                // Agregar el documento a la lista
+                                const container = document.getElementById('cbr-subidos-' + procesoId);
+                                const item = document.createElement('div');
+                                item.className = 'cbr-doc-item';
+                                item.style.cssText = 'display:flex;align-items:center;gap:4px;padding:3px 6px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;font-size:0.6rem;margin-bottom:3px;';
+                                item.innerHTML = '<span style="flex:1;font-weight:600;">📄 ' + data.nombre + '</span><a href="' + data.url + '" target="_blank" style="font-size:0.55rem;">🔗 Ver</a>';
+                                container.appendChild(item);
+
+                                // Limpiar inputs
+                                document.getElementById('cbr-nombre-' + procesoId).value = '';
+                                fileInput.value = '';
+
+                                // Mostrar el boton de cierre si estaba oculto
+                                const cierreContainer = document.getElementById('cbr-cierre-container-' + procesoId);
+                                if (cierreContainer) cierreContainer.style.display = 'block';
+
+                                btn.disabled = false;
+                                btn.innerHTML = btnOriginalText;
+                            } else {
+                                btn.disabled = false;
+                                btn.innerHTML = btnOriginalText;
+                                alert('❌ Error: ' + (data.error || 'No se pudo subir el documento'));
+                            }
+                        })
+                        .catch(err => {
+                            btn.disabled = false;
+                            btn.innerHTML = btnOriginalText;
+                            alert('❌ Error de red: ' + err.message);
+                        });
+                    }
+                    </script>
+                    {% else %}
+                        {# -- Vendedor / Comprador / otros ven los docs subidos -- #}
+                        {% for obs in proceso.observaciones.all %}
+                            {% if obs.etapa == 'cierre' and obs.archivo %}
+                            <div class="whatsapp-bubble corredor" style="margin-top:4px;background:#e3f2fd;border-color:#90caf9;">
+                                <div class="bubble-author">📄 {{ obs.texto }}</div>
+                                <a href="{{ obs.archivo.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver documento emitido por CBR</a>
+                                <div class="bubble-time">{{ obs.created_at|date:'d/m/Y H:i' }}</div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 {% endif %}
                 {% if proceso.otros_pausados %}{% if user == proceso.corredor or user.rol in 'gerente,superadmin' %}
                 <div class="whatsapp-bubble corredor" style="margin-top:8px;background:#ffebee;border-color:#ef9a9a;">
@@ -469,7 +587,17 @@
         <div class="whatsapp-col col-vendedor">
             <div class="whatsapp-col-header">👤 Vendedor</div>
             <div class="whatsapp-col-body">
-                {% if proceso.estado == 'finalizado' %}<div class="whatsapp-bubble vendedor" style="background:#e8f5e9;"><div class="bubble-author">🎉 Operacion finalizada</div></div>
+                {% if proceso.estado == 'finalizado' %}
+                    <div class="whatsapp-bubble vendedor" style="background:#e8f5e9;"><div class="bubble-author">🎉 Operacion finalizada</div></div>
+                    {% for obs in proceso.observaciones.all %}
+                        {% if obs.etapa == 'cierre' and obs.archivo %}
+                        <div class="whatsapp-bubble corredor" style="margin-top:4px;background:#e3f2fd;border-color:#90caf9;">
+                            <div class="bubble-author">📄 {{ obs.texto }}</div>
+                            <a href="{{ obs.archivo.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver documento emitido por CBR</a>
+                            <div class="bubble-time">{{ obs.created_at|date:'d/m/Y H:i' }}</div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 {% elif proceso.estado == 'cancelado' %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">❌ Cancelado</div></div>
                 {% elif not proceso.contrato_firmado %}<div class="whatsapp-bubble system">⏳ Pendiente firma...</div>
                 {% elif proceso.escritura_resultado == 'aprobada' %}<div class="whatsapp-bubble vendedor"><div class="bubble-author">🏛️ ✅ Inscripcion aprobada</div><div class="bubble-time">{{ proceso.escritura_resultado_at|date:'d/m/Y' }}</div></div>
@@ -481,7 +609,17 @@
         <div class="whatsapp-col col-comprador">
             <div class="whatsapp-col-header">👤 Comprador</div>
             <div class="whatsapp-col-body">
-                {% if proceso.estado == 'finalizado' %}<div class="whatsapp-bubble comprador" style="background:#e8f5e9;"><div class="bubble-author">🎉 Operacion finalizada</div></div>
+                {% if proceso.estado == 'finalizado' %}
+                    <div class="whatsapp-bubble comprador" style="background:#e8f5e9;"><div class="bubble-author">🎉 Operacion finalizada</div></div>
+                    {% for obs in proceso.observaciones.all %}
+                        {% if obs.etapa == 'cierre' and obs.archivo %}
+                        <div class="whatsapp-bubble corredor" style="margin-top:4px;background:#e3f2fd;border-color:#90caf9;">
+                            <div class="bubble-author">📄 {{ obs.texto }}</div>
+                            <a href="{{ obs.archivo.url }}" target="_blank" style="font-weight:600;font-size:0.7rem;">🔗 Ver documento emitido por CBR</a>
+                            <div class="bubble-time">{{ obs.created_at|date:'d/m/Y H:i' }}</div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 {% elif proceso.estado == 'cancelado' %}<div class="whatsapp-bubble comprador"><div class="bubble-author">❌ Cancelado</div></div>
                 {% elif not proceso.contrato_firmado %}<div class="whatsapp-bubble system">⏳ Pendiente firma...</div>
                 {% elif proceso.escritura_resultado == 'aprobada' %}<div class="whatsapp-bubble comprador"><div class="bubble-author">🏛️ ✅ Inscripcion aprobada</div><div class="bubble-time">{{ proceso.escritura_resultado_at|date:'d/m/Y' }}</div></div>

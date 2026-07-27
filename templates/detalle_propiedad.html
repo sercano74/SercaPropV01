@@ -346,7 +346,7 @@
             <div style="font-weight:700;font-size:1rem;margin-bottom:4px;">🔒 Propiedad en proceso de compra</div>
             <p style="font-size:0.85rem;margin:0;">Esta propiedad está actualmente en proceso de compra con otro comprador. No se pueden solicitar nuevas visitas por ahora. Si el proceso no se concreta, se reactivarán las solicitudes.</p>
         </div>
-        {% elif visita_activa and visita_activa.estado in 'pendiente,aceptada,reprogramada' %}
+        {% elif visita_activa and visita_activa.estado in 'pendiente,aceptada,reprogramada,realizada' %}
             <div class="alert-modern alert-info-modern">
                 📅 Ya tienes una solicitud de visita activa.
             </div>
@@ -697,20 +697,9 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             {% endif %}
                         {% endfor %}
 
-                        <!-- ===== INCLUDE: FLUJO DE ARRIENDO ===== -->
-                        {% if visita.estado == 'realizada' and visita.propiedad.tipo_accion == 'arriendo' and visita.intencion_arriendo %}
+                        <!-- ===== INCLUDE: FLUJO DE ARRIENDO (solo 1 vez por usuario) ===== -->
+                        {% if forloop.first and visita.estado == 'realizada' and visita.propiedad.tipo_accion == 'arriendo' and visita.intencion_arriendo %}
                             {% include "includes/arriendo_flow_block.html" %}
-                        {% endif %}
-                        {% if visita.estado == 'realizada' and visita.propiedad.tipo_accion == 'arriendo' and user == visita.usuario and not visita.intencion_arriendo %}
-                        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
-                            <form method="POST" action="{% url 'gestionar_arriendo' visita.id %}" style="display:inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="accion" value="indicar_intencion">
-                                <button type="submit" class="btn btn-primary" style="padding:8px 20px;cursor:pointer;font-weight:600;">
-                                    📋 Manifestar intención de arriendo
-                                </button>
-                            </form>
-                        </div>
                         {% endif %}
                     </div>
                 </div>

@@ -48,6 +48,59 @@
     </div>
 </div>
 
+<!-- ===== CIERRES PENDIENTES DE PERFECCIONAR ===== -->
+{% if cierres_pendientes and es_admin %}
+<div class="card-modern" style="margin-bottom:20px;border:2px solid var(--ds-warning);">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">
+            ⏳ Cierres económicos pendientes de perfeccionar
+            <span class="badge-modern badge-modern-warning" style="margin-left:8px;">{{ cierres_pendientes|length }}</span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Propiedad</th>
+                        <th>Tipo</th>
+                        <th>Corredor</th>
+                        <th>Precio</th>
+                        <th>Com.Vendedor 💰</th>
+                        <th>Com.Comprador 💰</th>
+                        <th>Total Base</th>
+                        <th>Plan</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cierres_pendientes %}
+                    <tr>
+                        <td><strong>{{ c.id }}</strong></td>
+                        <td>
+                            <a href="{% url 'detalle_propiedad' c.propiedad.id %}" style="font-weight:600;color:var(--ds-primary);text-decoration:none;">
+                                {{ c.propiedad.get_tipo_prop_display }} · {{ c.propiedad.calle|truncatechars:15 }}
+                            </a>
+                            <br><span style="font-size:0.7rem;color:var(--ds-text-secondary);">{{ c.propiedad.comuna|default:"" }}</span>
+                        </td>
+                        <td><span class="badge-modern {% if c.propiedad.tipo_cierre == 'vendida' %}badge-modern-success{% else %}badge-modern-primary{% endif %}">{{ c.propiedad.get_tipo_cierre_display|default:"—" }}</span></td>
+                        <td style="font-size:0.8rem;">{{ c.corredor.get_full_name|default:c.corredor.email }}</td>
+                        <td style="font-weight:600;font-size:0.85rem;">${{ c.precio_venta|floatformat:0|intcomma }}</td>
+                        <td style="font-size:0.85rem;">${{ c.comision_vendedor_presupuestada_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-size:0.85rem;">${{ c.comision_comprador_presupuestada_clp|floatformat:0|intcomma }}</td>
+                        <td style="font-weight:700;color:var(--ds-primary);">${{ c.ingreso_bruto_clp|floatformat:0|intcomma }}</td>
+                        <td><span class="badge-modern badge-modern-info" style="font-size:0.6rem;">{{ c.plan_nombre|default:"—" }}</span></td>
+                        <td>
+                            <a href="{% url 'editar_cierre_economico' c.id %}" class="btn btn-primary btn-sm" style="text-decoration:none;font-size:0.65rem;padding:4px 8px;">✏️ Perfeccionar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- ===== TABLA DE CIERRES ===== -->
 <div class="card-modern">
     <div class="card-modern-body">
