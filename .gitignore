@@ -63,3 +63,6 @@ test_*.png
 cookies.txt
 admin_response.html
 check_props_script.py
+
+# Environment variables (local dev only - DO NOT commit)
+.env
