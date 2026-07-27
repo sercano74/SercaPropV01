@@ -100,12 +100,25 @@ TEMPLATES = [
 WSGI_APPLICATION = 'SercaProp.wsgi.application'
 
 # ── Base de datos ──────────────────────────────────
-# En Railway se inyecta DATABASE_URL automáticamente (PostgreSQL).
-# En local sigue usando SQLite.
+# Railway: DATABASE_URL (inyectado al conectar Postgres)
+# Railway también inyecta PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
+# si el Postgres está vinculado al servicio web.
+# Local: SQLite.
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
+    }
+elif os.environ.get('PGHOST'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('PGDATABASE', 'railway'),
+            'USER': os.environ.get('PGUSER', 'postgres'),
+            'PASSWORD': os.environ.get('PGPASSWORD', ''),
+            'HOST': os.environ.get('PGHOST', 'localhost'),
+            'PORT': os.environ.get('PGPORT', '5432'),
+        }
     }
 else:
     DATABASES = {
