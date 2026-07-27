@@ -5,7 +5,7 @@
     "buildCommand": "python manage.py collectstatic --noinput"
   },
   "deploy": {
-    "startCommand": "gunicorn SercaProp.wsgi --log-file -",
+    "startCommand": "bash start.sh",
     "restartPolicyType": "ALWAYS",
     "healthcheckPath": "/"
   }
