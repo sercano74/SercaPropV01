@@ -152,7 +152,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ordered.dev.01@gmail.com'
-EMAIL_HOST_PASSWORD = 'xdkykfxczxbxeszf'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = 'Serca Propiedades <ordered.dev.01@gmail.com>'
 
 # Tiempo de expiración del token de confirmación de email (en horas)
