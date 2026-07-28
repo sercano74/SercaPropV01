@@ -1,5 +1,1 @@
-web:
-gunicorn
-SercaProp.wsgi
---log-file
--
+web: bash start.sh
