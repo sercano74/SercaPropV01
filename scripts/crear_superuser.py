@@ -7,8 +7,11 @@ O desde Railway Console:
   2. Escribe:  python scripts/crear_superuser.py
 """
 import os
+import sys
 import django
 
+# Asegurar que /app esté en el path (Railway ejecuta desde /app)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SercaProp.settings')
 django.setup()
 
