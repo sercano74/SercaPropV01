@@ -177,8 +177,13 @@ def registro_view(request):
             rol="base",
         )
 
-        # Enviar correo de confirmación
-        if send_confirmation_email(user, request):
+        # Enviar correo de confirmación (con protección ante fallos)
+        try:
+            email_enviado = send_confirmation_email(user)
+        except Exception:
+            email_enviado = False
+
+        if email_enviado:
             messages.success(
                 request,
                 "Registro exitoso. Te hemos enviado un correo de confirmación a "
