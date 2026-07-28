@@ -42,28 +42,30 @@ def send_confirmation_email(user, request=None):
     Envía el correo de confirmación al usuario.
     Retorna True si se envió correctamente, False en caso contrario.
     """
-    token = email_token_generator.make_token(user)
-    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    try:
+        token = email_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-    # Construir URL absoluta de confirmación
-    # En Railway, el dominio se obtiene de ALLOWED_HOSTS o variable de entorno
-    site_domain = os.environ.get(
-        'SITE_DOMAIN',
-        getattr(settings, 'SITE_DOMAIN', 'web-production-5f792c.up.railway.app')
-    )
-    protocol = 'https'
-    confirm_url = f"{protocol}://{site_domain}{reverse('confirmar_email', kwargs={'uidb64': uid, 'token': token})}"
+        # Construir URL absoluta de confirmación
+        site_domain = getattr(settings, 'SITE_DOMAIN', None) or os.environ.get(
+            'SITE_DOMAIN', 'web-production-5f792c.up.railway.app'
+        )
+        protocol = 'https'
+        confirm_url = f"{protocol}://{site_domain}{reverse('confirmar_email', kwargs={'uidb64': uid, 'token': token})}"
 
-    subject = "Confirma tu correo electrónico - Serca Propiedades"
+        site_name = getattr(settings, 'SITE_NAME', 'Serca Propiedades')
+        expiry_hours = getattr(settings, 'ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_HOURS', 48)
 
-    html_message = render_to_string("email/confirmacion_email.html", {
-        "user": user,
-        "confirm_url": confirm_url,
-        "site_name": getattr(settings, 'SITE_NAME', 'Serca Propiedades'),
-        "expiry_hours": getattr(settings, 'ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_HOURS', 48),
-    })
+        subject = "Confirma tu correo electrónico - Serca Propiedades"
 
-    text_message = f"""
+        html_message = render_to_string("email/confirmacion_email.html", {
+            "user": user,
+            "confirm_url": confirm_url,
+            "site_name": site_name,
+            "expiry_hours": expiry_hours,
+        })
+
+        text_message = f"""
 Hola {user.get_full_name() or user.username},
 
 Gracias por registrarte en Serca Propiedades.
@@ -71,15 +73,14 @@ Gracias por registrarte en Serca Propiedades.
 Para confirmar tu correo electrónico, haz clic en el siguiente enlace:
 {confirm_url}
 
-Este enlace expirará en {getattr(settings, 'ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_HOURS', 48)} horas.
+Este enlace expirará en {expiry_hours} horas.
 
 Si no creaste esta cuenta, puedes ignorar este mensaje.
 
 Saludos,
 El equipo de Serca Propiedades
-    """
+        """
 
-    try:
         send_mail(
             subject=subject,
             message=text_message,

@@ -29,7 +29,7 @@ Django settings for SercaProp project.
 # kw        : 123
 # ==================================================
 # rol       : usuario base
-# usuario   : Sergio Pérez
+# usuario   : Sergio Cannobbio
 # email     : sergio.cannobbio@gmail.com
 # kw        : 123
 # ==================================================
@@ -170,6 +170,10 @@ DEFAULT_FROM_EMAIL = 'Serca Propiedades <ordered.dev.01@gmail.com>'
 
 # Tiempo de expiración del token de confirmación de email (en horas)
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_HOURS = 48
+
+# ── Sitio ───────────────────────────────────────────
+SITE_NAME = 'Serca Propiedades'
+SITE_DOMAIN = os.environ.get('SITE_DOMAIN', 'web-production-5f792c.up.railway.app')
 
 # ── Seguridad para producción ─────────────────────
 if not DEBUG:
