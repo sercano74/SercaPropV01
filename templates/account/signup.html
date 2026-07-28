@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+{% block content %}
+<div class="form-modern-container" style="max-width:520px;">
+    <h2>📝 Crear Cuenta</h2>
+
+    {% if form.non_field_errors %}
+    <div class="alert-modern alert-error-modern">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'account_signup' %}" class="form-modern">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nombres</label>
+                <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" placeholder="Juan" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Apellidos</label>
+                <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" placeholder="Pérez" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" value="{{ form.email.value|default:'' }}" required placeholder="tu@email.cl" class="form-control">
+            {% if form.email.errors %}<small style="color:var(--ds-danger);">{{ form.email.errors.0 }}</small>{% endif %}
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Contraseña *</label>
+                <input type="password" name="password1" required class="form-control">
+                {% if form.password1.errors %}<small style="color:var(--ds-danger);">{{ form.password1.errors.0 }}</small>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>Repetir contraseña *</label>
+                <input type="password" name="password2" required class="form-control">
+                {% if form.password2.errors %}<small style="color:var(--ds-danger);">{{ form.password2.errors.0 }}</small>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>RUT / DNI</label>
+                <input type="text" name="dni" value="{{ form.dni.value|default:'' }}" placeholder="12.345.678-9" class="form-control">
+                {% if form.dni.errors %}<small style="color:var(--ds-danger);">{{ form.dni.errors.0 }}</small>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" name="cel_phone" value="{{ form.cel_phone.value|default:'' }}" placeholder="+56 9 1234 5678" class="form-control">
+            </div>
+        </div>
+
+        {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-block">Crear Cuenta</button>
+
+        <p style="margin-top:16px;text-align:center;font-size:0.9rem;color:var(--ds-text-secondary);">
+            ¿Ya tienes cuenta? <a href="{% url 'account_login' %}" style="color:var(--ds-primary);font-weight:600;text-decoration:underline;">Inicia sesión</a>
+        </p>
+    </form>
+
+    {% if socialaccount_providers %}
+    <hr style="margin:20px 0;">
+    <p style="text-align:center;font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">O regístrate con</p>
+    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+        {% for provider in socialaccount_providers %}
+            <a href="{% provider_login_url provider.id process='signup' %}" 
+               class="btn btn-outline" 
+               style="display:flex;align-items:center;gap:8px;padding:10px 20px;">
+                {{ provider.name }}
+            </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+</write_to_file>

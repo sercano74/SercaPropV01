@@ -189,10 +189,10 @@
                         {% endif %}
                     </a>
                     <a href="{% url 'perfil' %}" class="btn btn-ghost btn-sm">Perfil</a>
-                    <a href="{% url 'logout' %}" class="btn btn-outline btn-sm">Salir</a>
+                    <a href="{% url 'account_logout' %}" class="btn btn-outline btn-sm">Salir</a>
                 {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-ghost btn-sm">Ingresar</a>
-                    <a href="{% url 'registro' %}" class="btn btn-primary btn-sm">Regístrate</a>
+                    <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm">Ingresar</a>
+                    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">Regístrate</a>
                 {% endif %}
                 <button class="nav-toggle" id="navToggleModern" aria-label="Menú">☰</button>
             </div>

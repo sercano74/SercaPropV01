@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-modern-container" style="max-width:500px;text-align:center;">
+    <h2>📧 Confirmar Correo Electrónico</h2>
+
+    {% if confirmation %}
+        <p style="color:var(--ds-text-secondary);margin:16px 0;">
+            ¿Confirmas que la dirección <strong>{{ confirmation.email_address.email }}</strong>
+            pertenece a tu cuenta de <strong>{{ site_name }}</strong>?
+        </p>
+
+        <form method="POST" action="{% url 'account_confirm_email' confirmation.key %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">✅ Confirmar</button>
+        </form>
+    {% else %}
+        {% url 'account_email' as email_url %}
+        <p style="color:var(--ds-text-secondary);margin:16px 0;">
+            El enlace de confirmación es inválido o ha expirado.
+            <a href="{{ email_url }}" style="color:var(--ds-primary);">Solicita uno nuevo aquí.</a>
+        </p>
+    {% endif %}
+</div>
+{% endblock %}
+</write_to_file>
