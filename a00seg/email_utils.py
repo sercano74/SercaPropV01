@@ -2,6 +2,7 @@
 Utilidades para confirmación de email.
 Genera tokens seguros, envía correos de confirmación y verifica tokens.
 """
+import os
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -36,20 +37,22 @@ class EmailConfirmationTokenGenerator(PasswordResetTokenGenerator):
 email_token_generator = EmailConfirmationTokenGenerator()
 
 
-def send_confirmation_email(user, request):
+def send_confirmation_email(user, request=None):
     """
     Envía el correo de confirmación al usuario.
     Retorna True si se envió correctamente, False en caso contrario.
     """
-    from django.contrib.sites.shortcuts import get_current_site
-
     token = email_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
 
     # Construir URL absoluta de confirmación
-    current_site = get_current_site(request)
-    protocol = 'https' if request.is_secure() else 'http'
-    confirm_url = f"{protocol}://{current_site.domain}{reverse('confirmar_email', kwargs={'uidb64': uid, 'token': token})}"
+    # En Railway, el dominio se obtiene de ALLOWED_HOSTS o variable de entorno
+    site_domain = os.environ.get(
+        'SITE_DOMAIN',
+        getattr(settings, 'SITE_DOMAIN', 'web-production-5f792c.up.railway.app')
+    )
+    protocol = 'https'
+    confirm_url = f"{protocol}://{site_domain}{reverse('confirmar_email', kwargs={'uidb64': uid, 'token': token})}"
 
     subject = "Confirma tu correo electrónico - Serca Propiedades"
 
