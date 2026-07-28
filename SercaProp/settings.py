@@ -50,7 +50,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = os.environ.get(
     'DJANGO_ALLOWED_HOSTS',
-    '*'
+    '.railway.app,.serca.online,web-production-5f792c.up.railway.app,localhost,127.0.0.1'
 ).split(',')
 
 # ── Apps ───────────────────────────────────────────
