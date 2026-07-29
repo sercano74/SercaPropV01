@@ -12,5 +12,5 @@ urlpatterns = [
     path('servicios/', include('a07serv.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Servir archivos media siempre (producción necesita esto para fotos de perfil, etc.)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
