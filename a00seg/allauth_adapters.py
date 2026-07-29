@@ -57,10 +57,35 @@ class CustomAccountAdapter(DefaultAccountAdapter):
     def get_email_confirmation_url(self, request, emailconfirmation):
         """
         Retorna la URL de confirmación de email.
-        Usamos la URL por defecto de allauth.
         """
         url = super().get_email_confirmation_url(request, emailconfirmation)
         return url
+
+    def pre_login(self, request, user, *, email_verification, signal_kwargs, email):
+        """
+        Antes del login, asegura que exista un EmailAddress para usuarios existentes
+        que no tienen registro en allauth (migración desde sistema anterior).
+        Si el usuario tiene email_confirmado=True, lo marca como verificado.
+        """
+        from allauth.account.models import EmailAddress
+        if user.email:
+            email_obj, created = EmailAddress.objects.get_or_create(
+                user=user,
+                email=user.email,
+                defaults={
+                    'verified': user.email_confirmado,
+                    'primary': True,
+                }
+            )
+            if not created and not email_obj.verified and user.email_confirmado:
+                email_obj.verified = True
+                email_obj.save()
+        return super().pre_login(
+            request, user,
+            email_verification=email_verification,
+            signal_kwargs=signal_kwargs,
+            email=email
+        )
 
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
