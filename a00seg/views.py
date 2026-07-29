@@ -1257,6 +1257,27 @@ def confirmar_email_view(request, uidb64, token):
         return redirect("home")
 
 
+def serve_media_prod(request, path):
+    """
+    Sirve archivos media en producción (Railway no tiene nginx).
+    Sin @login_required para que fotos de propiedades sean visibles públicamente.
+    """
+    Sirve archivos media en producción (Railway no tiene nginx).
+    """
+    from django.http import FileResponse, Http404
+    import os
+    from django.conf import settings
+    
+    file_path = os.path.join(settings.MEDIA_ROOT, path)
+    # Security: prevent path traversal
+    file_path = os.path.normpath(file_path)
+    if not file_path.startswith(os.path.normpath(settings.MEDIA_ROOT)):
+        raise Http404("Acceso denegado")
+    if not os.path.exists(file_path):
+        raise Http404("Archivo no encontrado")
+    return FileResponse(open(file_path, 'rb'))
+
+
 @login_required
 def reenviar_confirmacion_allauth(request):
     """

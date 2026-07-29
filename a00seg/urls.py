@@ -34,6 +34,9 @@ urlpatterns = [
     path('confirmar-email/<uidb64>/<token>/', RedirectView.as_view(url='/accounts/confirm-email/', permanent=True), name='confirmar_email'),
     path('reenviar-confirmacion/', RedirectView.as_view(url='/accounts/email/', permanent=False), name='reenviar_confirmacion'),
 
+    # Servir archivos media en producción (fotos de perfil, etc.)
+    path('media/<path:path>/', views.serve_media_prod, name='serve_media'),
+    
     # Gestión de Ingresos / Cierre Económico
     path('gestion/ingresos/', views.gestion_ingresos_view, name='gestion_ingresos'),
     path('gestion/ingresos/crear/<int:prop_id>/', views.crear_cierre_economico, name='crear_cierre_economico'),
