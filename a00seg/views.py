@@ -1260,9 +1260,10 @@ def confirmar_email_view(request, uidb64, token):
 @login_required
 def reenviar_confirmacion_allauth(request):
     """
-    Reenvía el correo de confirmación via allauth.
+    Reenvía el correo de confirmación via allauth 65.x.
     """
     from allauth.account.models import EmailAddress
+    from allauth.account.adapter import get_adapter
     import logging
     logger = logging.getLogger(__name__)
     
@@ -1287,10 +1288,17 @@ def reenviar_confirmacion_allauth(request):
             verified=user.email_confirmado,
         )
     
-    # Enviar confirmación usando allauth
+    # Enviar confirmación usando el adapter de allauth
     try:
-        from allauth.account.utils import send_email_confirmation
-        send_email_confirmation(request, user, signup=False, email=email_obj)
+        adapter = get_adapter(request)
+        # Crear un EmailConfirmation pendiente y enviar el mail
+        from allauth.account.models import EmailConfirmation
+        email_confirmation = EmailConfirmation.create(email_obj)
+        email_confirmation.sent = timezone.now()
+        email_confirmation.save()
+        
+        adapter.send_confirmation_mail(request, email_confirmation, signup=False)
+        
         messages.success(
             request,
             f"📧 Hemos reenviado el correo de confirmación a {email}. "
