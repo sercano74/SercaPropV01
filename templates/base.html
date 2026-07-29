@@ -164,32 +164,41 @@
 
             <div class="nav-actions">
                 {% if user.is_authenticated %}
-                    <span id="navUserBadge">
-                        {% if user.foto %}
-                        <span class="navUserBadge-avatar" style="background-image:url('{{ user.foto.url }}');"></span>
-                        {% else %}
-                        <span class="navUserBadge-avatar navUserBadge-avatar--empty">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
+                    <div class="nav-dropdown" style="display:inline-flex;">
+                        <span id="navUserBadge" class="dropdown-trigger">
+                            {% if user.foto %}
+                            <span class="navUserBadge-avatar" style="background-image:url('{{ user.foto.url }}');"></span>
+                            {% else %}
+                            <span class="navUserBadge-avatar navUserBadge-avatar--empty">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </span>
+                            {% endif %}
+                            <span class="navUserBadge-text">
+                                <span class="navUserBadge-name">{{ user.get_full_name|default:user.username }}</span>
+                                <span class="navUserBadge-email">{{ user.email }}</span>
+                            </span>
                         </span>
-                        {% endif %}
-                        <span class="navUserBadge-text">
-                            <span class="navUserBadge-name">{{ user.get_full_name|default:user.username }}</span>
-                            <span class="navUserBadge-email">{{ user.email }}</span>
-                        </span>
-                    </span>
-                    <a href="{% url 'centro_comunicaciones' %}" class="btn btn-ghost btn-sm" style="position:relative;">
-                        📬
-                        {% if cdc_no_leidos > 0 %}
-                        <span style="position:absolute;top:-4px;right:-6px;background:var(--ds-primary);color:white;font-size:0.65rem;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-                            {{ cdc_no_leidos }}
-                        </span>
-                        {% endif %}
-                    </a>
-                    <a href="{% url 'perfil' %}" class="btn btn-ghost btn-sm">Perfil</a>
-                    <a href="{% url 'account_logout' %}" class="btn btn-outline btn-sm">Salir</a>
+                        <div class="dropdown-content" style="right:0;left:auto;">
+                            <div style="padding:12px 18px;border-bottom:1px solid #eee;">
+                                <strong style="font-size:0.9rem;">{{ user.get_full_name|default:user.username }}</strong><br>
+                                <small style="color:#888;">{{ user.email }}</small><br>
+                                <small style="color:var(--ds-primary);">{{ user.get_rol_display }}</small>
+                            </div>
+                            <a href="{% url 'perfil' %}" class="dropdown-item">👤 Mi Perfil</a>
+                            <a href="{% url 'account_change_password' %}" class="dropdown-item">🔑 Cambiar Contraseña</a>
+                            <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">
+                                📬 CDC
+                                {% if cdc_no_leidos > 0 %}
+                                <span style="background:var(--ds-primary);color:white;font-size:0.7rem;padding:1px 7px;border-radius:10px;margin-left:4px;">{{ cdc_no_leidos }}</span>
+                                {% endif %}
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'account_logout' %}" class="dropdown-item" style="color:var(--ds-danger);">🚪 Cerrar Sesión</a>
+                        </div>
+                    </div>
                 {% else %}
                     <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm">Ingresar</a>
                     <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">Regístrate</a>
