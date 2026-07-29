@@ -1262,7 +1262,7 @@ def reenviar_confirmacion_allauth(request):
     """
     Reenvía el correo de confirmación via allauth 65.x.
     """
-    from allauth.account.models import EmailAddress
+    from allauth.account.models import EmailAddress, EmailConfirmation
     from allauth.account.adapter import get_adapter
     import logging
     logger = logging.getLogger(__name__)
@@ -1279,7 +1279,7 @@ def reenviar_confirmacion_allauth(request):
         messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
         return redirect("perfil")
     
-    # Crear EmailAddress si no existe
+    # Crear EmailAddress si no existe (guardar primero antes de crear EmailConfirmation)
     if not email_obj:
         email_obj = EmailAddress.objects.create(
             user=user,
@@ -1287,17 +1287,16 @@ def reenviar_confirmacion_allauth(request):
             primary=True,
             verified=user.email_confirmado,
         )
+        email_obj.save()
     
-    # Enviar confirmación usando el adapter de allauth
+    # Enviar confirmación usando allauth
     try:
-        adapter = get_adapter(request)
-        # Crear un EmailConfirmation pendiente y enviar el mail
-        from allauth.account.models import EmailConfirmation
+        # Crear EmailConfirmation y enviar
         email_confirmation = EmailConfirmation.create(email_obj)
         email_confirmation.sent = timezone.now()
         email_confirmation.save()
-        
-        adapter.send_confirmation_mail(request, email_confirmation, signup=False)
+        # Usar send() que es el método nativo del modelo
+        email_confirmation.send(request, signup=False)
         
         messages.success(
             request,
