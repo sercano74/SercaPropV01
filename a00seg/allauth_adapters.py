@@ -61,7 +61,17 @@ class CustomAccountAdapter(DefaultAccountAdapter):
         url = super().get_email_confirmation_url(request, emailconfirmation)
         return url
 
-    def pre_login(self, request, user, *, email_verification, signal_kwargs, email):
+    def pre_login(
+        self,
+        request,
+        user,
+        *,
+        email_verification,
+        signal_kwargs,
+        email,
+        signup,
+        redirect_url,
+    ):
         """
         Antes del login, asegura que exista un EmailAddress para usuarios existentes
         que no tienen registro en allauth (migración desde sistema anterior).
@@ -84,7 +94,9 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             request, user,
             email_verification=email_verification,
             signal_kwargs=signal_kwargs,
-            email=email
+            email=email,
+            signup=signup,
+            redirect_url=redirect_url,
         )
 
 
