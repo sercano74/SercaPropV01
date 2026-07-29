@@ -32,7 +32,7 @@ urlpatterns = [
 
     # Confirmación de email - redirigir a allauth
     path('confirmar-email/<uidb64>/<token>/', RedirectView.as_view(url='/accounts/confirm-email/', permanent=True), name='confirmar_email'),
-    path('reenviar-confirmacion/', RedirectView.as_view(url='/accounts/email/', permanent=False), name='reenviar_confirmacion'),
+    path('reenviar-confirmacion/', views.reenviar_confirmacion_simple, name='reenviar_confirmacion'),
 
     # Servir archivos media en producción (fotos de perfil, etc.)
     path('media/<path:path>/', views.serve_media_prod, name='serve_media'),

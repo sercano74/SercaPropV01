@@ -1273,6 +1273,58 @@ def serve_media_prod(request, path):
     if not os.path.exists(file_path):
         raise Http404("Archivo no encontrado")
     return FileResponse(open(file_path, 'rb'))
+
+
+@login_required
+def reenviar_confirmacion_simple(request):
+    """
+    Vista simple que reenvía el correo de confirmación y vuelve al perfil.
+    NO redirige a /accounts/email/ (demasiado complejo para usuarios base).
+    """
+    from allauth.account.models import EmailAddress, EmailConfirmation
+    from allauth.account.adapter import get_adapter
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    user = request.user
+    email = user.email
+    if not email:
+        messages.error(request, "No tienes un email asociado a tu cuenta.")
+        return redirect("perfil")
+    
+    # Verificar si ya está confirmado
+    email_obj = EmailAddress.objects.filter(user=user, email=email).first()
+    if email_obj and email_obj.verified:
+        messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
+        return redirect("perfil")
+    
+    # Crear EmailAddress si no existe (guardar antes de crear EmailConfirmation)
+    if not email_obj:
+        email_obj = EmailAddress.objects.create(
+            user=user,
+            email=email,
+            primary=True,
+            verified=user.email_confirmado,
+        )
+    
+    try:
+        # Crear EmailConfirmation y enviar usando el método nativo send()
+        email_confirmation = EmailConfirmation.create(email_obj)
+        email_confirmation.send(request, signup=False)
+        
+        messages.success(
+            request,
+            f"📧 Hemos reenviado el correo de confirmación a {email}. "
+            "Revisa tu bandeja de entrada y también la carpeta de spam."
+        )
+    except Exception as e:
+        logger.error(f"Error al reenviar confirmación a {email}: {e}")
+        messages.error(
+            request,
+            "❌ No pudimos enviar el correo de confirmación. "
+            "Intenta nuevamente más tarde o contacta al administrador."
+        )
+    return redirect("perfil")
     """
     Sirve archivos media en producción (Railway no tiene nginx).
     """
