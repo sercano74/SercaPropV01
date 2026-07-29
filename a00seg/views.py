@@ -1258,19 +1258,48 @@ def confirmar_email_view(request, uidb64, token):
 
 
 @login_required
-def reenviar_confirmacion_view(request):
+def reenviar_confirmacion_allauth(request):
     """
-    Reenvía el correo de confirmación al usuario autenticado.
+    Reenvía el correo de confirmación via allauth.
     """
-    if request.user.email_confirmado:
+    from allauth.account.models import EmailAddress
+    user = request.user
+    email = user.email
+    if not email:
+        messages.error(request, "No tienes un email asociado a tu cuenta.")
+        return redirect("perfil")
+    
+    # Verificar si ya está confirmado
+    email_obj = EmailAddress.objects.filter(user=user, email=email).first()
+    if email_obj and email_obj.verified:
         messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
         return redirect("perfil")
-
-    enviado = send_confirmation_email(request.user, request)
-    if enviado:
-        messages.success(request, f"📧 Hemos reenviado el correo de confirmación a {request.user.email}. Revisa tu bandeja de entrada y también la carpeta de spam.")
-    else:
-        messages.error(request, "❌ No pudimos enviar el correo de confirmación. Intenta nuevamente más tarde.")
+    
+    # Crear EmailAddress si no existe
+    if not email_obj:
+        email_obj = EmailAddress.objects.create(
+            user=user,
+            email=email,
+            primary=True,
+            verified=user.email_confirmado,
+        )
+    
+    # Enviar confirmación usando allauth
+    try:
+        from allauth.account.utils import send_email_confirmation
+        # send_email_confirmation recibe request, user, email=email_address_obj
+        send_email_confirmation(request, user, signup=False, email=email_obj)
+        messages.success(
+            request,
+            f"📧 Hemos reenviado el correo de confirmación a {email}. "
+            "Revisa tu bandeja de entrada y también la carpeta de spam."
+        )
+    except Exception as e:
+        messages.error(
+            request,
+            "❌ No pudimos enviar el correo de confirmación. "
+            "Intenta nuevamente más tarde."
+        )
     return redirect("perfil")
 
 

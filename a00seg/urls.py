@@ -30,9 +30,9 @@ urlpatterns = [
     path('gestion/precios/', views.gestion_precios_publicacion, name='gestion_precios_publicacion'),
     path('gestion/servicios/', views.gestion_servicios, name='gestion_servicios'),
 
-    # Confirmación de email
-    path('confirmar-email/<uidb64>/<token>/', views.confirmar_email_view, name='confirmar_email'),
-    path('reenviar-confirmacion/', views.reenviar_confirmacion_view, name='reenviar_confirmacion'),
+    # Confirmación de email - redirigir a allauth
+    path('confirmar-email/<uidb64>/<token>/', RedirectView.as_view(url='/accounts/confirm-email/', permanent=True), name='confirmar_email'),
+    path('reenviar-confirmacion/', views.reenviar_confirmacion_allauth, name='reenviar_confirmacion'),
 
     # Gestión de Ingresos / Cierre Económico
     path('gestion/ingresos/', views.gestion_ingresos_view, name='gestion_ingresos'),
