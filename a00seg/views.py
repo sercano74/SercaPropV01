@@ -1263,6 +1263,9 @@ def reenviar_confirmacion_allauth(request):
     Reenvía el correo de confirmación via allauth.
     """
     from allauth.account.models import EmailAddress
+    import logging
+    logger = logging.getLogger(__name__)
+    
     user = request.user
     email = user.email
     if not email:
@@ -1287,7 +1290,6 @@ def reenviar_confirmacion_allauth(request):
     # Enviar confirmación usando allauth
     try:
         from allauth.account.utils import send_email_confirmation
-        # send_email_confirmation recibe request, user, email=email_address_obj
         send_email_confirmation(request, user, signup=False, email=email_obj)
         messages.success(
             request,
@@ -1295,10 +1297,10 @@ def reenviar_confirmacion_allauth(request):
             "Revisa tu bandeja de entrada y también la carpeta de spam."
         )
     except Exception as e:
+        logger.error(f"Error al reenviar confirmación a {email}: {e}")
         messages.error(
             request,
-            "❌ No pudimos enviar el correo de confirmación. "
-            "Intenta nuevamente más tarde."
+            f"❌ No pudimos enviar el correo. Error: {str(e)[:100]}"
         )
     return redirect("perfil")
 
