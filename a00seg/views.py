@@ -1278,28 +1278,51 @@ def serve_media_prod(request, path):
 @login_required
 def reenviar_confirmacion_simple(request):
     """
-    Confirma el email automáticamente y muestra mensaje de éxito.
-    Como el envío de correos está presentando problemas técnicos,
-    esta vista marca el email como confirmado para que el usuario
-    pueda usar la plataforma sin restricciones.
+    Reenvía el correo de confirmación con el link para que el usuario
+    verifique su email haciendo clic en él.
+    
+    Flujo:
+    1. Intenta enviar el email real con send_confirmation_email()
+    2. Si se envía correctamente → mensaje azul "revisa tu bandeja"
+    3. Si falla el envío → auto-confirma y muestra mensaje verde
     """
     user = request.user
     
-    if not user.email_confirmado:
-        user.email_confirmado = True
-        user.save(update_fields=["email_confirmado"])
-        
-        # Sincronizar con allauth si existe el registro
-        try:
-            from allauth.account.models import EmailAddress
-            EmailAddress.objects.filter(user=user, email=user.email).update(verified=True)
-        except Exception:
-            pass
+    if user.email_confirmado:
+        messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
+        return redirect("home")
+    
+    # PASO 1: Intentar enviar el email real
+    try:
+        enviado = send_confirmation_email(user)
+    except Exception:
+        enviado = False
+    
+    if enviado:
+        # El email se envió correctamente
+        messages.info(
+            request,
+            f"📧 Hemos enviado un correo de confirmación a {user.email}. "
+            "Revisa tu bandeja de entrada y también la carpeta de spam, "
+            "luego haz clic en el enlace para confirmar tu dirección."
+        )
+        return redirect("home")
+    
+    # PASO 2: Falló el envío → auto-confirmar como fallback
+    user.email_confirmado = True
+    user.save(update_fields=["email_confirmado"])
+    
+    try:
+        from allauth.account.models import EmailAddress
+        EmailAddress.objects.filter(user=user, email=user.email).update(verified=True)
+    except Exception:
+        pass
     
     messages.success(
         request,
         "✅ ¡Correo electrónico confirmado exitosamente! "
-        "Ya puedes disfrutar de todas las funcionalidades de la plataforma."
+        "No pudimos enviar el correo de verificación, pero tu cuenta "
+        "ya está activa. Puedes disfrutar de todas las funcionalidades."
     )
     return redirect("home")
 
