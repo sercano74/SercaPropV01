@@ -228,7 +228,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ordered.dev.01@gmail.com'
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'patypvkzrcqcngyn')
-DEFAULT_FROM_EMAIL = 'Serca Propiedades <ordered.dev.01@gmail.com>'
+DEFAULT_FROM_EMAIL = 'SERCA PROP <ordered.dev.01@gmail.com>'
 
 # ── Sitio ───────────────────────────────────────────
 SITE_NAME = 'Serca Propiedades'
