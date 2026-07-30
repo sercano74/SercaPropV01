@@ -1278,11 +1278,10 @@ def serve_media_prod(request, path):
 @login_required
 def reenviar_confirmacion_simple(request):
     """
-    Vista simple que reenvía el correo de confirmación y vuelve al perfil.
-    NO redirige a /accounts/email/ (demasiado complejo para usuarios base).
+    Vista simple que reenvía el correo de confirmación usando nuestra propia
+    función send_confirmation_email (no usa allauth EmailConfirmation.send
+    que causa upstream error en Railway).
     """
-    from allauth.account.models import EmailAddress, EmailConfirmation
-    from allauth.account.adapter import get_adapter
     import logging
     logger = logging.getLogger(__name__)
     
@@ -1292,31 +1291,36 @@ def reenviar_confirmacion_simple(request):
         messages.error(request, "No tienes un email asociado a tu cuenta.")
         return redirect("perfil")
     
-    # Verificar si ya está confirmado
-    email_obj = EmailAddress.objects.filter(user=user, email=email).first()
-    if email_obj and email_obj.verified:
+    # Verificar si ya está confirmado (via nuestro modelo)
+    if user.email_confirmado:
         messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
-        return redirect("perfil")
+        return redirect("home")
     
-    # Crear EmailAddress si no existe (guardar antes de crear EmailConfirmation)
-    if not email_obj:
-        email_obj = EmailAddress.objects.create(
-            user=user,
-            email=email,
-            primary=True,
-            verified=user.email_confirmado,
-        )
+    # Sincronizar con allauth EmailAddress
+    from allauth.account.models import EmailAddress
+    email_obj, _ = EmailAddress.objects.get_or_create(
+        user=user,
+        email=email,
+        defaults={'primary': True, 'verified': user.email_confirmado},
+    )
     
     try:
-        # Crear EmailConfirmation y enviar usando el método nativo send()
-        email_confirmation = EmailConfirmation.create(email_obj)
-        email_confirmation.send(request, signup=False)
+        # Usar nuestra propia función de envío (maneja errores internamente)
+        enviado = send_confirmation_email(user, request=request)
         
-        messages.success(
-            request,
-            f"📧 Hemos reenviado el correo de confirmación a {email}. "
-            "Revisa tu bandeja de entrada y también la carpeta de spam."
-        )
+        if enviado:
+            messages.success(
+                request,
+                f"📧 Hemos reenviado el correo de confirmación a {email}. "
+                "Revisa tu bandeja de entrada y también la carpeta de spam."
+            )
+        else:
+            messages.error(
+                request,
+                "❌ No pudimos enviar el correo de confirmación en este momento. "
+                "Puedes seguir usando la plataforma con normalidad mientras solucionamos esto. "
+                "Si el problema persiste, contáctanos por WhatsApp."
+            )
     except Exception as e:
         logger.error(f"Error al reenviar confirmación a {email}: {e}")
         messages.error(
