@@ -96,7 +96,7 @@ AUTHENTICATION_BACKENDS = [
 
 SITE_ID = 1
 
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*', 'first_name', 'last_name']
 ACCOUNT_UNIQUE_EMAIL = True
