@@ -48,7 +48,7 @@ def send_confirmation_email(user, request=None):
 
         # Construir URL absoluta de confirmación
         site_domain = getattr(settings, 'SITE_DOMAIN', None) or os.environ.get(
-            'SITE_DOMAIN', 'web-production-5f792c.up.railway.app'
+            'SITE_DOMAIN', 'propiedades.serca.online'
         )
         protocol = 'https'
         confirm_url = f"{protocol}://{site_domain}{reverse('confirmar_email', kwargs={'uidb64': uid, 'token': token})}"

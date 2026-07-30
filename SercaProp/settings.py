@@ -236,12 +236,12 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ordered.dev.01@gmail.com'
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'patypvkzrcqcngyn')
-DEFAULT_FROM_EMAIL = 'SERCA PROP <ordered.dev.01@gmail.com>'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'lulicoglmtgsfeed')
+DEFAULT_FROM_EMAIL = 'sercaprop <ordered.dev.01@gmail.com>'
 
 # ── Sitio ───────────────────────────────────────────
 SITE_NAME = 'Serca Propiedades'
-SITE_DOMAIN = os.environ.get('SITE_DOMAIN', 'web-production-5f792c.up.railway.app')
+SITE_DOMAIN = os.environ.get('SITE_DOMAIN', 'propiedades.serca.online')
 
 # ── Seguridad para producción ─────────────────────
 if not DEBUG:

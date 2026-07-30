@@ -1228,7 +1228,8 @@ def gestion_servicios(request):
 def confirmar_email_view(request, uidb64, token):
     """
     Vista que procesa el enlace de confirmación de email.
-    Si el token es válido y no ha expirado, marca email_confirmado = True.
+    Si el token es válido y no ha expirado, marca email_confirmado = True
+    y sincroniza con allauth EmailAddress.
     """
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
@@ -1236,10 +1237,28 @@ def confirmar_email_view(request, uidb64, token):
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
 
+    from allauth.account.models import EmailAddress
+
     if user is not None and email_token_generator.check_token(user, token):
         if not user.email_confirmado:
             user.email_confirmado = True
             user.save(update_fields=["email_confirmado"])
+
+            # Sincronizar con allauth EmailAddress
+            try:
+                EmailAddress.objects.update_or_create(
+                    user=user,
+                    email=user.email,
+                    defaults={'verified': True, 'primary': True},
+                )
+            except Exception:
+                pass
+
+            # Hacer login automático
+            from django.contrib.auth import login
+            if not request.user.is_authenticated or request.user == user:
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
             messages.success(
                 request,
                 "✅ ¡Correo electrónico confirmado exitosamente! Ya puedes disfrutar de todas las funcionalidades."
@@ -1275,6 +1294,11 @@ def serve_media_prod(request, path):
     return FileResponse(open(file_path, 'rb'))
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 @login_required
 def reenviar_confirmacion_simple(request):
     """
@@ -1288,43 +1312,54 @@ def reenviar_confirmacion_simple(request):
     """
     user = request.user
     
-    if user.email_confirmado:
-        messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
-        return redirect("home")
-    
-    # PASO 1: Intentar enviar el email real
     try:
-        enviado = send_confirmation_email(user)
-    except Exception:
-        enviado = False
-    
-    if enviado:
-        # El email se envió correctamente
-        messages.info(
+        if user.email_confirmado:
+            messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
+            return redirect("home")
+        
+        # PASO 1: Intentar enviar el email real
+        try:
+            enviado = send_confirmation_email(user)
+        except Exception as e:
+            logger.error(f"reenviar_confirmacion_simple: send_confirmation_email lanzó excepción: {e}", exc_info=True)
+            enviado = False
+        
+        if enviado:
+            messages.info(
+                request,
+                f"📧 Hemos enviado un correo de confirmación a {user.email}. "
+                "Revisa tu bandeja de entrada y también la carpeta de spam, "
+                "luego haz clic en el enlace para confirmar tu dirección."
+            )
+            return redirect("home")
+        
+        # PASO 2: Falló el envío → auto-confirmar como fallback
+        logger.info(f"reenviar_confirmacion_simple: No se pudo enviar email a {user.email}, auto-confirmando")
+        user.email_confirmado = True
+        user.save(update_fields=["email_confirmado"])
+        
+        # Sincronizar con allauth sin importar si la tabla existe
+        try:
+            from allauth.account.models import EmailAddress as EA
+            EA.objects.filter(user=user, email=user.email).update(verified=True)
+        except Exception:
+            pass
+        
+        messages.success(
             request,
-            f"📧 Hemos enviado un correo de confirmación a {user.email}. "
-            "Revisa tu bandeja de entrada y también la carpeta de spam, "
-            "luego haz clic en el enlace para confirmar tu dirección."
+            "✅ ¡Correo electrónico confirmado exitosamente! "
+            "No pudimos enviar el correo de verificación, pero tu cuenta "
+            "ya está activa. Puedes disfrutar de todas las funcionalidades."
         )
         return redirect("home")
     
-    # PASO 2: Falló el envío → auto-confirmar como fallback
-    user.email_confirmado = True
-    user.save(update_fields=["email_confirmado"])
-    
-    try:
-        from allauth.account.models import EmailAddress
-        EmailAddress.objects.filter(user=user, email=user.email).update(verified=True)
-    except Exception:
-        pass
-    
-    messages.success(
-        request,
-        "✅ ¡Correo electrónico confirmado exitosamente! "
-        "No pudimos enviar el correo de verificación, pero tu cuenta "
-        "ya está activa. Puedes disfrutar de todas las funcionalidades."
-    )
-    return redirect("home")
+    except Exception as e:
+        logger.error(f"REENVIAR CONFIRMACION - ERROR FATAL: {e}", exc_info=True)
+        messages.error(
+            request,
+            "Ocurrió un error al procesar la solicitud. Por favor intenta de nuevo más tarde."
+        )
+        return redirect("home")
 
 
 # ============================================================
