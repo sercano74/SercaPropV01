@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
+    'cloudinary',
     'cloudinary_storage',
     'a00seg',
     'a01Com',
