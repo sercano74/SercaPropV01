@@ -178,25 +178,37 @@ def registro_view(request):
         )
 
         # Enviar correo de confirmación (con protección ante fallos)
-        try:
-            email_enviado = send_confirmation_email(user)
-        except Exception:
-            email_enviado = False
+        # try:
+        #     email_enviado = send_confirmation_email(user)
+        # except Exception:
+        #     email_enviado = False
 
-        if email_enviado:
-            messages.success(
-                request,
-                "Registro exitoso. Te hemos enviado un correo de confirmación a "
-                f"{email}. Revisa tu bandeja de entrada y también la carpeta de spam."
-            )
+        # if email_enviado:
+        #     messages.success(
+        #         request,
+        #         "Registro exitoso. Te hemos enviado un correo de confirmación a "
+        #         f"{email}. Revisa tu bandeja de entrada y también la carpeta de spam."
+        #     )
+        # else:
+        #     messages.success(
+        #         request,
+        #         "Registro exitoso. No pudimos enviar el correo de confirmación "
+        #         "automáticamente, pero puedes solicitar uno nuevo desde tu perfil "
+        #         "después de iniciar sesión."
+        #     )
+        # return redirect("login")
+        if request.user.is_authenticated:
+            try:
+                # Función nativa de allauth para enviar la confirmación
+                send_confirmation_email(request, request.user)
+                messages.success(request, f"Se ha rellenado un nuevo correo de confirmación a {request.user.email}.")
+            except Exception as e:
+                # Captura el error exacto de envío si Gmail o la red en Railway fallan
+                messages.error(request, f"Error al enviar el correo: {str(e)}")
         else:
-            messages.success(
-                request,
-                "Registro exitoso. No pudimos enviar el correo de confirmación "
-                "automáticamente, pero puedes solicitar uno nuevo desde tu perfil "
-                "después de iniciar sesión."
-            )
-        return redirect("login")
+            messages.error(request, "Debes iniciar sesión para realizar esta acción.")
+            
+        return redirect('home')
 
     return render(request, "registro.html")
 

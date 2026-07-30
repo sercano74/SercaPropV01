@@ -60,7 +60,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary',
     'django.contrib.humanize',
     'django.contrib.sites',  # requerido por allauth
     'allauth',
@@ -68,8 +70,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
-    'cloudinary',
-    'cloudinary_storage',
     'a00seg',
     'a01Com',
     'a03Prop',
@@ -97,12 +97,15 @@ AUTHENTICATION_BACKENDS = [
 
 SITE_ID = 1
 
-ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*', 'first_name', 'last_name']
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 2
 ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Serca Propiedades] '
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_CONFIRM_EMAIL_ON_GET = True # Permite confirmar el correo al hacer clic en el link sin pedir POST
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_SESSION_REMEMBER = True
@@ -221,8 +224,24 @@ CLOUDINARY_URL = os.environ.get(
     'cloudinary://914777239115561:FFFOUSftuKP_Z6Z4MieCBbIaIRY@dtcskupwr'
 )
 
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dtcskupwr',
+    'API_KEY': '914777239115561',
+    'API_SECRET': 'FFFOUSftuKP_Z6Z4MieCBbIaIRY',
+}
+
 # Almacenamiento de medios en Cloudinary para persistencia en Railway
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# ── Configuración moderna de Almacenamiento (Django 4.2+) ──
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = '/media/'  # fallback local
 MEDIA_ROOT = BASE_DIR / 'media'  # fallback local
