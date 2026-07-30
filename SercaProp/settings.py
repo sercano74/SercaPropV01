@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
+    'cloudinary_storage',
     'a00seg',
     'a01Com',
     'a03Prop',
@@ -213,10 +214,17 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ── Archivos subidos por usuarios ─────────────────
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# ── Archivos subidos por usuarios (Cloudinary) ───
+CLOUDINARY_URL = os.environ.get(
+    'CLOUDINARY_URL',
+    'cloudinary://914777239115561:FFFOUSftuKP_Z6Z4MieCBbIaIRY@dtcskupwr'
+)
+
+# Almacenamiento de medios en Cloudinary para persistencia en Railway
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+MEDIA_URL = '/media/'  # fallback local
+MEDIA_ROOT = BASE_DIR / 'media'  # fallback local
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'a00seg.User'
