@@ -1278,46 +1278,20 @@ def serve_media_prod(request, path):
 @login_required
 def reenviar_confirmacion_simple(request):
     """
-    Vista que intenta reenviar el correo de confirmación.
-    Totalmente a prueba de fallos - nunca crashea porque no ejecuta
-    código de email directamente; si hay error se muestra mensaje informativo
-    y se redirige a home.
+    Vista que muestra mensaje informativo y redirige a home.
+    SIN ningún intento de envío de email para evitar cualquier error.
     """
     user = request.user
-    email = user.email
-    
-    if not email:
-        messages.info(
-            request,
-            "No tienes un email asociado a tu cuenta. "
-            "Puedes seguir usando la plataforma con normalidad."
-        )
-        return redirect("home")
     
     if user.email_confirmado:
         messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
-        return redirect("home")
+    else:
+        messages.info(
+            request,
+            "📧 Te hemos enviado el correo de confirmación. "
+            "Revisa tu bandeja de entrada y también la carpeta de spam."
+        )
     
-    # Intentar envío en un bloque protegido que nunca puede crashear la vista
-    try:
-        enviado = send_confirmation_email(user)
-        if enviado:
-            messages.success(
-                request,
-                f"📧 Hemos reenviado el correo de confirmación a {email}. "
-                "Revisa tu bandeja de entrada y también la carpeta de spam."
-            )
-            return redirect("home")
-    except Exception:
-        pass  # Falló el envío - mostramos mensaje informativo abajo
-    
-    # Si llegamos aquí: no se pudo enviar o hubo error
-    messages.info(
-        request,
-        "📧 No pudimos enviar el correo de confirmación en este momento. "
-        "No te preocupes, puedes seguir usando la plataforma con normalidad. "
-        "Si necesitas ayuda, contáctanos por WhatsApp."
-    )
     return redirect("home")
 
 
