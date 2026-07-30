@@ -1321,80 +1321,11 @@ def reenviar_confirmacion_simple(request):
         logger.error(f"Error al reenviar confirmación a {email}: {e}")
         messages.error(
             request,
-            "❌ No pudimos enviar el correo de confirmación. "
-            "Intenta nuevamente más tarde o contacta al administrador."
+            "❌ No pudimos enviar el correo de confirmación en este momento. "
+            "Puedes seguir usando la plataforma con normalidad mientras solucionamos esto. "
+            "Si el problema persiste, contáctanos por WhatsApp."
         )
-    return redirect("perfil")
-    """
-    Sirve archivos media en producción (Railway no tiene nginx).
-    """
-    from django.http import FileResponse, Http404
-    import os
-    from django.conf import settings
-    
-    file_path = os.path.join(settings.MEDIA_ROOT, path)
-    # Security: prevent path traversal
-    file_path = os.path.normpath(file_path)
-    if not file_path.startswith(os.path.normpath(settings.MEDIA_ROOT)):
-        raise Http404("Acceso denegado")
-    if not os.path.exists(file_path):
-        raise Http404("Archivo no encontrado")
-    return FileResponse(open(file_path, 'rb'))
-
-
-@login_required
-def reenviar_confirmacion_allauth(request):
-    """
-    Reenvía el correo de confirmación via allauth 65.x.
-    """
-    from allauth.account.models import EmailAddress, EmailConfirmation
-    from allauth.account.adapter import get_adapter
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    user = request.user
-    email = user.email
-    if not email:
-        messages.error(request, "No tienes un email asociado a tu cuenta.")
-        return redirect("perfil")
-    
-    # Verificar si ya está confirmado
-    email_obj = EmailAddress.objects.filter(user=user, email=email).first()
-    if email_obj and email_obj.verified:
-        messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
-        return redirect("perfil")
-    
-    # Crear EmailAddress si no existe (guardar primero antes de crear EmailConfirmation)
-    if not email_obj:
-        email_obj = EmailAddress.objects.create(
-            user=user,
-            email=email,
-            primary=True,
-            verified=user.email_confirmado,
-        )
-        email_obj.save()
-    
-    # Enviar confirmación usando allauth
-    try:
-        # Crear EmailConfirmation y enviar
-        email_confirmation = EmailConfirmation.create(email_obj)
-        email_confirmation.sent = timezone.now()
-        email_confirmation.save()
-        # Usar send() que es el método nativo del modelo
-        email_confirmation.send(request, signup=False)
-        
-        messages.success(
-            request,
-            f"📧 Hemos reenviado el correo de confirmación a {email}. "
-            "Revisa tu bandeja de entrada y también la carpeta de spam."
-        )
-    except Exception as e:
-        logger.error(f"Error al reenviar confirmación a {email}: {e}")
-        messages.error(
-            request,
-            f"❌ No pudimos enviar el correo. Error: {str(e)[:100]}"
-        )
-    return redirect("perfil")
+    return redirect("home")
 
 
 # ============================================================
@@ -1644,22 +1575,6 @@ def editar_cierre_economico(request, cierre_id):
         messages.error(request, "No tienes permiso para editar este cierre.")
         return redirect("gestion_ingresos")
 
-    # GET: renderizar formulario de edición
-    return render(request, "editar_cierre_economico.html", {
-        "cierre": cierre,
-        "es_admin": es_admin,
-    })
-
-    if request.method == "POST":
-        accion = request.POST.get("accion", "")
-    # GET: mostrar formulario de edición
-    # (El POST se maneja mediante el formulario que apunta a editar_cierre_economico)
-    if request.method != "POST":
-        return render(request, "editar_cierre_economico.html", {
-            "cierre": cierre,
-            "es_admin": es_admin,
-        })
-
     if request.method == "POST":
         accion = request.POST.get("accion", "")
 
@@ -1677,7 +1592,6 @@ def editar_cierre_economico(request, cierre_id):
             cierre.perfeccionado = True
 
         if es_admin:
-            # Gerente puede editar campos adicionales
             if request.POST.get("costo_publicacion_clp", "").strip():
                 cierre.costo_publicacion_clp = float(request.POST.get("costo_publicacion_clp"))
             if request.POST.get("tasa_serca", "").strip():
@@ -1691,7 +1605,11 @@ def editar_cierre_economico(request, cierre_id):
         messages.success(request, "✅ Cierre económico actualizado.")
         return redirect("gestion_ingresos")
 
-    return redirect("gestion_ingresos")
+    # GET: renderizar formulario de edición
+    return render(request, "editar_cierre_economico.html", {
+        "cierre": cierre,
+        "es_admin": es_admin,
+    })
 
 
 @login_required
