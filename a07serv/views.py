@@ -119,11 +119,21 @@ def detalle_servicio(request, servicio_id):
             "telefono": request.user.cel_phone or "",
         }
 
+    # Solo publicante, gerente o superadmin pueden editar la imagen desde el detalle
+    puede_editar_imagen = (
+        request.user.is_authenticated
+        and (
+            request.user.rol in ("gerente", "superadmin")
+            or servicio.publicante_id == request.user.id
+        )
+    )
+
     return render(request, "servicios/detalle_servicio.html", {
         "servicio": servicio,
         "casos_exito": casos_exito,
         "ratings": ratings,
         "datos_contacto": datos_contacto,
+        "puede_editar_imagen": puede_editar_imagen,
     })
 
 
@@ -349,20 +359,25 @@ def gestion_mis_servicios(request):
 
 @login_required
 def subir_imagen_servicio(request, servicio_id):
-    """El publicante sube o reemplaza la imagen de su servicio."""
-    servicio = get_object_or_404(
-        ServicioPublicitario,
-        id=servicio_id,
-        publicante=request.user,
-    )
+    """El publicante (o gerente/superadmin) sube o reemplaza la imagen de un servicio."""
+    servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
+
+    # Solo el publicante del servicio, gerente o superadmin pueden editar la imagen
+    es_admin = request.user.rol in ("gerente", "superadmin")
+    if not es_admin and servicio.publicante_id != request.user.id:
+        messages.error(request, "No tienes permisos para modificar esta imagen.")
+        return redirect("detalle_servicio", servicio_id=servicio.id)
+
+    # Destino de redirección: si viene desde el detalle, vuelve al detalle
+    destino = request.POST.get("next") or "gestion_mis_servicios"
 
     if request.method != "POST":
-        return redirect("gestion_mis_servicios")
+        return redirect(destino)
 
     imagen = request.FILES.get("imagen")
     if not imagen:
         messages.error(request, "Debes seleccionar una imagen.")
-        return redirect("gestion_mis_servicios")
+        return redirect(destino)
 
     try:
         imagen.file.seek(0)
@@ -371,7 +386,7 @@ def subir_imagen_servicio(request, servicio_id):
     servicio.imagen = imagen
     servicio.save(update_fields=["imagen", "updated_at"])
     messages.success(request, "✅ Imagen del servicio actualizada correctamente.")
-    return redirect("gestion_mis_servicios")
+    return redirect(destino)
 
 
 @login_required
