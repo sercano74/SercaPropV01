@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'a00seg',  # antes que cloudinary_storage para que su comando collectstatic estándar tenga prioridad
     'cloudinary_storage',  # DEBE ir antes de django.contrib.staticfiles
     'django.contrib.staticfiles',
     'django.contrib.humanize',
@@ -70,7 +71,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'cloudinary',
-    'a00seg',
     'a01Com',
     'a03Prop',
     'a07serv',
@@ -213,10 +213,13 @@ USE_I18N = True
 USE_TZ = True
 
 # ── Archivos estáticos (Whitenoise) ───────────────
+# Usamos StaticFilesStorage (sin manifest ni compresión en build) porque el
+# post-procesado de whitenoise falla con Django 6.0 (MissingFileError /
+# FileNotFoundError). WhiteNoise sigue sirviendo los estáticos en runtime.
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # ── Archivos subidos por usuarios (Cloudinary) ───
 CLOUDINARY_URL = os.environ.get(
@@ -239,7 +242,7 @@ STORAGES = {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
