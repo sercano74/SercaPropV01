@@ -111,55 +111,77 @@
             <div class="nav-menu" id="navMenuModern">
                 <a href="{% url 'home' %}" class="nav-link">Home</a>
                 <a href="{% url 'nosotros' %}" class="nav-link">Nosotros</a>
-                {% if user.is_authenticated %}
-                    <a href="{% url 'publica' %}" class="nav-link">Publica</a>
-                    <div class="nav-dropdown">
-                        <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestión ▾</a>
-                        <div class="dropdown-content">
-                            <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
-                            {% if user.rol != 'base' %}
-                            <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
-                            <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
-                            {% endif %}
-                            <a href="{% url 'gestion_favoritas' %}" class="dropdown-item">⭐ Mis favoritas</a>
-                            <a href="{% url 'gestion_mis_publicaciones' %}" class="dropdown-item">📢 Mis publicaciones</a>
-                            {% if user.rol != 'base' %}
-                            <div class="dropdown-divider"></div>
-                            <a href="{% url 'gestion_ingresos' %}" class="dropdown-item">💰 Ingresos</a>
-                            {% endif %}
-                            {% if user.rol in 'gerente,superadmin' %}
-                            <div class="dropdown-divider"></div>
-                            <a href="{% url 'gestion_precios_publicacion' %}" class="dropdown-item">💰 Precios publicación</a>
-                            <a href="{% url 'gestion_servicios' %}" class="dropdown-item">🔧 Servicios</a>
-                            <a href="{% url 'validar_corredores' %}" class="dropdown-item">🛡️ Validar corredores</a>
-                            <a href="{% url 'revisar_postulaciones' %}" class="dropdown-item">📋 Postulaciones</a>
-                            {% endif %}
-                            {% if user.rol == 'superadmin' %}
-                            <div class="dropdown-divider"></div>
-                            <a href="{% url 'crear_gerente' %}" class="dropdown-item">👤 Crear gerente</a>
-                            <a href="/admin/" class="dropdown-item">⚙️ Admin Django</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% else %}
-                    <a href="{% url 'publica' %}?next=/login/" class="nav-link">Publica</a>
-                {% endif %}
+
+                <!-- PLANES: alcance y costo + links a contratar -->
                 <div class="nav-dropdown">
                     <a href="{% url 'planes' %}" class="nav-link dropdown-trigger">Planes ▾</a>
+                    <div class="dropdown-content" style="min-width:260px;">
+                        <a href="{% url 'planes' %}" class="dropdown-item">
+                            <div style="font-weight:700;font-size:0.85rem;">🏠 PROPIEDAD</div>
+                            <div style="font-size:0.72rem;color:#888;">Alcance y costos para publicar tu propiedad (venta · arriendo · SRT)</div>
+                        </a>
+                        <a href="{% url 'se_nuestro_agente' %}" class="dropdown-item">
+                            <div style="font-weight:700;font-size:0.85rem;">🤝 AGENTE</div>
+                            <div style="font-size:0.72rem;color:#888;">Alcance y costos de los planes para corredores</div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'contratar_servicio' %}" class="dropdown-item">
+                            <div style="font-weight:700;font-size:0.85rem;">🔨 SERVICIO</div>
+                            <div style="font-size:0.72rem;color:#888;">Alcance y costos para publicar tu servicio de construcción</div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- PUBLICA: acceso directo a publicar -->
+                <div class="nav-dropdown">
+                    <a href="{% url 'publica' %}" class="nav-link dropdown-trigger">Publica ▾</a>
                     <div class="dropdown-content">
-                        <a href="{% url 'planes' %}" class="dropdown-item">📢 Publicar propiedades</a>
-                        <a href="{% url 'contratar_servicio' %}" class="dropdown-item">🔨 Publicar servicios</a>
-                        <hr></hr>
-                        <a href="{% url 'se_nuestro_agente' %}" class="dropdown-item">🤝 Ser agente corredor</a>
-                        <hr></hr>
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'publica' %}" class="dropdown-item">🏠 Propiedad</a>
+                        <a href="{% url 'contratar_servicio' %}" class="dropdown-item">🔨 Servicios</a>
+                        {% else %}
+                        <a href="{% url 'publica' %}?next=/login/" class="dropdown-item">🏠 Propiedad</a>
+                        <a href="{% url 'contratar_servicio' %}" class="dropdown-item">🔨 Servicios</a>
+                        {% endif %}
+                        <div class="dropdown-divider"></div>
                         <a href="{% url 'lista_casos_exito' %}" class="dropdown-item">🏆 Casos de Éxito</a>
                     </div>
                 </div>
-                <a href="{% url 'lista_servicios' %}" class="nav-link" style="color:#e67e22;font-weight:700;">🔨 Dato Constructor</a>
-                {% if not user.is_authenticated or user.rol == 'base' %}
-                <a href="{% url 'se_nuestro_agente' %}" class="nav-link" style="color:var(--ds-primary);font-weight:700;">🤝 Sé nuestro agente</a>
+
+                <!-- GESTIONA -->
+                {% if user.is_authenticated %}
+                <div class="nav-dropdown">
+                    <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestiona ▾</a>
+                    <div class="dropdown-content">
+                        <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
+                        {% if user.rol != 'base' %}
+                        <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
+                        <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
+                        {% endif %}
+                        <a href="{% url 'gestion_favoritas' %}" class="dropdown-item">⭐ Mis favoritas</a>
+                        <a href="{% url 'gestion_mis_publicaciones' %}" class="dropdown-item">📢 Mis publicaciones</a>
+                        {% if user.rol != 'base' %}
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'gestion_ingresos' %}" class="dropdown-item">💰 Ingresos</a>
+                        {% endif %}
+                        {% if user.rol in 'gerente,superadmin' %}
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'gestion_precios_publicacion' %}" class="dropdown-item">💰 Precios publicación</a>
+                        <a href="{% url 'gestion_servicios' %}" class="dropdown-item">🔧 Servicios</a>
+                        <a href="{% url 'validar_corredores' %}" class="dropdown-item">🛡️ Validar corredores</a>
+                        <a href="{% url 'revisar_postulaciones' %}" class="dropdown-item">📋 Postulaciones</a>
+                        {% endif %}
+                        {% if user.rol == 'superadmin' %}
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'crear_gerente' %}" class="dropdown-item">👤 Crear gerente</a>
+                        <a href="/admin/" class="dropdown-item">⚙️ Admin Django</a>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endif %}
-                <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" class="nav-link" style="color:#25D366;font-weight:600;">💬 ¿Necesitas ayuda?</a>
+
+                <a href="{% url 'lista_servicios' %}" class="nav-link" style="color:#e67e22;font-weight:700;">🔨 Dato Constructor</a>
+                <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" class="nav-link" style="color:#25D366;font-weight:600;">💬 WhatsApp</a>
             </div>
 
             <div class="nav-actions">
