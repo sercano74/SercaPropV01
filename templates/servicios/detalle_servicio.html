@@ -21,7 +21,7 @@
             {% if puede_editar_imagen %}
             <form method="POST" action="{% url 'subir_imagen_servicio' servicio.id %}" enctype="multipart/form-data" style="position:absolute;top:12px;right:12px;margin:0;">
                 {% csrf_token %}
-                <input type="hidden" name="next" value="detalle">
+                <input type="hidden" name="next" value="{% url 'detalle_servicio' servicio.id %}">
                 <label class="btn btn-warning btn-sm" style="cursor:pointer;margin:0;box-shadow:0 2px 8px rgba(0,0,0,0.25);">
                     🖼️ Editar foto
                     <input type="file" name="imagen" accept="image/*" style="display:none;" onchange="this.form.submit()">

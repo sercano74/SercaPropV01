@@ -383,8 +383,18 @@ def subir_imagen_servicio(request, servicio_id):
         imagen.file.seek(0)
     except Exception:
         pass
-    servicio.imagen = imagen
-    servicio.save(update_fields=["imagen", "updated_at"])
+
+    try:
+        servicio.imagen = imagen
+        servicio.save(update_fields=["imagen", "updated_at"])
+    except Exception:
+        logger.exception("Error al subir imagen del servicio %s", servicio.id)
+        messages.error(
+            request,
+            "No se pudo actualizar la imagen. Verifica que el archivo sea una imagen válida e inténtalo nuevamente.",
+        )
+        return redirect(destino)
+
     messages.success(request, "✅ Imagen del servicio actualizada correctamente.")
     return redirect(destino)
 
