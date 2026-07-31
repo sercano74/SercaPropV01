@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+Script para poblar (de manera permanente e idempotente) las regiones y comunas
+de Chile en la base de datos de SercaProp.
+
+Idempotente: se puede ejecutar tantas veces como se quiera; solo crea las
+regiones/comunas que faltan y nunca borra datos existentes.
+
+Ejecutar: python scripts/poblar_regiones_comunas.py
+"""
 import django, os, sys
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'SercaProp.settings')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -6,11 +15,7 @@ django.setup()
 
 from a00seg.models import Region, Comuna
 
-# Limpiar existentes
-Comuna.objects.all().delete()
-Region.objects.all().delete()
-
-data = [
+DATA = [
     ("Arica y Parinacota", ["Arica", "Camarones", "Putre", "General Lagos"]),
     ("Tarapacá", ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña", "Colchane", "Huara", "Pica"]),
     ("Antofagasta", ["Antofagasta", "Mejillones", "Sierra Gorda", "Taltal", "Calama", "Ollagüe", "San Pedro de Atacama", "Tocopilla", "María Elena"]),
@@ -29,12 +34,41 @@ data = [
     ("Región Metropolitana de Santiago", ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "Santiago", "San Joaquín", "San Miguel", "San Ramón", "Vitacura", "Puente Alto", "Pirque", "San José de Maipo", "Colina", "Lampa", "Tiltil", "San Bernardo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"]),
 ]
 
-total_comunas = 0
-for region_nombre, comunas in data:
-    region = Region.objects.create(nombre=region_nombre)
-    for comuna_nombre in comunas:
-        Comuna.objects.create(nombre=comuna_nombre, region=region)
-        total_comunas += 1
-    print(f"OK {region_nombre}: {len(comunas)} comunas")
 
-print(f"\nTotal: {len(data)} regiones, {total_comunas} comunas")
+def poblar():
+    """Crea las regiones y comunas que falten. No borra nada."""
+    total_creadas_regiones = 0
+    total_creadas_comunas = 0
+    total_existentes_comunas = 0
+
+    for region_nombre, comunas in DATA:
+        region, region_creada = Region.objects.get_or_create(nombre=region_nombre)
+        if region_creada:
+            total_creadas_regiones += 1
+
+        creadas = 0
+        existentes = 0
+        for comuna_nombre in comunas:
+            _, comuna_creada = Comuna.objects.get_or_create(
+                nombre=comuna_nombre, region=region
+            )
+            if comuna_creada:
+                creadas += 1
+            else:
+                existentes += 1
+
+        total_creadas_comunas += creadas
+        total_existentes_comunas += existentes
+        print(f"OK {region_nombre}: {creadas} creada(s), {existentes} ya existente(s)")
+
+    print(
+        f"\nTotal: {len(DATA)} regiones ({total_creadas_regiones} creadas), "
+        f"{total_creadas_comunas} comunas creadas, {total_existentes_comunas} comunas ya existentes"
+    )
+    print(
+        f"En BD: {Region.objects.count()} regiones, {Comuna.objects.count()} comunas"
+    )
+
+
+if __name__ == "__main__":
+    poblar()
