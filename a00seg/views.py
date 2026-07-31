@@ -177,38 +177,37 @@ def registro_view(request):
             rol="base",
         )
 
-        # Enviar correo de confirmación (con protección ante fallos)
-        # try:
-        #     email_enviado = send_confirmation_email(user)
-        # except Exception:
-        #     email_enviado = False
+        # Enviar correo de confirmación al usuario recién creado (síncrono y verificado)
+        try:
+            email_enviado = send_confirmation_email(user, request)
+            if email_enviado:
+                messages.success(
+                    request,
+                    "Registro exitoso. Te hemos enviado un correo de confirmación a "
+                    f"{email}. Revisa tu bandeja de entrada y también la carpeta de spam."
+                )
+            else:
+                messages.success(
+                    request,
+                    "Registro exitoso. No pudimos enviar el correo de confirmación "
+                    "automáticamente, pero puedes solicitar uno nuevo desde tu perfil "
+                    "después de iniciar sesión."
+                )
+        except Exception as e:
+            logger.exception(f"Error enviando confirmación en registro a {email}")
+            messages.success(
+                request,
+                "Registro exitoso. No pudimos enviar el correo de confirmación "
+                "automáticamente, pero puedes solicitar uno nuevo desde tu perfil "
+                "después de iniciar sesión."
+            )
 
-        # if email_enviado:
-        #     messages.success(
-        #         request,
-        #         "Registro exitoso. Te hemos enviado un correo de confirmación a "
-        #         f"{email}. Revisa tu bandeja de entrada y también la carpeta de spam."
-        #     )
-        # else:
-        #     messages.success(
-        #         request,
-        #         "Registro exitoso. No pudimos enviar el correo de confirmación "
-        #         "automáticamente, pero puedes solicitar uno nuevo desde tu perfil "
-        #         "después de iniciar sesión."
-        #     )
-        # return redirect("login")
-        if request.user.is_authenticated:
-            try:
-                # Función nativa de allauth para enviar la confirmación
-                send_confirmation_email(request, request.user)
-                messages.success(request, f"Se ha rellenado un nuevo correo de confirmación a {request.user.email}.")
-            except Exception as e:
-                # Captura el error exacto de envío si Gmail o la red en Railway fallan
-                messages.error(request, f"Error al enviar el correo: {str(e)}")
-        else:
-            messages.error(request, "Debes iniciar sesión para realizar esta acción.")
-            
-        return redirect('home')
+        # Autenticar al usuario recién creado
+        user_auth = authenticate(request, username=user.username, password=password)
+        if user_auth:
+            login(request, user_auth)
+
+        return redirect("home")
 
     return render(request, "registro.html")
 
@@ -1325,8 +1324,14 @@ def _enviar_email_en_segundo_plano(user):
 def reenviar_confirmacion_simple(request):
     """
     Reenvía el correo de confirmación con el link.
-    El envío SMTP se ejecuta en un thread separado para que la request
-    responda inmediatamente (evita timeouts del servidor → 500).
+
+    El envío es SÍNCRONO y se verifica el resultado real del SMTP:
+    - Si el correo se envió correctamente → mensaje de éxito honesto.
+    - Si el envío falla → mensaje de error con el motivo, sin falsos positivos.
+
+    (Antes se usaba un thread en segundo plano que podía ser abortado por el
+    servidor antes de completar el SMTP: el usuario veía el mensaje de éxito
+    pero el correo nunca salía.)
     """
     try:
         user = request.user
@@ -1335,23 +1340,31 @@ def reenviar_confirmacion_simple(request):
             messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
             return redirect("home")
 
-        # Disparar el envío en segundo plano y responder al instante
-        hilo = threading.Thread(target=_enviar_email_en_segundo_plano, args=(user,), daemon=True)
-        hilo.start()
+        # Envío síncrono con verificación real del resultado
+        email_enviado = send_confirmation_email(user, request)
 
-        messages.info(
-            request,
-            f"📧 Hemos enviado un correo de confirmación a {user.email}. "
-            "Revisa tu bandeja de entrada y también la carpeta de spam, "
-            "luego haz clic en el enlace para confirmar tu dirección."
-        )
+        if email_enviado:
+            messages.success(
+                request,
+                f"📧 Hemos enviado un correo de confirmación a {user.email}. "
+                "Revisa tu bandeja de entrada y también la carpeta de spam, "
+                "luego haz clic en el enlace para confirmar tu dirección."
+            )
+        else:
+            messages.error(
+                request,
+                "❌ No se pudo enviar el correo de confirmación. "
+                "El servidor de correo no aceptó el envío. "
+                "Intenta nuevamente en unos minutos o contacta a administración."
+            )
         return redirect("home")
 
     except Exception as e:
         logger.error(f"REENVIAR CONFIRMACION - ERROR INESPERADO: {e}", exc_info=True)
         messages.error(
             request,
-            "Ocurrió un error al procesar la solicitud. Por favor intenta de nuevo más tarde."
+            "❌ Ocurrió un error al enviar el correo de confirmación. "
+            "Por favor intenta de nuevo en unos minutos."
         )
         return redirect("home")
 

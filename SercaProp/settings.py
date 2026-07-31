@@ -260,6 +260,9 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ordered.dev.01@gmail.com'
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'lulicoglmtgsfeed')
 DEFAULT_FROM_EMAIL = 'sercaprop <ordered.dev.01@gmail.com>'
+# Timeout de conexión SMTP: si Gmail/red tarda, la request falla con mensaje
+# claro en lugar de quedar colgada esperando indefinidamente.
+EMAIL_TIMEOUT = 20
 
 # ── Sitio ───────────────────────────────────────────
 SITE_NAME = 'Serca Propiedades'
