@@ -47,11 +47,18 @@
                 </div>
             </div>
         </div>
-        <div style="padding:8px 12px;border-top:1px solid var(--ds-border-light);display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="padding:8px 12px;border-top:1px solid var(--ds-border-light);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <a href="{% url 'log_mensajes_servicio' s.id %}" class="btn btn-outline btn-sm" style="font-size:0.75rem;">
                 📩 Mensajes {% if s.mensajes_no_leidos > 0 %}<span style="background:var(--ds-primary);color:white;border-radius:50%;padding:1px 6px;font-size:0.65rem;margin-left:4px;">{{ s.mensajes_no_leidos }}</span>{% endif %}
             </a>
             <a href="{% url 'detalle_servicio' s.id %}" class="btn btn-ghost btn-sm" style="font-size:0.75rem;">👁️ Ver</a>
+            <form method="POST" action="{% url 'subir_imagen_servicio' s.id %}" enctype="multipart/form-data" style="display:inline-flex;gap:6px;align-items:center;">
+                {% csrf_token %}
+                <label class="btn btn-warning btn-sm" style="font-size:0.7rem;cursor:pointer;margin:0;">
+                    🖼️ {{ s.imagen|yesno:"Cambiar imagen,Subir imagen" }}
+                    <input type="file" name="imagen" accept="image/*" style="display:none;" onchange="this.form.submit()">
+                </label>
+            </form>
         </div>
     </div>
     {% endfor %}

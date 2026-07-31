@@ -269,7 +269,7 @@ def confirmar_pago_servicio(request):
             categoria_id=data["categoria_id"],
             titulo=data["titulo"],
             descripcion=data["descripcion"],
-            imagen=imagen or "servicios/placeholder.jpg",
+            imagen=imagen,  # puede ser None -> los templates muestran el emoji 🔧
             sitio_web=data.get("sitio_web", ""),
             telefono_contacto=data.get("telefono", ""),
             email_contacto=data.get("email_contacto", ""),
@@ -345,6 +345,33 @@ def gestion_mis_servicios(request):
     return render(request, "servicios/gestion_mis_servicios.html", {
         "servicios": servicios,
     })
+
+
+@login_required
+def subir_imagen_servicio(request, servicio_id):
+    """El publicante sube o reemplaza la imagen de su servicio."""
+    servicio = get_object_or_404(
+        ServicioPublicitario,
+        id=servicio_id,
+        publicante=request.user,
+    )
+
+    if request.method != "POST":
+        return redirect("gestion_mis_servicios")
+
+    imagen = request.FILES.get("imagen")
+    if not imagen:
+        messages.error(request, "Debes seleccionar una imagen.")
+        return redirect("gestion_mis_servicios")
+
+    try:
+        imagen.file.seek(0)
+    except Exception:
+        pass
+    servicio.imagen = imagen
+    servicio.save(update_fields=["imagen", "updated_at"])
+    messages.success(request, "✅ Imagen del servicio actualizada correctamente.")
+    return redirect("gestion_mis_servicios")
 
 
 @login_required

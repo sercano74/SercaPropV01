@@ -14,6 +14,7 @@ urlpatterns = [
 
     # Gestión del publicante
     path('mis-servicios/', views.gestion_mis_servicios, name='gestion_mis_servicios'),
+    path('mis-servicios/<int:servicio_id>/imagen/', views.subir_imagen_servicio, name='subir_imagen_servicio'),
     path('mis-servicios/<int:servicio_id>/mensajes/', views.log_mensajes_servicio, name='log_mensajes_servicio'),
 
     # Casos de Éxito (público)
