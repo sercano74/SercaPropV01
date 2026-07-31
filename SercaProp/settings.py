@@ -60,9 +60,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',
+    'cloudinary_storage',  # DEBE ir antes de django.contrib.staticfiles
     'django.contrib.staticfiles',
-    'cloudinary',
     'django.contrib.humanize',
     'django.contrib.sites',  # requerido por allauth
     'allauth',
@@ -70,6 +69,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
+    'cloudinary',
     'a00seg',
     'a01Com',
     'a03Prop',

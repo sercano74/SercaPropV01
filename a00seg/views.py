@@ -1307,66 +1307,48 @@ def serve_media_prod(request, path):
 
 
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
+
+
+def _enviar_email_en_segundo_plano(user):
+    """Envía el email de confirmación en un thread separado para no bloquear la request HTTP."""
+    try:
+        send_confirmation_email(user)
+        logger.info(f"Email de confirmación enviado en segundo plano a {user.email}")
+    except Exception as e:
+        logger.error(f"Falló envío en segundo plano a {user.email}: {e}", exc_info=True)
 
 
 @login_required
 def reenviar_confirmacion_simple(request):
     """
-    Reenvía el correo de confirmación con el link para que el usuario
-    verifique su email haciendo clic en él.
-    
-    Flujo:
-    1. Intenta enviar el email real con send_confirmation_email()
-    2. Si se envía correctamente → mensaje azul "revisa tu bandeja"
-    3. Si falla el envío → auto-confirma y muestra mensaje verde
+    Reenvía el correo de confirmación con el link.
+    El envío SMTP se ejecuta en un thread separado para que la request
+    responda inmediatamente (evita timeouts del servidor → 500).
     """
-    user = request.user
-    
     try:
+        user = request.user
+
         if user.email_confirmado:
             messages.info(request, "ℹ️ Tu correo ya está confirmado. No necesitas reenviar.")
             return redirect("home")
-        
-        # PASO 1: Intentar enviar el email real
-        try:
-            enviado = send_confirmation_email(user)
-        except Exception as e:
-            logger.error(f"reenviar_confirmacion_simple: send_confirmation_email lanzó excepción: {e}", exc_info=True)
-            enviado = False
-        
-        if enviado:
-            messages.info(
-                request,
-                f"📧 Hemos enviado un correo de confirmación a {user.email}. "
-                "Revisa tu bandeja de entrada y también la carpeta de spam, "
-                "luego haz clic en el enlace para confirmar tu dirección."
-            )
-            return redirect("home")
-        
-        # PASO 2: Falló el envío → auto-confirmar como fallback
-        logger.info(f"reenviar_confirmacion_simple: No se pudo enviar email a {user.email}, auto-confirmando")
-        user.email_confirmado = True
-        user.save(update_fields=["email_confirmado"])
-        
-        # Sincronizar con allauth sin importar si la tabla existe
-        try:
-            from allauth.account.models import EmailAddress as EA
-            EA.objects.filter(user=user, email=user.email).update(verified=True)
-        except Exception:
-            pass
-        
-        messages.success(
+
+        # Disparar el envío en segundo plano y responder al instante
+        hilo = threading.Thread(target=_enviar_email_en_segundo_plano, args=(user,), daemon=True)
+        hilo.start()
+
+        messages.info(
             request,
-            "✅ ¡Correo electrónico confirmado exitosamente! "
-            "No pudimos enviar el correo de verificación, pero tu cuenta "
-            "ya está activa. Puedes disfrutar de todas las funcionalidades."
+            f"📧 Hemos enviado un correo de confirmación a {user.email}. "
+            "Revisa tu bandeja de entrada y también la carpeta de spam, "
+            "luego haz clic en el enlace para confirmar tu dirección."
         )
         return redirect("home")
-    
+
     except Exception as e:
-        logger.error(f"REENVIAR CONFIRMACION - ERROR FATAL: {e}", exc_info=True)
+        logger.error(f"REENVIAR CONFIRMACION - ERROR INESPERADO: {e}", exc_info=True)
         messages.error(
             request,
             "Ocurrió un error al procesar la solicitud. Por favor intenta de nuevo más tarde."
