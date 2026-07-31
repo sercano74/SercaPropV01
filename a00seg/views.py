@@ -179,7 +179,9 @@ def registro_view(request):
 
         # Enviar correo de confirmación al usuario recién creado (síncrono y verificado)
         try:
-            email_enviado = send_confirmation_email(user, request)
+            email_enviado, detalle_error = send_confirmation_email(user, request)
+            if detalle_error:
+                logger.error(f"Error enviando confirmación en registro a {email}: {detalle_error}")
             if email_enviado:
                 messages.success(
                     request,
@@ -1341,7 +1343,7 @@ def reenviar_confirmacion_simple(request):
             return redirect("home")
 
         # Envío síncrono con verificación real del resultado
-        email_enviado = send_confirmation_email(user, request)
+        email_enviado, detalle_error = send_confirmation_email(user, request)
 
         if email_enviado:
             messages.success(
@@ -1351,10 +1353,12 @@ def reenviar_confirmacion_simple(request):
                 "luego haz clic en el enlace para confirmar tu dirección."
             )
         else:
+            # Registrar el error real del SMTP para diagnóstico
+            logger.error(f"Reenvío de confirmación falló para {user.email}: {detalle_error}")
             messages.error(
                 request,
-                "❌ No se pudo enviar el correo de confirmación. "
-                "El servidor de correo no aceptó el envío. "
+                "❌ No se pudo enviar el correo de confirmación en este momento. "
+                "El proveedor de correo rechazó el envío. "
                 "Intenta nuevamente en unos minutos o contacta a administración."
             )
         return redirect("home")

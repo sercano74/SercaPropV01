@@ -40,7 +40,11 @@ email_token_generator = EmailConfirmationTokenGenerator()
 def send_confirmation_email(user, request=None):
     """
     Envía el correo de confirmación al usuario.
-    Retorna True si se envió correctamente, False en caso contrario.
+
+    Retorna una tupla (ok, detalle):
+    - (True, None) si el correo se envió correctamente.
+    - (False, mensaje_error) si falló, con el detalle real del SMTP para
+      poder diagnosticar (ej: "535 5.7.8 Username and Password not accepted").
     """
     try:
         token = email_token_generator.make_token(user)
@@ -90,7 +94,8 @@ El equipo de Serca Propiedades
             fail_silently=False,
         )
         logger.info(f"Email de confirmación enviado a {user.email}")
-        return True
+        return True, None
     except Exception as e:
-        logger.error(f"Error al enviar email de confirmación a {user.email}: {e}")
-        return False
+        detalle = f"{type(e).__name__}: {e}"
+        logger.error(f"Error al enviar email de confirmación a {user.email}: {detalle}")
+        return False, detalle

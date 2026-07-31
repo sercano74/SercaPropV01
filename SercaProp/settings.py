@@ -253,15 +253,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'a00seg.User'
 
 # ── Email ──────────────────────────────────────────
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'ordered.dev.01@gmail.com'
+# Configurable por variables de entorno para poder usar un relay transaccional
+# (Mailgun/SendGrid/Resend) en producción sin tocar código. Por defecto SMTP Gmail.
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'ordered.dev.01@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'lulicoglmtgsfeed')
-DEFAULT_FROM_EMAIL = 'sercaprop <ordered.dev.01@gmail.com>'
-# Timeout de conexión SMTP: si Gmail/red tarda, la request falla con mensaje
-# claro en lugar de quedar colgada esperando indefinidamente.
+EMAIL_DEFAULT_FROM = os.environ.get('EMAIL_DEFAULT_FROM', 'sercaprop <ordered.dev.01@gmail.com>')
+DEFAULT_FROM_EMAIL = EMAIL_DEFAULT_FROM
+# Timeout de conexión SMTP: si el servidor de correo/red tarda, la request falla
+# con mensaje claro en lugar de quedar colgada esperando indefinidamente.
 EMAIL_TIMEOUT = 20
 
 # ── Sitio ───────────────────────────────────────────
