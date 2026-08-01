@@ -523,7 +523,7 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             <div><strong>⏰ Hora:</strong> {{ visita.hora_inicio_solicitada|time:'H:i' }} - {{ visita.hora_fin_solicitada|time:'H:i' }}</div>
                             {% if visita.motivo_rechazo %}<div><strong>❌ Motivo rechazo:</strong> {{ visita.motivo_rechazo }}</div>{% endif %}
                             {% if visita.orden_visita %}
-                                <div style="margin-top:4px;"><a href="{{ visita.orden_visita.url }}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">📄 Ver Orden de Visita</a></div>
+                                <div style="margin-top:4px;"><a href="{{ visita.orden_visita_url }}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">📄 Ver Orden de Visita</a></div>
                             {% endif %}
                         </div>
 

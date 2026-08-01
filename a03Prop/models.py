@@ -769,6 +769,30 @@ class SolicitudVisita(models.Model):
     def __str__(self):
         return f"Visita #{self.id} - {self.usuario} → {self.propiedad} ({self.get_estado_display()})"
 
+    # ------------------------------------------------------------------
+    # URLs correctas para documentos PDF en Cloudinary
+    # ------------------------------------------------------------------
+    # cloudinary_storage a veces genera URLs con "image/upload" para PDFs
+    # (o para archivos sin extensión), y Cloudinary responde 401 porque los
+    # documentos se almacenan como tipo "raw". Estas propiedades corrigen
+    # la URL para que use "raw/upload".
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _url_raw(url):
+        if not url:
+            return None
+        if "/image/upload/" in url:
+            return url.replace("/image/upload/", "/raw/upload/")
+        return url
+
+    @property
+    def orden_visita_url(self):
+        return self._url_raw(self.orden_visita.url if self.orden_visita else None)
+
+    @property
+    def orden_visita_firmada_url(self):
+        return self._url_raw(self.orden_visita_firmada.url if self.orden_visita_firmada else None)
+
 
 # ============================================================
 # PROPUESTA DE COMPRA / ARRIENDO
