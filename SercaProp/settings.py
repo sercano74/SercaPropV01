@@ -258,8 +258,24 @@ AUTH_USER_MODEL = 'a00seg.User'
 # Valor especial: EMAIL_BACKEND=resend  -> usa la API HTTP de Resend
 # (más robusto que SMTP desde Railway: evita el WORKER TIMEOUT por puerto 587
 # bloqueado/colgado en IPs de datacenter).
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+_EMAIL_BACKEND_ENV = os.environ.get('EMAIL_BACKEND', '')
+_EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+# Con Resend se usa la API HTTP (https) en vez del SMTP (puerto 587): desde las
+# IPs de datacenter de Railway el SMTP se cuelga (TimeoutError) y gunicorn mata
+# el worker. La API responde en ms y funciona desde cualquier IP.
+# Se activa con EMAIL_BACKEND=resend o automáticamente si EMAIL_HOST es de
+# resend.com (así no hay que tocar nada en Railway).
+_usar_api_resend = _EMAIL_BACKEND_ENV == 'resend' or (
+    not _EMAIL_BACKEND_ENV and 'resend.com' in _EMAIL_HOST
+)
+if _usar_api_resend:
+    EMAIL_BACKEND = 'a00seg.email_backends.ResendAPIBackend'
+    # La key se lee de RESEND_API_KEY y, si no está, de EMAIL_HOST_PASSWORD
+    # (que en Railway guarda la key de Resend).
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '') or os.environ.get('EMAIL_HOST_PASSWORD', '')
+else:
+    EMAIL_BACKEND = _EMAIL_BACKEND_ENV or 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = _EMAIL_HOST
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'ordered.dev.01@gmail.com')
