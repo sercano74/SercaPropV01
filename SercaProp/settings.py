@@ -255,6 +255,9 @@ AUTH_USER_MODEL = 'a00seg.User'
 # ── Email ──────────────────────────────────────────
 # Configurable por variables de entorno para poder usar un relay transaccional
 # (Mailgun/SendGrid/Resend) en producción sin tocar código. Por defecto SMTP Gmail.
+# Valor especial: EMAIL_BACKEND=resend  -> usa la API HTTP de Resend
+# (más robusto que SMTP desde Railway: evita el WORKER TIMEOUT por puerto 587
+# bloqueado/colgado en IPs de datacenter).
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
@@ -263,9 +266,10 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'ordered.dev.01@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'lulicoglmtgsfeed')
 EMAIL_DEFAULT_FROM = os.environ.get('EMAIL_DEFAULT_FROM', 'sercaprop <ordered.dev.01@gmail.com>')
 DEFAULT_FROM_EMAIL = EMAIL_DEFAULT_FROM
-# Timeout de conexión SMTP: si el servidor de correo/red tarda, la request falla
-# con mensaje claro en lugar de quedar colgada esperando indefinidamente.
-EMAIL_TIMEOUT = 20
+# Timeout corto de conexión SMTP: evita que gunicorn (30s) mate el worker con
+# un WORKER TIMEOUT si el relay tarda. La request responde en máx. ~12s y, si
+# falla, se muestra el error real y el usuario puede reintentar.
+EMAIL_TIMEOUT = 10
 
 # ── Sitio ───────────────────────────────────────────
 SITE_NAME = 'Serca Propiedades'
