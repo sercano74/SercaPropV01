@@ -524,10 +524,6 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             {% if visita.motivo_rechazo %}<div><strong>❌ Motivo rechazo:</strong> {{ visita.motivo_rechazo }}</div>{% endif %}
                             {% if visita.orden_visita_url %}
                                 <div style="margin-top:4px;"><a href="{{ visita.orden_visita_url }}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">📄 Ver Orden de Visita</a></div>
-                            {% else %}
-                                {% if visita.orden_visita %}
-                                <div style="margin-top:4px;font-size:0.75rem;color:var(--ds-error);">⚠️ El documento adjunto está dañado o no existe. Vuelve a subirlo por favor.</div>
-                                {% endif %}
                             {% endif %}
                         </div>
 
