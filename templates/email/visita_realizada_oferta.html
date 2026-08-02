@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu visita fue registrada - {{ site_name }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #1a1a2e; padding: 32px 40px; text-align: center; }
+        .header h1 { color: #fff; margin: 0; font-size: 1.5rem; }
+        .header .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .body { padding: 40px; }
+        .body p { color: #555; line-height: 1.6; font-size: 0.95rem; }
+        .prop-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .prop-card .badge {
+            display: inline-block;
+            background: #1a1a2e;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .prop-card .nombre { font-size: 1.2rem; font-weight: 700; color: #1a1a2e; margin: 0 0 6px; }
+        .prop-card .precio { font-size: 1.1rem; font-weight: 700; color: #059669; margin: 0; }
+        .btn-oferta {
+            display: inline-block;
+            padding: 14px 36px;
+            background: #2563eb;
+            color: #fff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 24px 0;
+        }
+        .btn-oferta:hover { background: #1d4ed8; }
+        .pasos { margin: 20px 0; padding: 0; list-style: none; }
+        .pasos li {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        .pasos li strong { color: #1a1a2e; }
+        .footer { padding: 24px 40px; background: #f9f9f9; text-align: center; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; }
+        .footer a { color: #2563eb; text-decoration: none; }
+        @media only screen and (max-width: 480px) {
+            .container { margin: 20px 12px; }
+            .body { padding: 24px; }
+            .header { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🏠</div>
+            <h1>¡Tu visita fue registrada!</h1>
+        </div>
+        <div class="body">
+            <p>Hola <strong>{{ nombre_visitante }}</strong>,</p>
+            <p>
+                Hemos registrado tu visita a la propiedad
+                <strong>{{ propiedad.display_name_public }}</strong>.
+                ¡Gracias por tu interés!
+            </p>
+
+            <div class="prop-card">
+                <div class="badge">{{ tipo_accion_display }}</div>
+                <p class="nombre">{{ propiedad.display_name_public }}</p>
+                <p class="precio">{{ propiedad.get_tipo_moneda_display }} ${{ propiedad.precio|floatformat:0 }}</p>
+            </div>
+
+            <p>Ahora es el momento de dar el siguiente paso:</p>
+
+            <ul class="pasos">
+                <li>💡 <strong>Haz una oferta de {{ tipo_accion_texto }}</strong> por esta propiedad desde tu panel.</li>
+                <li>⚡ Si tu propuesta es aceptada, el corredor preparará todos los documentos para concretar la operación.</li>
+                <li>🤝 Y si prefieres conversar antes, contáctanos y te acompañamos en cada paso.</li>
+            </ul>
+
+            <div style="text-align:center;">
+                <a href="{{ prop_url }}" class="btn-oferta">💰 Hacer mi oferta</a>
+            </div>
+
+            <p style="text-align:center;font-size:0.85rem;color:#888;">
+                O abre esta propiedad directamente:<br>
+                <span style="color:#2563eb;word-break:break-all;">{{ prop_url }}</span>
+            </p>
+
+            <p style="margin-top:24px;">No dejes pasar esta oportunidad. ¡El tiempo de una gran propiedad es corto!</p>
+            <p>Saludos,<br><strong>El equipo de {{ site_name }}</strong></p>
+        </div>
+        <div class="footer">
+            &copy; {% now "Y" %} {{ site_name }}. Todos los derechos reservados.
+            <br>
+            <a href="https://propiedades.serca.online">propiedades.serca.online</a>
+        </div>
+    </div>
+</body>
+</html>

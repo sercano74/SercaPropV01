@@ -282,6 +282,12 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'ordered.dev.01@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'lulicoglmtgsfeed')
 EMAIL_DEFAULT_FROM = os.environ.get('EMAIL_DEFAULT_FROM', 'sercaprop <ordered.dev.01@gmail.com>')
 DEFAULT_FROM_EMAIL = EMAIL_DEFAULT_FROM
+# Remitente "no-reply" para correos transaccionales (visitas, avisos, notificaciones).
+# Usa el dominio verificado en Resend (noreply@serca.online) y hace fallback al DEFAULT_FROM_EMAIL.
+EMAIL_NOREPLY_FROM = os.environ.get(
+    'EMAIL_NOREPLY_FROM',
+    'Serca Propiedades <noreply@serca.online>'
+)
 # Timeout corto de conexión SMTP: evita que gunicorn (30s) mate el worker con
 # un WORKER TIMEOUT si el relay tarda. La request responde en máx. ~12s y, si
 # falla, se muestra el error real y el usuario puede reintentar.

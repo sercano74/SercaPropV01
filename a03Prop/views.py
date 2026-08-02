@@ -1,10 +1,13 @@
 from datetime import datetime, date
 import logging
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.mail import send_mail
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.db.models import Q
 from .models import (
@@ -1934,7 +1937,75 @@ def marcar_visita_realizada(request, visita_id):
             related_object_id=visita.id,
         )
 
-        messages.success(request, "Visita marcada como realizada.")
+        # ===== EMAIL DE INCENTIVO A LA OFERTA =====
+        # Además de la comunicación interna en el CDC, se envía un correo
+        # desde "noreply" con el estilo gráfico de Serca para incentivar al
+        # visitante a hacer una propuesta de compra/arriendo.
+        try:
+            propiedad = visita.propiedad
+            tipo_accion = propiedad.tipo_accion
+            tipo_accion_display = propiedad.get_tipo_accion_display()
+            tipo_accion_texto = "compra" if tipo_accion == "venta" else "arriendo"
+
+            sitio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+            prop_url = f"https://{sitio}/prop/detalle/{propiedad.id}/"
+
+            contexto_email = {
+                "site_name": getattr(settings, "SITE_NAME", "Serca Propiedades"),
+                "nombre_visitante": visita.usuario.get_full_name() or visita.usuario.username,
+                "propiedad": propiedad,
+                "tipo_accion_display": tipo_accion_display,
+                "tipo_accion_texto": tipo_accion_texto,
+                "prop_url": prop_url,
+            }
+            html_email = render_to_string("email/visita_realizada_oferta.html", contexto_email)
+            texto_email = (
+                f"Hola {contexto_email['nombre_visitante']},\n\n"
+                f"Hemos registrado tu visita a la propiedad {propiedad.display_name_public()}.\n"
+                f"Ahora puedes hacer una propuesta de {tipo_accion_texto}.\n\n"
+                f"Para hacer tu oferta, abre: {prop_url}\n\n"
+                f"Saludos,\nEl equipo de Serca Propiedades"
+            )
+
+            remitente_noreply = getattr(
+                settings, "EMAIL_NOREPLY_FROM", settings.DEFAULT_FROM_EMAIL
+            )
+            try:
+                send_mail(
+                    subject="¡Tu visita fue registrada! Haz tu oferta ahora 🏠",
+                    message=texto_email,
+                    from_email=remitente_noreply,
+                    recipient_list=[visita.usuario.email],
+                    html_message=html_email,
+                    fail_silently=False,
+                )
+            except Exception:
+                # Fallback: si el remitente "noreply" no está verificado en el
+                # proveedor (ej. Resend), reintenta con el remitente verificado.
+                logger.warning(
+                    f"Fallo envío con {remitente_noreply} para visita #{visita.id}; "
+                    f"reintentando con {settings.DEFAULT_FROM_EMAIL}"
+                )
+                send_mail(
+                    subject="¡Tu visita fue registrada! Haz tu oferta ahora 🏠",
+                    message=texto_email,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[visita.usuario.email],
+                    html_message=html_email,
+                    fail_silently=False,
+                )
+            logger.info(
+                f"Email de incentivo enviado a {visita.usuario.email} "
+                f"tras marcar visita #{visita.id} como realizada"
+            )
+        except Exception as e:
+            # El email no debe impedir la operación principal
+            logger.error(
+                f"Error enviando email de incentivo para visita #{visita.id}: {e}",
+                exc_info=True,
+            )
+
+        messages.success(request, "Visita marcada como realizada. Se notificó al visitante por correo y Centro de Comunicaciones.")
         return redirect("detalle_propiedad", prop_id=visita.propiedad.id)
 
     return redirect("detalle_propiedad", prop_id=visita.propiedad.id)
