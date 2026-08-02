@@ -522,8 +522,12 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             <div><strong>📅 Fecha:</strong> {{ visita.fecha_solicitada|date:'d/m/Y' }}</div>
                             <div><strong>⏰ Hora:</strong> {{ visita.hora_inicio_solicitada|time:'H:i' }} - {{ visita.hora_fin_solicitada|time:'H:i' }}</div>
                             {% if visita.motivo_rechazo %}<div><strong>❌ Motivo rechazo:</strong> {{ visita.motivo_rechazo }}</div>{% endif %}
-                            {% if visita.orden_visita %}
+                            {% if visita.orden_visita_url %}
                                 <div style="margin-top:4px;"><a href="{{ visita.orden_visita_url }}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">📄 Ver Orden de Visita</a></div>
+                            {% else %}
+                                {% if visita.orden_visita %}
+                                <div style="margin-top:4px;font-size:0.75rem;color:var(--ds-error);">⚠️ El documento adjunto está dañado o no existe. Vuelve a subirlo por favor.</div>
+                                {% endif %}
                             {% endif %}
                         </div>
 
@@ -546,7 +550,7 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             </div>
                             {% endif %}
                             {% if visita.estado == 'pendiente' or visita.estado == 'aceptada' %}
-                                {% if not visita.orden_visita %}
+                                {% if not visita.orden_visita_url %}
                                 <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
                                     <form method="POST" action="{% url 'subir_orden_visita' visita.id %}" enctype="multipart/form-data" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                         {% csrf_token %}
@@ -559,7 +563,7 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                             {% endif %}
                         {% endif %}
 
-                        {% if user == visita.usuario and visita.orden_visita and not visita.clausulas_aceptadas %}
+                        {% if user == visita.usuario and visita.orden_visita_url and not visita.clausulas_aceptadas %}
                             {% if visita.estado == 'pendiente' or visita.estado == 'aceptada' %}
                             <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ds-border-light);">
                                 <form method="POST" action="{% url 'aceptar_orden_visita' visita.id %}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">

@@ -778,8 +778,13 @@ class SolicitudVisita(models.Model):
     # la URL para que use "raw/upload".
     # ------------------------------------------------------------------
     @staticmethod
-    def _url_raw(url):
+    def _url_raw(url, name=None):
         if not url:
+            return None
+        # Nombres corruptos (sin extensión .pdf real) generan URLs que no
+        # existen en Cloudinary (HTTP 404). Tratarlos como "sin documento"
+        # para que la UI permita volver a subir el archivo.
+        if name and not name.lower().endswith(".pdf"):
             return None
         if "/image/upload/" in url:
             return url.replace("/image/upload/", "/raw/upload/")
@@ -787,11 +792,17 @@ class SolicitudVisita(models.Model):
 
     @property
     def orden_visita_url(self):
-        return self._url_raw(self.orden_visita.url if self.orden_visita else None)
+        return self._url_raw(
+            self.orden_visita.url if self.orden_visita else None,
+            self.orden_visita.name if self.orden_visita else None,
+        )
 
     @property
     def orden_visita_firmada_url(self):
-        return self._url_raw(self.orden_visita_firmada.url if self.orden_visita_firmada else None)
+        return self._url_raw(
+            self.orden_visita_firmada.url if self.orden_visita_firmada else None,
+            self.orden_visita_firmada.name if self.orden_visita_firmada else None,
+        )
 
 
 # ============================================================
