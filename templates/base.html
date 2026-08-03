@@ -148,35 +148,50 @@
                     </div>
                 </div>
 
-                <!-- GESTIONA -->
+                <!-- GESTIONAR -->
                 {% if user.is_authenticated %}
                 <div class="nav-dropdown">
                     <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestionar ▾</a>
                     <div class="dropdown-content">
-                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Panel de gestión</div>
+                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Comunicaciones</div>
+                        <div class="dropdown-divider"></div>
                         <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
-                        {% if user.rol != 'base' %}
-                        <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
-                        <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
-                        {% endif %}
+                        
+                        
+                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Propiedades</div>
+                        <div class="dropdown-divider"></div>
                         <a href="{% url 'gestion_favoritas' %}" class="dropdown-item">⭐ Mis favoritas</a>
                         <a href="{% url 'gestion_mis_publicaciones' %}" class="dropdown-item">📢 Mis publicaciones</a>
                         {% if user.rol != 'base' %}
-                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
+                        <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
                         <a href="{% url 'gestion_ingresos' %}" class="dropdown-item">💰 Ingresos</a>
                         {% endif %}
                         {% if user.rol in 'gerente,superadmin' %}
-                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Parámetros</div>
                         <a href="{% url 'gestion_precios_publicacion' %}" class="dropdown-item">💰 Precios publicación</a>
                         <a href="{% url 'gestion_servicios' %}" class="dropdown-item">🔧 Servicios</a>
                         <a href="{% url 'validar_corredores' %}" class="dropdown-item">🛡️ Validar corredores</a>
                         <a href="{% url 'revisar_postulaciones' %}" class="dropdown-item">📋 Postulaciones</a>
                         {% endif %}
+
+
+                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Servicios Profesionales</div>
+                        <div class="dropdown-divider"></div>
+                        <a href="{% url 'gestion_mis_servicios' %}" class="dropdown-item">🔧 Mis servicios</a>
+                        {% if user.rol in 'gerente,superadmin' %}
+                        <a href="{% url 'gestion_admin_servicios' %}" class="dropdown-item">🔧 Gestión de servicios</a>
+                        {% endif %}
+                        
+                        
+                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Superadmin</div>
+                        <div class="dropdown-divider"></div>
                         {% if user.rol == 'superadmin' %}
                         <div class="dropdown-divider"></div>
                         <a href="{% url 'crear_gerente' %}" class="dropdown-item">👤 Crear gerente</a>
                         <a href="/admin/" class="dropdown-item">⚙️ Admin Django</a>
                         {% endif %}
+
                     </div>
                 </div>
                 {% endif %}
