@@ -140,7 +140,11 @@
                                     <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad">🏠</a>
                                     {% endif %}
                                     {% if com.related_object_id %}
-                                    <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
+                                        {% if com.related_object_type == 'servicio' %}
+                                        <a href="{% url 'detalle_revision_servicio' com.related_object_id %}" class="com-btn-icon" title="Ver servicio en revisión">📋</a>
+                                        {% else %}
+                                        <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </td>
@@ -210,7 +214,11 @@
                                     <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad">🏠</a>
                                     {% endif %}
                                     {% if com.related_object_id %}
-                                    <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
+                                        {% if com.related_object_type == 'servicio' %}
+                                        <a href="{% url 'detalle_revision_servicio' com.related_object_id %}" class="com-btn-icon" title="Ver servicio en revisión">📋</a>
+                                        {% else %}
+                                        <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </td>

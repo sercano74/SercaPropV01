@@ -1,0 +1,133 @@
+{% extends "gestion_base.html" %}
+{% load servicios_extras %}
+{% block title %}Revisar servicio - {{ servicio.titulo }}{% endblock %}
+{% block content %}
+<div class="hero-modern" style="margin-bottom:24px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <a href="{% url 'centro_comunicaciones' %}" class="btn btn-ghost btn-sm" style="flex-shrink:0;">← Volver</a>
+        <h1 style="margin:0;">🔍 Revisión de servicio</h1>
+    </div>
+    <p>Valida el contenido y el comprobante de pago antes de iniciar la publicación.</p>
+</div>
+
+<div class="card-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+    <!-- Columna izquierda: datos del servicio -->
+    <div>
+        <div class="card-modern">
+            <div class="card-modern-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="margin:0;">📄 Contenido del servicio</h3>
+                <span style="padding:4px 12px;border-radius:9999px;font-size:0.75rem;font-weight:700;
+                    {% if servicio.estado == 'en_revision' %}background:#fef3c7;color:#92400e;
+                    {% elif servicio.estado == 'objetado' %}background:#fee2e2;color:#b91c1c;
+                    {% elif servicio.estado == 'activo' %}background:#d1fae5;color:#065f46;
+                    {% else %}background:#e2e8f0;color:#475569;{% endif %}">
+                    {{ servicio.get_estado_display }}
+                </span>
+            </div>
+            <div class="card-modern-body">
+                <div style="display:flex;gap:16px;margin-bottom:16px;">
+                    {% if servicio.imagen %}
+                    <img src="{{ servicio.imagen.url }}" alt="{{ servicio.titulo }}" style="width:140px;height:140px;object-fit:cover;border-radius:12px;border:2px solid var(--ds-border);">
+                    {% else %}
+                    <div style="width:140px;height:140px;border-radius:12px;border:2px dashed var(--ds-border);display:flex;align-items:center;justify-content:center;font-size:3rem;">🔧</div>
+                    {% endif %}
+                    <div>
+                        <h2 style="margin:0 0 4px;">{{ servicio.titulo }}</h2>
+                        <div style="font-size:0.85rem;color:var(--ds-text-secondary);">{{ servicio.categoria }}</div>
+                        <div style="font-size:0.85rem;margin-top:4px;"><strong>Publicante:</strong> {{ servicio.publicante.get_full_name|default:servicio.publicante.email }} ({{ servicio.publicante.email }})</div>
+                        <div style="font-size:0.85rem;"><strong>Teléfono:</strong> {{ servicio.telefono_contacto|default:"—" }}</div>
+                        <div style="font-size:0.85rem;"><strong>Sitio web:</strong> {% if servicio.sitio_web %}<a href="{{ servicio.sitio_web }}" target="_blank" rel="noopener">{{ servicio.sitio_web }}</a>{% else %}—{% endif %}</div>
+                        <div style="font-size:0.85rem;"><strong>Email de contacto:</strong> {{ servicio.email_contacto|default:"—" }}</div>
+                    </div>
+                </div>
+                <div style="background:var(--ds-bg-secondary);border:1px solid var(--ds-border-light);border-radius:10px;padding:14px;margin-bottom:12px;">
+                    <div style="font-weight:700;margin-bottom:6px;">📝 Descripción</div>
+                    <div style="white-space:pre-line;font-size:0.9rem;">{{ servicio.descripcion }}</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:0.85rem;">
+                    <span style="padding:4px 10px;border-radius:9999px;background:#f1f5f9;color:#334155;"><strong>Plan:</strong> {{ servicio.get_tipo_plan_display }}</span>
+                    <span style="padding:4px 10px;border-radius:9999px;background:#f1f5f9;color:#334155;"><strong>Monto pagado:</strong> ${{ servicio.monto_pagado|floatformat:0 }}</span>
+                    <span style="padding:4px 10px;border-radius:9999px;background:#f1f5f9;color:#334155;"><strong>Solicitado:</strong> {{ servicio.created_at|date:"d/m/Y H:i" }}</span>
+                    {% if servicio.revisado_por %}<span style="padding:4px 10px;border-radius:9999px;background:#eef2ff;color:#3730a3;"><strong>Revisado por:</strong> {{ servicio.revisado_por.get_full_name|default:servicio.revisado_por.email }}</span>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna derecha: pago y acciones -->
+    <div>
+        <div class="card-modern">
+            <div class="card-modern-header">
+                <h3 style="margin:0;">💳 Pago y comprobante</h3>
+            </div>
+            <div class="card-modern-body">
+                {% if pago %}
+                <div style="display:flex;gap:16px;margin-bottom:12px;">
+                    {% if pago.comprobante %}
+                    <div>
+                        <div style="font-weight:700;font-size:0.85rem;margin-bottom:6px;">Comprobante de depósito</div>
+                        <a href="{{ pago.comprobante.url }}" target="_blank" rel="noopener">
+                            <img src="{{ pago.comprobante.url }}" alt="Comprobante" style="max-width:220px;max-height:160px;object-fit:contain;border:2px solid var(--ds-border);border-radius:10px;background:#fff;">
+                        </a>
+                        <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-top:4px;">Haz clic para ver la imagen completa</div>
+                    </div>
+                    {% else %}
+                    <div style="color:var(--ds-error);font-weight:600;">⚠️ Sin comprobante adjunto</div>
+                    {% endif %}
+                    <div style="font-size:0.85rem;">
+                        <div><strong>Pago #{{ pago.id }}</strong></div>
+                        <div>Base: ${{ pago.monto_base|floatformat:0 }}</div>
+                        <div>IVA: ${{ pago.monto_iva|floatformat:0 }}</div>
+                        <div><strong>Total: ${{ pago.monto_total|floatformat:0 }}</strong></div>
+                        <div>Estado: <strong>{{ pago.get_estado_display }}</strong></div>
+                        <div>Fecha: {{ pago.created_at|date:"d/m/Y H:i" }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <div style="color:var(--ds-error);font-weight:600;">⚠️ No hay registro de pago para este servicio</div>
+                {% endif %}
+
+                {% if servicio.observaciones_admin %}
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;margin-top:12px;">
+                    <div style="font-weight:700;color:#b91c1c;margin-bottom:4px;">🚩 Motivo de objeción anterior</div>
+                    <div style="font-size:0.9rem;">{{ servicio.observaciones_admin }}</div>
+                </div>
+                {% endif %}
+
+                <hr style="margin:16px 0;border:none;border-top:1px solid var(--ds-border-light);">
+
+                <!-- Acciones -->
+                {% if servicio.estado == 'en_revision' %}
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <form method="POST" style="display:flex;gap:8px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="publicar_servicio">
+                        <button type="submit" class="btn btn-primary" style="flex:1;" onclick="return confirm('¿Publicar este servicio? El pago quedará aprobado y el publicante será notificado.')">✅ Aprobar y publicar</button>
+                    </form>
+                    <form method="POST" style="display:flex;gap:8px;align-items:stretch;">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="objetar_servicio">
+                        <input type="text" name="razon" required placeholder="Motivo de la discrepancia (contenido o pago)..." style="flex:1;padding:8px 10px;border:1px solid var(--ds-border);border-radius:8px;font-size:0.85rem;">
+                        <button type="submit" class="btn btn-danger" style="flex-shrink:0;" onclick="return confirm('¿Objetar este servicio? El publicante será notificado con el motivo.')">❌ Objetar</button>
+                    </form>
+                </div>
+                {% elif servicio.estado == 'objetado' %}
+                <form method="POST" style="display:flex;gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="revisar_pago">
+                    <button type="submit" class="btn btn-secondary" style="flex:1;" onclick="return confirm('¿Reenviar este servicio a revisión?')">🔄 Reenviar a revisión</button>
+                </form>
+                <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:8px;">El publicante ya fue notificado con el motivo. Puedes reenviarlo a revisión una vez corregido.</div>
+                {% elif servicio.estado == 'activo' %}
+                <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:12px;color:#065f46;font-weight:600;">
+                    ✅ Este servicio ya está publicado
+                    {% if servicio.fecha_expiracion %} hasta el {{ servicio.fecha_expiracion|date:"d/m/Y" }}{% endif %}.
+                </div>
+                {% else %}
+                <div style="font-size:0.85rem;color:var(--ds-text-secondary);">Estado actual: {{ servicio.get_estado_display }}. No hay acciones disponibles desde esta vista.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

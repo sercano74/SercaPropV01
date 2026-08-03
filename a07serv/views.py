@@ -54,7 +54,13 @@ def _calcular_pago(tipo_plan):
     return base, iva, total
 
 
-def _notificar(recipient, emitter, source_type, title, message, related_object_id=None):
+def _notificar(recipient, emitter, source_type, title, message, related_object_id=None, related_object_type=""):
+    """Crea una notificación en el Centro de Comunicaciones.
+
+    related_object_type permite al template saber a qué vista apuntar:
+    - 'servicio'  -> detalle de revisión de servicio (a07serv)
+    - 'solicitud' -> detalle de solicitud de publicación (a03Prop, default)
+    """
     return Communication.objects.create(
         recipient=recipient,
         emitter_user=emitter,
@@ -62,7 +68,131 @@ def _notificar(recipient, emitter, source_type, title, message, related_object_i
         title=title,
         message=message,
         related_object_id=related_object_id,
+        related_object_type=related_object_type,
     )
+
+
+def _aprobar_publicacion_servicio(request, servicio):
+    """Aprobar e iniciar la publicación: estado activo + fechas + notificaciones."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        return False, "No tienes permisos para publicar servicios."
+    if servicio.estado not in ("en_revision", "objetado"):
+        return False, "Este servicio no está pendiente de publicación."
+
+    meses = 12 if servicio.tipo_plan == "anual" else 1
+    servicio.estado = "activo"
+    servicio.fecha_inicio = timezone.now()
+    servicio.fecha_expiracion = timezone.now() + timedelta(days=30 * meses)
+    servicio.revisado_por = request.user
+    servicio.save()
+
+    # Aprobar pagos pendientes del servicio
+    PagoServicio.objects.filter(
+        servicio=servicio, estado="pendiente"
+    ).update(estado="aprobado", revisado_por=request.user)
+
+    publicante_nombre = servicio.publicante.get_full_name() or servicio.publicante.email
+
+    _notificar(
+        recipient=servicio.publicante,
+        emitter=request.user,
+        source_type=SourceTypeChoices.GERENTE,
+        title="✅ Tu servicio fue aprobado y publicado",
+        message=(
+            f"¡Buenas noticias! El servicio '{servicio.titulo}' fue revisado y aprobado. "
+            f"Ya está visible en el directorio de Dato Constructor y publicado hasta el "
+            f"{servicio.fecha_expiracion.strftime('%d/%m/%Y')}."
+        ),
+        related_object_id=servicio.id,
+        related_object_type="servicio",
+    )
+    _enviar_email_servicio(
+        "email/servicio_email.html",
+        "Tu servicio fue publicado - Dato Constructor",
+        servicio.publicante.email,
+        {
+            "tipo_aviso": "servicio_publicado",
+            "titulo": "✅ Tu servicio ha sido publicado",
+            "mensaje_plano": (
+                f"¡Buenas noticias {publicante_nombre}! El servicio '{servicio.titulo}' "
+                f"fue revisado y aprobado. Ya está visible en el directorio de Dato Constructor "
+                f"y publicado hasta el {servicio.fecha_expiracion.strftime('%d/%m/%Y')}."
+            ),
+            "servicio": servicio,
+            "publicante_nombre": publicante_nombre,
+            "fecha_expiracion": servicio.fecha_expiracion.strftime("%d/%m/%Y"),
+        },
+    )
+
+    return True, (
+        f"✅ Servicio '{servicio.titulo}' aprobado y publicado hasta el "
+        f"{servicio.fecha_expiracion.strftime('%d/%m/%Y')}. El publicante fue notificado."
+    )
+
+
+def _objetar_publicacion_servicio(request, servicio, razon):
+    """Discrepancia en contenido o pago: estado objetado + motivo + notificaciones."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        return False, "No tienes permisos para objetar servicios."
+    if servicio.estado != "en_revision":
+        return False, "Este servicio no está en revisión."
+
+    razon = (razon or "").strip()
+    if not razon:
+        return False, "Debes indicar el motivo de la objeción."
+
+    servicio.estado = "objetado"
+    servicio.observaciones_admin = razon
+    servicio.revisado_por = request.user
+    servicio.save()
+
+    publicante_nombre = servicio.publicante.get_full_name() or servicio.publicante.email
+
+    _notificar(
+        recipient=servicio.publicante,
+        emitter=request.user,
+        source_type=SourceTypeChoices.GERENTE,
+        title="❌ Tu servicio fue objetado",
+        message=(
+            f"El servicio '{servicio.titulo}' presenta una discrepancia y NO fue publicado.\n\n"
+            f"Motivo: {razon}\n\n"
+            f"Por favor corrige la información o contacta a administración. "
+            f"Una vez corregido, se puede solicitar una nueva revisión."
+        ),
+        related_object_id=servicio.id,
+        related_object_type="servicio",
+    )
+    _enviar_email_servicio(
+        "email/servicio_email.html",
+        "Tu servicio fue objetado - Dato Constructor",
+        servicio.publicante.email,
+        {
+            "tipo_aviso": "servicio_objetado",
+            "titulo": "❌ Tu servicio fue objetado",
+            "mensaje_plano": (
+                f"Hola {publicante_nombre}, el servicio '{servicio.titulo}' presenta una "
+                f"discrepancia y NO fue publicado.\n\nMotivo: {razon}\n\n"
+                f"Corrige la información o contacta a administración. "
+                f"Una vez corregido, se puede solicitar una nueva revisión."
+            ),
+            "servicio": servicio,
+            "publicante_nombre": publicante_nombre,
+            "razon": razon,
+        },
+    )
+
+    return True, f"❌ Servicio '{servicio.titulo}' objetado. El publicante fue notificado."
+
+
+def _reenviar_revision_servicio(servicio):
+    """Reenviar un servicio objetado a revisión (el publicante corrigió)."""
+    if servicio.estado != "objetado":
+        return False, "Este servicio no está objetado."
+
+    servicio.estado = "en_revision"
+    servicio.observaciones_admin = ""
+    servicio.save()
+    return True, f"✅ Servicio '{servicio.titulo}' reenviado a revisión."
 
 
 # ─────────────────────────────────────────────────────────
@@ -366,6 +496,7 @@ def confirmar_pago_servicio(request):
                     f"Revisa el contenido y el comprobante antes de publicarlo."
                 ),
                 related_object_id=servicio.id,
+                related_object_type="servicio",
             )
             _enviar_email_servicio(
                 "email/servicio_email.html",
@@ -582,132 +713,24 @@ def gestion_admin_servicios(request):
         accion = request.POST.get("accion")
 
         if accion == "publicar_servicio":
-            """Aprobar e iniciar la publicación: estado activo + fechas."""
             servicio_id = request.POST.get("servicio_id")
             servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
-            if servicio.estado not in ("en_revision", "objetado"):
-                messages.error(request, "Este servicio no está pendiente de publicación.")
-                return redirect("gestion_admin_servicios")
-
-            meses = 12 if servicio.tipo_plan == "anual" else 1
-            servicio.estado = "activo"
-            servicio.fecha_inicio = timezone.now()
-            servicio.fecha_expiracion = timezone.now() + timedelta(days=30 * meses)
-            servicio.revisado_por = request.user
-            servicio.save()
-
-            # Aprobar pagos pendientes del servicio
-            PagoServicio.objects.filter(
-                servicio=servicio, estado="pendiente"
-            ).update(estado="aprobado", revisado_por=request.user)
-
-            publicante_nombre = servicio.publicante.get_full_name() or servicio.publicante.email
-
-            _notificar(
-                recipient=servicio.publicante,
-                emitter=request.user,
-                source_type=SourceTypeChoices.GERENTE,
-                title="✅ Tu servicio fue aprobado y publicado",
-                message=(
-                    f"¡Buenas noticias! El servicio '{servicio.titulo}' fue revisado y aprobado. "
-                    f"Ya está visible en el directorio de Dato Constructor y publicado hasta el "
-                    f"{servicio.fecha_expiracion.strftime('%d/%m/%Y')}."
-                ),
-                related_object_id=servicio.id,
-            )
-            _enviar_email_servicio(
-                "email/servicio_email.html",
-                "Tu servicio fue publicado - Dato Constructor",
-                servicio.publicante.email,
-                {
-                    "tipo_aviso": "servicio_publicado",
-                    "titulo": "✅ Tu servicio ha sido publicado",
-                    "mensaje_plano": (
-                        f"¡Buenas noticias {publicante_nombre}! El servicio '{servicio.titulo}' "
-                        f"fue revisado y aprobado. Ya está visible en el directorio de Dato Constructor "
-                        f"y publicado hasta el {servicio.fecha_expiracion.strftime('%d/%m/%Y')}."
-                    ),
-                    "servicio": servicio,
-                    "publicante_nombre": publicante_nombre,
-                    "fecha_expiracion": servicio.fecha_expiracion.strftime("%d/%m/%Y"),
-                },
-            )
-
-            messages.success(
-                request,
-                f"✅ Servicio '{servicio.titulo}' aprobado y publicado hasta el "
-                f"{servicio.fecha_expiracion.strftime('%d/%m/%Y')}. El publicante fue notificado."
-            )
+            ok, msg = _aprobar_publicacion_servicio(request, servicio)
+            (messages.success if ok else messages.error)(request, msg)
 
         elif accion == "objetar_servicio":
-            """Discrepancia en contenido o pago: estado objetado + motivo."""
             servicio_id = request.POST.get("servicio_id")
             servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
-            if servicio.estado != "en_revision":
-                messages.error(request, "Este servicio no está en revisión.")
-                return redirect("gestion_admin_servicios")
-
             razon = request.POST.get("razon", "").strip()
-            if not razon:
-                messages.error(request, "Debes indicar el motivo de la objeción.")
-                return redirect("gestion_admin_servicios")
-
-            servicio.estado = "objetado"
-            servicio.observaciones_admin = razon
-            servicio.revisado_por = request.user
-            servicio.save()
-
-            publicante_nombre = servicio.publicante.get_full_name() or servicio.publicante.email
-
-            _notificar(
-                recipient=servicio.publicante,
-                emitter=request.user,
-                source_type=SourceTypeChoices.GERENTE,
-                title="❌ Tu servicio fue objetado",
-                message=(
-                    f"El servicio '{servicio.titulo}' presenta una discrepancia y NO fue publicado.\n\n"
-                    f"Motivo: {razon}\n\n"
-                    f"Por favor corrige la información o contacta a administración. "
-                    f"Una vez corregido, se puede solicitar una nueva revisión."
-                ),
-                related_object_id=servicio.id,
-            )
-            _enviar_email_servicio(
-                "email/servicio_email.html",
-                "Tu servicio fue objetado - Dato Constructor",
-                servicio.publicante.email,
-                {
-                    "tipo_aviso": "servicio_objetado",
-                    "titulo": "❌ Tu servicio fue objetado",
-                    "mensaje_plano": (
-                        f"Hola {publicante_nombre}, el servicio '{servicio.titulo}' presenta una "
-                        f"discrepancia y NO fue publicado.\n\nMotivo: {razon}\n\n"
-                        f"Corrige la información o contacta a administración. "
-                        f"Una vez corregido, se puede solicitar una nueva revisión."
-                    ),
-                    "servicio": servicio,
-                    "publicante_nombre": publicante_nombre,
-                    "razon": razon,
-                },
-            )
-
-            messages.warning(
-                request,
-                f"❌ Servicio '{servicio.titulo}' objetado. El publicante fue notificado."
-            )
+            ok, msg = _objetar_publicacion_servicio(request, servicio, razon)
+            (messages.warning if ok else messages.error)(request, msg)
 
         elif accion == "revisar_pago":
             """Reenviar un servicio objetado a revisión (el publicante corrigió)."""
             servicio_id = request.POST.get("servicio_id")
             servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
-            if servicio.estado != "objetado":
-                messages.error(request, "Este servicio no está objetado.")
-                return redirect("gestion_admin_servicios")
-
-            servicio.estado = "en_revision"
-            servicio.observaciones_admin = ""
-            servicio.save()
-            messages.success(request, f"✅ Servicio '{servicio.titulo}' reenviado a revisión.")
+            ok, msg = _reenviar_revision_servicio(servicio)
+            (messages.success if ok else messages.error)(request, msg)
 
         elif accion == "aprobar_pago":
             pago_id = request.POST.get("pago_id")
@@ -801,6 +824,50 @@ def gestion_admin_servicios(request):
         "servicios_en_revision": servicios_en_revision,
         "servicios_objetados": servicios_objetados,
         "config_precios": config_precios,
+    })
+
+
+@login_required
+def detalle_revision_servicio(request, servicio_id):
+    """Detalle de revisión de un servicio para gerente/superadmin.
+
+    Se accede desde el ícono 📋 del Centro de Comunicaciones cuando la
+    notificación es de tipo 'servicio'. Permite validar el contenido,
+    ver el comprobante de pago y aprobar/objetar la publicación.
+    """
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para acceder a esta sección.")
+        return redirect("home")
+
+    servicio = get_object_or_404(
+        ServicioPublicitario.objects.select_related("categoria", "publicante", "revisado_por"),
+        id=servicio_id,
+    )
+    pago = servicio.pagos.order_by("-created_at").first()
+
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+
+        if accion == "publicar_servicio":
+            ok, msg = _aprobar_publicacion_servicio(request, servicio)
+            (messages.success if ok else messages.error)(request, msg)
+
+        elif accion == "objetar_servicio":
+            razon = request.POST.get("razon", "").strip()
+            ok, msg = _objetar_publicacion_servicio(request, servicio, razon)
+            (messages.warning if ok else messages.error)(request, msg)
+
+        elif accion == "revisar_pago":
+            ok, msg = _reenviar_revision_servicio(servicio)
+            (messages.success if ok else messages.error)(request, msg)
+
+        servicio.refresh_from_db()
+        pago = servicio.pagos.order_by("-created_at").first()
+        return redirect("detalle_revision_servicio", servicio_id=servicio.id)
+
+    return render(request, "servicios/detalle_revision_servicio.html", {
+        "servicio": servicio,
+        "pago": pago,
     })
 
 # ─────────────────────────────────────────────────────────

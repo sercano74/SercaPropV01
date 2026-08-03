@@ -23,6 +23,7 @@ urlpatterns = [
 
     # Administración (gerente/superadmin)
     path('admin/servicios/', views.gestion_admin_servicios, name='gestion_admin_servicios'),
+    path('admin/servicios/revision/<int:servicio_id>/', views.detalle_revision_servicio, name='detalle_revision_servicio'),
     path('admin/casos-exito/', views.gestion_casos_exito, name='gestion_casos_exito'),
     path('api/propiedad-para-caso/<int:prop_id>/', views.api_propiedad_para_caso, name='api_propiedad_para_caso'),
 ]

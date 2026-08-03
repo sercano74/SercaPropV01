@@ -34,6 +34,13 @@ class Communication(models.Model):
     related_object_id = models.PositiveIntegerField(
         blank=True, null=True, verbose_name="ID objeto relacionado"
     )
+    related_object_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        verbose_name="Tipo de objeto relacionado",
+        help_text="'servicio' apunta al detalle de revisión de servicio; vacío/solicitud apunta al detalle de solicitud de propiedad.",
+    )
 
     is_read = models.BooleanField(default=False, verbose_name="Leído")
     is_deleted = models.BooleanField(default=False, verbose_name="Eliminado")
