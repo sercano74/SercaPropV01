@@ -134,7 +134,7 @@
 
                 <!-- PUBLICA: acceso directo a publicar -->
                 <div class="nav-dropdown">
-                    <a href="{% url 'publica' %}" class="nav-link dropdown-trigger">Publica ▾</a>
+                    <a href="{% url 'publica' %}" class="nav-link dropdown-trigger">Publicar ▾</a>
                     <div class="dropdown-content">
                         {% if user.is_authenticated %}
                         <a href="{% url 'publica' %}" class="dropdown-item">🏠 Propiedad</a>
@@ -151,8 +151,9 @@
                 <!-- GESTIONA -->
                 {% if user.is_authenticated %}
                 <div class="nav-dropdown">
-                    <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestiona ▾</a>
+                    <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestionar ▾</a>
                     <div class="dropdown-content">
+                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Panel de gestión</div>
                         <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
                         {% if user.rol != 'base' %}
                         <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
