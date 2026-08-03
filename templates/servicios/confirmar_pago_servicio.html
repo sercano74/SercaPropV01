@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <!-- Datos bancarios (usando la config existente si existe) -->
+    <!-- Datos bancarios (cuenta corriente de Serca, la misma usada en propiedades) -->
     <div class="card-modern" style="margin-bottom:24px;border:2px solid var(--ds-warning);">
         <div class="card-modern-body">
             <h4 style="margin:0 0 8px 0;font-size:0.95rem;">🏦 Datos para transferencia</h4>
@@ -53,7 +53,17 @@
                 <input type="file" name="comprobante" accept="image/*" required>
                 <div class="form-hint">Sube una foto o captura del comprobante.</div>
             </div>
-            <button type="submit" class="btn btn-primary btn-block btn-lg">✅ Confirmar y publicar servicio</button>
+
+            <div style="background:var(--ds-primary-light);border:2px solid var(--ds-primary);border-radius:12px;padding:16px;margin-bottom:16px;font-size:0.9rem;">
+                <strong>🔍 Revisión antes de publicar</strong>
+                <p style="margin:8px 0 0 0;color:var(--ds-text-secondary);font-size:0.85rem;">
+                    Al confirmar, tu servicio quedará en estado <strong>"En revisión"</strong>. Un gerente
+                    validará el contenido y el comprobante de pago antes de iniciar la publicación.
+                    Te avisaremos por correo y notificación cuando esté publicado.
+                </p>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">✅ Enviar servicio a revisión</button>
             <a href="{% url 'contratar_servicio' %}" class="btn btn-ghost btn-block" style="margin-top:8px;">← Corregir datos</a>
         </form>
     </div>

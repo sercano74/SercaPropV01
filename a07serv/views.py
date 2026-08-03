@@ -1,11 +1,14 @@
 import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from .models import (
@@ -244,13 +247,52 @@ def contratar_servicio(request):
     })
 
 
+def _get_config_pago_propiedades():
+    """Obtiene la configuración de pago (cuenta corriente) usada en propiedades."""
+    try:
+        from a03Prop.models import ConfiguracionPagoPubli
+        return ConfiguracionPagoPubli.objects.filter(activo=True).first()
+    except Exception:
+        return None
+
+
+def _enviar_email_servicio(template_name, subject, recipient, context):
+    """Envía email transaccional para el flujo de servicios (Resend/SMTP)."""
+    try:
+        site_name = getattr(settings, "SITE_NAME", "Serca Propiedades")
+        site_domain = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+        html_message = render_to_string(template_name, {
+            **context,
+            "site_name": site_name,
+            "site_domain": site_domain,
+        })
+        text_message = f"{subject}\n\n{context.get('mensaje_plano', '')}\n\nSerca Propiedades - {site_domain}"
+        send_mail(
+            subject=f"[{site_name}] {subject}",
+            message=text_message,
+            from_email=getattr(settings, "EMAIL_NOREPLY_FROM", settings.DEFAULT_FROM_EMAIL),
+            recipient_list=[recipient],
+            html_message=html_message,
+            fail_silently=True,
+        )
+    except Exception:
+        logger.exception("Error enviando email de servicio a %s", recipient)
+
+
 @login_required
 def confirmar_pago_servicio(request):
-    """Paso 2: Confirmar pago y subir comprobante."""
+    """Paso 2: Confirmar pago y subir comprobante.
+
+    El servicio NO se publica automáticamente: queda en estado 'en_revision'.
+    Un gerente/superadmin debe validar el contenido y el pago antes de
+    iniciar la publicación.
+    """
     data = request.session.get("servicio_temp")
     if not data:
         messages.error(request, "No hay datos de servicio pendiente. Comienza desde el inicio.")
         return redirect("contratar_servicio")
+
+    config_pago = _get_config_pago_propiedades()
 
     if request.method == "POST":
         comprobante = request.FILES.get("comprobante")
@@ -258,6 +300,7 @@ def confirmar_pago_servicio(request):
             messages.error(request, "Debes subir el comprobante de pago.")
             return render(request, "servicios/confirmar_pago_servicio.html", {
                 "data": data,
+                "config_pago": config_pago,
             })
 
         # Obtener imagen temporal y convertir a ContentFile para evitar rutas absolutas
@@ -269,11 +312,7 @@ def confirmar_pago_servicio(request):
                 img_bytes = default_storage.open(data["imagen_temp_path"]).read()
                 imagen = ContentFile(img_bytes, name=data.get("imagen_name", "servicio.jpg"))
 
-        # Determinar duración
-        meses = 12 if data["tipo_plan"] == "anual" else 1
-        fecha_expiracion = timezone.now() + timedelta(days=30 * meses)
-
-        # Crear el servicio
+        # Crear el servicio EN REVISIÓN: no se publica hasta aprobación del gerente
         servicio = ServicioPublicitario.objects.create(
             publicante=request.user,
             categoria_id=data["categoria_id"],
@@ -286,8 +325,8 @@ def confirmar_pago_servicio(request):
             tipo_plan=data["tipo_plan"],
             monto_pagado=data["monto_total"],
             iva_incluido=True,
-            fecha_expiracion=fecha_expiracion,
-            estado="activo",
+            fecha_expiracion=None,  # se asigna al aprobar la publicación
+            estado="en_revision",
         )
 
         # Crear registro de pago
@@ -311,28 +350,53 @@ def confirmar_pago_servicio(request):
                 pass
         del request.session["servicio_temp"]
 
-        # Notificar a gerentes
+        publicante_nombre = request.user.get_full_name() or request.user.email
+
+        # Notificar a gerentes por CDC + email
         gerentes = User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True)
         for g in gerentes:
             _notificar(
                 recipient=g,
                 emitter=request.user,
                 source_type=SourceTypeChoices.USUARIO_BASE,
-                title="Nuevo servicio contratado - Pendiente de revisión",
-                message=f"{request.user.get_full_name() or request.user.email} ha contratado el servicio '{servicio.titulo}' (plan {data['tipo_plan']}).",
+                title="🆕 Nuevo servicio en revisión",
+                message=(
+                    f"{publicante_nombre} contrató el servicio '{servicio.titulo}' "
+                    f"(plan {data['tipo_plan']}) por ${int(float(data['monto_total'])):,} CLP. "
+                    f"Revisa el contenido y el comprobante antes de publicarlo."
+                ),
                 related_object_id=servicio.id,
+            )
+            _enviar_email_servicio(
+                "email/servicio_email.html",
+                "Nuevo servicio en revisión - Dato Constructor",
+                g.email,
+                {
+                    "tipo_aviso": "nuevo_servicio_admin",
+                    "titulo": "🆕 Nuevo servicio contratado pendiente de revisión",
+                    "mensaje_plano": (
+                        f"{publicante_nombre} ha publicado el servicio '{servicio.titulo}' "
+                        f"en Dato Constructor y está pendiente de tu revisión. "
+                        f"Ingresa al panel de administración para validar el contenido y el pago."
+                    ),
+                    "servicio": servicio,
+                    "publicante_nombre": publicante_nombre,
+                    "monto_total": f"${int(float(data['monto_total'])):,} CLP",
+                    "plan_display": servicio.get_tipo_plan_display(),
+                },
             )
 
         messages.success(
             request,
-            f"✅ ¡Servicio '{servicio.titulo}' creado exitosamente! "
-            f"Tu publicación está activa hasta el {servicio.fecha_expiracion.strftime('%d/%m/%Y')}. "
-            f"Recibirás los mensajes de los interesados en tu panel de gestión."
+            f"✅ ¡Servicio '{servicio.titulo}' enviado correctamente! "
+            f"Quedó en estado 'En revisión': un gerente validará el contenido y el pago "
+            f"antes de iniciar la publicación. Te avisaremos por correo y notificación."
         )
         return redirect("gestion_mis_servicios")
 
     return render(request, "servicios/confirmar_pago_servicio.html", {
         "data": data,
+        "config_pago": config_pago,
     })
 
 
@@ -504,12 +568,148 @@ def gestion_admin_servicios(request):
         estado="pendiente"
     ).select_related("servicio", "publicante")
 
+    servicios_en_revision = ServicioPublicitario.objects.filter(
+        estado="en_revision"
+    ).select_related("categoria", "publicante").order_by("-created_at")
+
+    servicios_objetados = ServicioPublicitario.objects.filter(
+        estado="objetado"
+    ).select_related("categoria", "publicante").order_by("-created_at")
+
     config_precios = _get_config_precios()
 
     if request.method == "POST":
         accion = request.POST.get("accion")
 
-        if accion == "aprobar_pago":
+        if accion == "publicar_servicio":
+            """Aprobar e iniciar la publicación: estado activo + fechas."""
+            servicio_id = request.POST.get("servicio_id")
+            servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
+            if servicio.estado not in ("en_revision", "objetado"):
+                messages.error(request, "Este servicio no está pendiente de publicación.")
+                return redirect("gestion_admin_servicios")
+
+            meses = 12 if servicio.tipo_plan == "anual" else 1
+            servicio.estado = "activo"
+            servicio.fecha_inicio = timezone.now()
+            servicio.fecha_expiracion = timezone.now() + timedelta(days=30 * meses)
+            servicio.revisado_por = request.user
+            servicio.save()
+
+            # Aprobar pagos pendientes del servicio
+            PagoServicio.objects.filter(
+                servicio=servicio, estado="pendiente"
+            ).update(estado="aprobado", revisado_por=request.user)
+
+            publicante_nombre = servicio.publicante.get_full_name() or servicio.publicante.email
+
+            _notificar(
+                recipient=servicio.publicante,
+                emitter=request.user,
+                source_type=SourceTypeChoices.GERENTE,
+                title="✅ Tu servicio fue aprobado y publicado",
+                message=(
+                    f"¡Buenas noticias! El servicio '{servicio.titulo}' fue revisado y aprobado. "
+                    f"Ya está visible en el directorio de Dato Constructor y publicado hasta el "
+                    f"{servicio.fecha_expiracion.strftime('%d/%m/%Y')}."
+                ),
+                related_object_id=servicio.id,
+            )
+            _enviar_email_servicio(
+                "email/servicio_email.html",
+                "Tu servicio fue publicado - Dato Constructor",
+                servicio.publicante.email,
+                {
+                    "tipo_aviso": "servicio_publicado",
+                    "titulo": "✅ Tu servicio ha sido publicado",
+                    "mensaje_plano": (
+                        f"¡Buenas noticias {publicante_nombre}! El servicio '{servicio.titulo}' "
+                        f"fue revisado y aprobado. Ya está visible en el directorio de Dato Constructor "
+                        f"y publicado hasta el {servicio.fecha_expiracion.strftime('%d/%m/%Y')}."
+                    ),
+                    "servicio": servicio,
+                    "publicante_nombre": publicante_nombre,
+                    "fecha_expiracion": servicio.fecha_expiracion.strftime("%d/%m/%Y"),
+                },
+            )
+
+            messages.success(
+                request,
+                f"✅ Servicio '{servicio.titulo}' aprobado y publicado hasta el "
+                f"{servicio.fecha_expiracion.strftime('%d/%m/%Y')}. El publicante fue notificado."
+            )
+
+        elif accion == "objetar_servicio":
+            """Discrepancia en contenido o pago: estado objetado + motivo."""
+            servicio_id = request.POST.get("servicio_id")
+            servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
+            if servicio.estado != "en_revision":
+                messages.error(request, "Este servicio no está en revisión.")
+                return redirect("gestion_admin_servicios")
+
+            razon = request.POST.get("razon", "").strip()
+            if not razon:
+                messages.error(request, "Debes indicar el motivo de la objeción.")
+                return redirect("gestion_admin_servicios")
+
+            servicio.estado = "objetado"
+            servicio.observaciones_admin = razon
+            servicio.revisado_por = request.user
+            servicio.save()
+
+            publicante_nombre = servicio.publicante.get_full_name() or servicio.publicante.email
+
+            _notificar(
+                recipient=servicio.publicante,
+                emitter=request.user,
+                source_type=SourceTypeChoices.GERENTE,
+                title="❌ Tu servicio fue objetado",
+                message=(
+                    f"El servicio '{servicio.titulo}' presenta una discrepancia y NO fue publicado.\n\n"
+                    f"Motivo: {razon}\n\n"
+                    f"Por favor corrige la información o contacta a administración. "
+                    f"Una vez corregido, se puede solicitar una nueva revisión."
+                ),
+                related_object_id=servicio.id,
+            )
+            _enviar_email_servicio(
+                "email/servicio_email.html",
+                "Tu servicio fue objetado - Dato Constructor",
+                servicio.publicante.email,
+                {
+                    "tipo_aviso": "servicio_objetado",
+                    "titulo": "❌ Tu servicio fue objetado",
+                    "mensaje_plano": (
+                        f"Hola {publicante_nombre}, el servicio '{servicio.titulo}' presenta una "
+                        f"discrepancia y NO fue publicado.\n\nMotivo: {razon}\n\n"
+                        f"Corrige la información o contacta a administración. "
+                        f"Una vez corregido, se puede solicitar una nueva revisión."
+                    ),
+                    "servicio": servicio,
+                    "publicante_nombre": publicante_nombre,
+                    "razon": razon,
+                },
+            )
+
+            messages.warning(
+                request,
+                f"❌ Servicio '{servicio.titulo}' objetado. El publicante fue notificado."
+            )
+
+        elif accion == "revisar_pago":
+            """Reenviar un servicio objetado a revisión (el publicante corrigió)."""
+            servicio_id = request.POST.get("servicio_id")
+            servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
+            if servicio.estado != "objetado":
+                messages.error(request, "Este servicio no está objetado.")
+                return redirect("gestion_admin_servicios")
+
+            servicio.estado = "en_revision"
+            servicio.observaciones_admin = ""
+            servicio.save()
+            messages.success(request, f"✅ Servicio '{servicio.titulo}' reenviado a revisión.")
+
+        elif accion == "aprobar_pago":
             pago_id = request.POST.get("pago_id")
             pago = get_object_or_404(PagoServicio, id=pago_id)
             pago.estado = "aprobado"
@@ -522,6 +722,22 @@ def gestion_admin_servicios(request):
                 title="✅ Pago de servicio aprobado",
                 message=f"Tu pago por el servicio '{pago.servicio.titulo}' ha sido aprobado.",
                 related_object_id=pago.servicio.id,
+            )
+            _enviar_email_servicio(
+                "email/servicio_email.html",
+                "Pago aprobado - Dato Constructor",
+                pago.publicante.email,
+                {
+                    "tipo_aviso": "pago_aprobado",
+                    "titulo": "✅ Pago de servicio aprobado",
+                    "mensaje_plano": (
+                        f"Tu pago por el servicio '{pago.servicio.titulo}' "
+                        f"(${int(float(pago.monto_total)):,} CLP) ha sido aprobado."
+                    ),
+                    "servicio": pago.servicio,
+                    "publicante_nombre": pago.publicante.get_full_name() or pago.publicante.email,
+                    "monto_total": f"${int(float(pago.monto_total)):,} CLP",
+                },
             )
             messages.success(request, "Pago aprobado correctamente.")
 
@@ -538,6 +754,21 @@ def gestion_admin_servicios(request):
                 title="❌ Pago de servicio rechazado",
                 message=f"Tu pago por el servicio '{pago.servicio.titulo}' ha sido rechazado. Contacta a administración.",
                 related_object_id=pago.servicio.id,
+            )
+            _enviar_email_servicio(
+                "email/servicio_email.html",
+                "Pago rechazado - Dato Constructor",
+                pago.publicante.email,
+                {
+                    "tipo_aviso": "pago_rechazado",
+                    "titulo": "❌ Pago de servicio rechazado",
+                    "mensaje_plano": (
+                        f"Tu pago por el servicio '{pago.servicio.titulo}' ha sido rechazado. "
+                        f"Contacta a administración para resolver la discrepancia."
+                    ),
+                    "servicio": pago.servicio,
+                    "publicante_nombre": pago.publicante.get_full_name() or pago.publicante.email,
+                },
             )
             messages.warning(request, "Pago rechazado.")
 
@@ -567,6 +798,8 @@ def gestion_admin_servicios(request):
     return render(request, "servicios/gestion_admin_servicios.html", {
         "servicios": servicios,
         "pagos_pendientes": pagos_pendientes,
+        "servicios_en_revision": servicios_en_revision,
+        "servicios_objetados": servicios_objetados,
         "config_precios": config_precios,
     })
 

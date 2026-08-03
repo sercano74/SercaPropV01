@@ -11,11 +11,30 @@ class CategoriaServicioAdmin(admin.ModelAdmin):
 
 @admin.register(ServicioPublicitario)
 class ServicioPublicitarioAdmin(admin.ModelAdmin):
-    list_display = ["titulo", "publicante", "categoria", "tipo_plan", "estado", "fecha_expiracion", "dias_restantes"]
+    list_display = ["titulo", "publicante", "categoria", "tipo_plan", "estado", "revisado_por", "fecha_expiracion", "dias_restantes"]
     list_filter = ["estado", "categoria", "tipo_plan"]
     search_fields = ["titulo", "publicante__email", "publicante__first_name"]
     date_hierarchy = "fecha_expiracion"
     raw_id_fields = ["publicante"]
+    readonly_fields = ["created_at", "updated_at"]
+    fieldsets = (
+        ("Datos del servicio", {
+            "fields": ("publicante", "categoria", "titulo", "descripcion", "imagen",
+                       "sitio_web", "telefono_contacto", "email_contacto"),
+        }),
+        ("Plan y pago", {
+            "fields": ("tipo_plan", "monto_pagado", "iva_incluido"),
+        }),
+        ("Publicación", {
+            "fields": ("fecha_inicio", "fecha_expiracion", "estado"),
+        }),
+        ("Revisión", {
+            "fields": ("revisado_por", "observaciones_admin"),
+        }),
+        ("Control", {
+            "fields": ("renovacion_avisada", "created_at", "updated_at"),
+        }),
+    )
 
 
 class MensajeServicioInline(admin.TabularInline):

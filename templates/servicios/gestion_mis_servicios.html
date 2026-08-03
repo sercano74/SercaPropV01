@@ -26,16 +26,28 @@
             {% endif %}
             <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                    <span class="badge-modern {% if s.estado == 'activo' %}badge-modern-success{% elif s.estado == 'expirado' %}badge-modern-error{% else %}badge-modern-neutral{% endif %}">
-                        {{ s.get_estado_display }}
+                    <span class="badge-modern {% if s.estado == 'activo' %}badge-modern-success{% elif s.estado == 'en_revision' %}badge-modern-warning{% elif s.estado == 'objetado' %}badge-modern-error{% elif s.estado == 'expirado' %}badge-modern-error{% else %}badge-modern-neutral{% endif %}">
+                        {% if s.estado == 'en_revision' %}⏳ {{ s.get_estado_display }}{% elif s.estado == 'objetado' %}🚩 {{ s.get_estado_display }}{% else %}{{ s.get_estado_display }}{% endif %}
                     </span>
                     <span class="badge-modern badge-modern-neutral">{{ s.categoria.icono|default:'🔧' }} {{ s.categoria.nombre }}</span>
                 </div>
                 <div style="font-weight:600;font-size:0.95rem;margin:4px 0;">{{ s.titulo }}</div>
+                {% if s.estado == 'en_revision' %}
+                <div style="font-size:0.78rem;color:var(--ds-warning);font-weight:600;margin:4px 0;">
+                    ⏳ En revisión: un gerente está validando el contenido y el pago. Te avisaremos cuando se publique.
+                </div>
+                {% elif s.estado == 'objetado' %}
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:0.78rem;color:#991b1b;">
+                    <strong>🚩 Servicio objetado. No fue publicado.</strong>
+                    {% if s.observaciones_admin %}<br>Motivo: {{ s.observaciones_admin }}{% endif %}
+                    <br>Contacta a administración para corregir la información.
+                </div>
+                {% else %}
                 <div style="font-size:0.8rem;color:var(--ds-text-secondary);">
                     📅 {{ s.fecha_expiracion|date:'d/m/Y' }} ({{ s.dias_restantes }} días)
                     {% if s.tipo_plan == 'anual' %}<span class="badge-modern badge-modern-info">Anual</span>{% endif %}
                 </div>
+                {% endif %}
                 <div style="display:flex;gap:12px;font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;">
                     <span>📩 {{ s.total_mensajes }} mensajes</span>
                     {% if s.mensajes_no_leidos > 0 %}

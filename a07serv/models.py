@@ -23,8 +23,17 @@ class ServicioPublicitario(models.Model):
     """
     Servicio publicitario publicado por un prestador (publicante) que ha pagado.
     Similar a PublicacionProp pero para servicios de construcción.
+
+    Flujo de revisión:
+    - en_revision: el servicio fue contratado y subido por el publicante pero aún
+      NO está publicado. El gerente/superadmin debe validar contenido y pago.
+    - objetado: el gerente detectó una discrepancia en contenido o pago.
+      El servicio NO aparece en el directorio hasta ser publicado.
+    - activo: el gerente aprobó y "inició la publicación".
     """
     ESTADO_CHOICES = [
+        ("en_revision", "En revisión"),
+        ("objetado", "Objetado"),
         ("activo", "Activo"),
         ("pausado", "Pausado"),
         ("expirado", "Expirado"),
@@ -64,9 +73,24 @@ class ServicioPublicitario(models.Model):
     )
     iva_incluido = models.BooleanField(default=True, verbose_name="IVA incluido en el monto")
     fecha_inicio = models.DateTimeField(default=timezone.now, verbose_name="Fecha de inicio")
-    fecha_expiracion = models.DateTimeField(verbose_name="Fecha de expiración")
+    fecha_expiracion = models.DateTimeField(
+        blank=True, null=True, verbose_name="Fecha de expiración",
+        help_text="Se asigna cuando el gerente aprueba e inicia la publicación.",
+    )
     estado = models.CharField(
-        max_length=20, choices=ESTADO_CHOICES, default="activo", verbose_name="Estado"
+        max_length=20, choices=ESTADO_CHOICES, default="en_revision", verbose_name="Estado"
+    )
+
+    # Revisión del gerente/superadmin
+    revisado_por = models.ForeignKey(
+        "a00seg.User",
+        on_delete=models.SET_NULL,
+        blank=True, null=True,
+        related_name="servicios_revisados",
+        verbose_name="Revisado por",
+    )
+    observaciones_admin = models.TextField(
+        blank=True, verbose_name="Observaciones / motivo de objeción"
     )
 
     # Control

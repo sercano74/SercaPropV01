@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titulo }} - {{ site_name }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #1a1a2e; padding: 32px 40px; text-align: center; }
+        .header .icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .header h1 { color: #fff; margin: 0; font-size: 1.4rem; }
+        .body { padding: 32px 40px; }
+        .body p { color: #555; line-height: 1.6; font-size: 0.95rem; }
+        .info-box { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 0.9rem; }
+        .info-box div { margin: 4px 0; color: #333; }
+        .info-box .label { color: #777; display: inline-block; min-width: 130px; }
+        .btn-primary {
+            display: inline-block; padding: 14px 36px; background: #2563eb; color: #fff !important;
+            text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; margin: 18px 0;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .footer { padding: 24px 40px; background: #f9f9f9; text-align: center; font-size: 0.8rem; color: #999; border-top: 1px solid #eee; }
+        .footer a { color: #2563eb; text-decoration: none; }
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 0.9rem; color: #991b1b; }
+        .success-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 0.9rem; color: #166534; }
+        @media only screen and (max-width: 480px) {
+            .container { margin: 20px 12px; }
+            .body { padding: 24px; }
+            .header { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">{% if tipo_aviso == 'servicio_objetado' or tipo_aviso == 'pago_rechazado' %}❌{% else %}✅{% endif %}</div>
+            <h1>{{ titulo }}</h1>
+        </div>
+        <div class="body">
+            <p>Hola{% if publicante_nombre %} <strong>{{ publicante_nombre }}</strong>{% endif %},</p>
+
+            {% if tipo_aviso == 'servicio_publicado' %}
+                <div class="success-box">
+                    <strong>✅ ¡Tu servicio fue publicado!</strong>
+                </div>
+                <p>Tu publicación <strong>'{{ servicio.titulo }}'</strong> ya está visible en el directorio de Dato Constructor.</p>
+                <div class="info-box">
+                    <div><span class="label">Servicio:</span> {{ servicio.titulo }}</div>
+                    <div><span class="label">Categoría:</span> {{ servicio.categoria.nombre }}</div>
+                    <div><span class="label">Plan:</span> {{ servicio.get_tipo_plan_display }}</div>
+                    <div><span class="label">Publicado hasta:</span> {{ fecha_expiracion|default_if_none:'' }}</div>
+                </div>
+                <p>Recibirás los mensajes de los interesados en tu panel de gestión.</p>
+
+            {% elif tipo_aviso == 'servicio_objetado' %}
+                <div class="error-box">
+                    <strong>❌ Tu servicio fue objetado y NO fue publicado.</strong>
+                </div>
+                <p>El servicio <strong>'{{ servicio.titulo }}'</strong> presenta una discrepancia en su contenido o en el pago.</p>
+                <div class="error-box">
+                    <strong>Motivo:</strong> {{ razon|default:'Sin especificar' }}
+                </div>
+                <p>Por favor corrige la información o contacta a administración. Una vez corregido, se puede solicitar una nueva revisión.</p>
+
+            {% elif tipo_aviso == 'nuevo_servicio_admin' %}
+                <p>Un nuevo servicio fue contratado y está <strong>pendiente de tu revisión</strong>.</p>
+                <div class="info-box">
+                    <div><span class="label">Servicio:</span> {{ servicio.titulo }}</div>
+                    <div><span class="label">Publicante:</span> {{ publicante_nombre }}</div>
+                    <div><span class="label">Plan:</span> {{ plan_display }}</div>
+                    <div><span class="label">Monto total:</span> {{ monto_total }}</div>
+                </div>
+                <p>Debes validar el <strong>contenido</strong> y el <strong>comprobante de pago</strong> antes de iniciar la publicación.</p>
+                <div style="text-align:center;">
+                    <a href="https://{{ site_domain }}/servicios/admin/servicios/" class="btn-primary">Revisar en el panel de administración</a>
+                </div>
+
+            {% elif tipo_aviso == 'pago_aprobado' %}
+                <div class="success-box">
+                    <strong>✅ Tu pago por el servicio '{{ servicio.titulo }}' fue aprobado.</strong>
+                </div>
+                <div class="info-box">
+                    <div><span class="label">Monto:</span> {{ monto_total }}</div>
+                </div>
+
+            {% elif tipo_aviso == 'pago_rechazado' %}
+                <div class="error-box">
+                    <strong>❌ Tu pago por el servicio '{{ servicio.titulo }}' fue rechazado.</strong>
+                </div>
+                <p>Contacta a administración para resolver la discrepancia en el pago o el comprobante.</p>
+            {% endif %}
+
+            <p>Saludos,<br><strong>El equipo de {{ site_name }} - Dato Constructor</strong></p>
+        </div>
+        <div class="footer">
+            &copy; {% now "Y" %} {{ site_name }}. Todos los derechos reservados.<br>
+            <a href="https://{{ site_domain }}">{{ site_domain }}</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -38,6 +38,115 @@
     </div>
 </div>
 
+<!-- SERVICIOS EN REVISIÓN (CONTENIDO + PAGO) -->
+{% if servicios_en_revision %}
+<div style="margin-bottom:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin:0 0 12px 0;">🔍 Servicios en revisión (contenido y pago) ({{ servicios_en_revision.count }})</h3>
+    {% for s in servicios_en_revision %}
+    <div class="card-modern" style="margin-bottom:12px;border:2px solid var(--ds-warning);">
+        <div class="card-modern-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span class="badge-modern badge-modern-warning">⏳ En revisión</span>
+                    <span class="badge-modern badge-modern-neutral">{{ s.categoria.icono|default:'🔧' }} {{ s.categoria.nombre }}</span>
+                    <span class="badge-modern badge-modern-neutral">{{ s.get_tipo_plan_display }}</span>
+                </div>
+                <span style="font-size:0.8rem;color:var(--ds-text-secondary);">Solicitado el {{ s.created_at|date:'d/m/Y H:i' }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div>
+                    <div style="font-weight:700;font-size:1rem;">{{ s.titulo }}</div>
+                    <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin:4px 0;white-space:pre-line;">{{ s.descripcion|truncatechars:400 }}</p>
+                    {% if s.sitio_web %}<div style="font-size:0.8rem;">🌐 {{ s.sitio_web }}</div>{% endif %}
+                    {% if s.telefono_contacto or s.email_contacto %}
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;">
+                        📱 {{ s.telefono_contacto|default:'—' }} · ✉️ {{ s.email_contacto|default:'—' }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">Publicante: <strong>{{ s.publicante.get_full_name|default:s.publicante.email }}</strong></div>
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">Email: <strong>{{ s.publicante.email }}</strong></div>
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">Monto pagado: <strong>${{ s.monto_pagado|floatformat:0 }}</strong></div>
+                    {% if s.imagen %}
+                    <div style="margin-top:8px;">
+                        <img src="{{ s.imagen.url }}" style="max-width:120px;max-height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--ds-border);">
+                    </div>
+                    {% endif %}
+                    {% with pagos=s.pagos.all %}
+                    {% if pagos %}
+                    <div style="margin-top:8px;font-size:0.8rem;">
+                        {% for p in pagos %}
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                            <span>🧾 Comprobante:</span>
+                            {% if p.comprobante %}
+                            <a href="{{ p.comprobante.url }}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:0.7rem;">👁️ Ver</a>
+                            {% endif %}
+                            <span class="badge-modern {% if p.estado == 'pendiente' %}badge-modern-warning{% elif p.estado == 'aprobado' %}badge-modern-success{% else %}badge-modern-error{% endif %}" style="font-size:0.65rem;">
+                                {{ p.get_estado_display }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--ds-border-light);padding-top:12px;">
+                <form method="POST" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="publicar_servicio">
+                    <input type="hidden" name="servicio_id" value="{{ s.id }}">
+                    <button type="submit" class="btn btn-success btn-sm" style="font-size:0.75rem;">✅ Aprobar y publicar</button>
+                </form>
+                <form method="POST" style="display:flex;gap:6px;align-items:center;flex:1;min-width:280px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="objetar_servicio">
+                    <input type="hidden" name="servicio_id" value="{{ s.id }}">
+                    <input type="text" name="razon" placeholder="Motivo de la objeción (contenido o pago)..." required
+                        style="flex:1;padding:6px 10px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.8rem;">
+                    <button type="submit" class="btn btn-danger btn-sm" style="font-size:0.75rem;">❌ Objetar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- SERVICIOS OBJETADOS -->
+{% if servicios_objetados %}
+<div style="margin-bottom:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin:0 0 12px 0;">🚩 Servicios objetados ({{ servicios_objetados.count }})</h3>
+    {% for s in servicios_objetados %}
+    <div class="card-modern" style="margin-bottom:12px;border:2px solid var(--ds-error, #dc2626);">
+        <div class="card-modern-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span class="badge-modern badge-modern-error">❌ Objetado</span>
+                    <strong>{{ s.titulo }}</strong>
+                </div>
+                <span style="font-size:0.8rem;color:var(--ds-text-secondary);">{{ s.publicante.get_full_name|default:s.publicante.email }}</span>
+            </div>
+            {% if s.observaciones_admin %}
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:0.85rem;color:#991b1b;">
+                <strong>Motivo:</strong> {{ s.observaciones_admin }}
+            </div>
+            {% endif %}
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <form method="POST" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="revisar_pago">
+                    <input type="hidden" name="servicio_id" value="{{ s.id }}">
+                    <button type="submit" class="btn btn-outline btn-sm" style="font-size:0.75rem;">🔄 Reenviar a revisión</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- PAGOS PENDIENTES -->
 {% if pagos_pendientes %}
 <div style="margin-bottom:24px;">
