@@ -93,7 +93,7 @@
         <!-- Card: Detalles de la propiedad -->
         <div class="card-modern">
             <div class="card-modern-body">
-                <div class="card-modern-title" style="font-size:1.05rem;margin-bottom:12px;">🏠 Detalles de la propiedad</div>
+                <div class="card-modern-title" style="font-size:1.05rem;margin-bottom:12px;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Detalles de la propiedad</div>
                 <table style="width:100%;font-size:0.85rem;">
                     <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);width:40%;">Dirección</td><td style="padding:6px 8px;">{{ propiedad.calle }} #{{ propiedad.numero_calle }}{% if propiedad.num_tipo_prop %}, {{ propiedad.num_tipo_prop }}{% endif %}</td></tr>
                     <tr><td style="padding:6px 8px;font-weight:600;color:var(--ds-text-secondary);">Tipo</td><td style="padding:6px 8px;">{{ propiedad.get_tipo_prop_display }}</td></tr>

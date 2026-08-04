@@ -78,7 +78,7 @@
                 {% if primera_foto %}
                     <img src="{{ primera_foto.imagen.url }}" alt="{{ p }}" id="main-image">
                 {% else %}
-                    <div style="height:350px;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:4rem;">🏠</div>
+                    <div style="height:350px;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:4rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                 {% endif %}
             {% endwith %}
             {% if p.fotos.count > 1 %}
@@ -327,7 +327,7 @@
 <div class="card-modern" style="max-width:1490px;margin:0 auto;">
     <div class="card-modern-body">
         <div class="card-modern-title" style="font-size:1.2rem;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-            <span>🏠 Solicitar Visita</span>
+            <span><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Solicitar Visita</span>
             <span class="badge-modern badge-modern-neutral" style="font-size:0.7rem;">{{ p.get_tipo_accion_display }}</span>
         </div>
 

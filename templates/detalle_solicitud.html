@@ -102,7 +102,7 @@
             {% if solicitud.propiedad %}
             <div class="card-modern" style="margin-bottom:16px;">
                 <div class="card-modern-body">
-                    <div class="card-modern-title">🏠 Antecedentes de la propiedad</div>
+                    <div class="card-modern-title"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Antecedentes de la propiedad</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.9rem;margin-top:8px;">
                         <span>Dirección:</span><strong>{{ solicitud.propiedad.calle }} #{{ solicitud.propiedad.numero_calle }}</strong>
                         <span>Tipo:</span><strong>{{ solicitud.propiedad.get_tipo_prop_display }}</strong>
@@ -279,7 +279,7 @@
                 ✅ ¡OG aceptada! Ahora completa los datos de la propiedad y sube los documentos.
             </div>
             <a href="{% url 'completar_datos_propiedad' solicitud.id %}" class="btn btn-primary btn-block" style="text-decoration:none;margin-bottom:16px;">
-                🏠 Completar datos de propiedad
+                <img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Completar datos de propiedad
             </a>
             {% endif %}
             {% if solicitud.estado == 'en_validacion' %}

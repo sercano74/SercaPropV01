@@ -5,7 +5,7 @@
 
 <div style="margin-bottom:16px;">
     <a href="{% url 'lista_casos_exito' %}" class="btn btn-ghost btn-sm">← Todos los casos de éxito</a>
-    <a href="{% url 'home' %}" class="btn btn-ghost btn-sm">🏠 Propiedades</a>
+    <a href="{% url 'home' %}" class="btn btn-ghost btn-sm"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Propiedades</a>
 </div>
 
 <div class="detail-modern-grid">
@@ -80,7 +80,7 @@
             {% if caso.propiedad %}
             <div class="card-modern" style="flex:1;min-width:200px;">
                 <div class="card-modern-body" style="text-align:center;">
-                    <div style="font-size:2rem;">🏠</div>
+                    <div style="font-size:2rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                     <div style="font-weight:600;font-size:0.9rem;margin:8px 0;">
                         {{ caso.propiedad.get_tipo_prop_display }} · {{ caso.propiedad.comuna }}
                     </div>
@@ -101,7 +101,7 @@
                     {% if caso.servicio %}
                         {{ caso.servicio.categoria.icono|default:'🔧' }} {{ caso.servicio.categoria.nombre }}
                     {% elif caso.propiedad %}
-                        🏠 {{ caso.propiedad.get_tipo_prop_display }}
+                        <img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> {{ caso.propiedad.get_tipo_prop_display }}
                     {% else %}
                         🏆 Caso de éxito
                     {% endif %}
@@ -131,14 +131,14 @@
 
             {% if caso.propiedad %}
             <div style="padding:16px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);margin-bottom:16px;">
-                <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;">🏠 Propiedad</div>
+                <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Propiedad</div>
                 <div style="font-size:0.9rem;">{{ caso.propiedad.get_tipo_prop_display }}</div>
                 <div style="font-size:0.85rem;color:var(--ds-text-secondary);">📍 {{ caso.propiedad.comuna }}</div>
                 <div style="font-size:1rem;font-weight:700;margin-top:4px;">
                     {{ caso.propiedad.get_tipo_moneda_display }} {{ caso.propiedad.precio|floatformat:0 }}
                 </div>
                 <a href="{% url 'detalle_propiedad' caso.propiedad.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;text-decoration:none;">
-                    🏠 Ver propiedad
+                    <img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Ver propiedad
                 </a>
             </div>
             {% endif %}

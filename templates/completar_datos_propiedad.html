@@ -3,7 +3,7 @@
 {% block title %}Completar datos de propiedad{% endblock %}
 {% block content %}
 <div class="form-modern-container" style="max-width:800px;">
-    <h2>🏠 Completar información de la propiedad</h2>
+    <h2><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Completar información de la propiedad</h2>
     <p style="margin-bottom:16px;color:var(--ds-text-secondary);">
         Completa la descripción, entorno, servicios y sube los documentos solicitados.
         {% if solicitud.es_destacada %}⭐ Al ser <strong>Destacada</strong>, puedes subir hasta <strong>10 fotos</strong> en total.{% else %}📄 Publicación <strong>Normal</strong> — máximo <strong>3 fotos</strong>.{% endif %}

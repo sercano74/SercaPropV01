@@ -15,7 +15,7 @@
             {% csrf_token %}
             <input type="hidden" name="accion" value="actualizar">
 
-            <h4 style="margin:16px 0 8px;font-size:0.95rem;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🏠 Venta</h4>
+            <h4 style="margin:16px 0 8px;font-size:0.95rem;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Venta</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
                     <label style="font-size:0.85rem;font-weight:600;">Normal venta ($/mes)</label>
@@ -114,7 +114,7 @@
             {% csrf_token %}
             <input type="hidden" name="accion" value="crear">
 
-            <h4 style="margin:12px 0 6px;font-size:0.9rem;">🏠 Venta</h4>
+            <h4 style="margin:12px 0 6px;font-size:0.9rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Venta</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div><label style="font-size:0.85rem;">Normal ($/mes)</label><input type="number" name="valor_pub_venta_mensual" value="4000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>
                 <div><label style="font-size:0.85rem;">Destacada ($/mes)</label><input type="number" name="valor_destacado_venta_mensual" value="6000" style="width:100%;padding:8px;border:1px solid var(--ds-border);border-radius:6px;"></div>

@@ -23,7 +23,7 @@
                             {% if primera_foto %}
                                 <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-modern-img">
                             {% else %}
-                                <div class="card-modern-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:2rem;">🏠</div>
+                                <div class="card-modern-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:2rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                             {% endif %}
                         {% endwith %}
                         <div class="card-modern-body">
@@ -138,7 +138,7 @@
                     {% if primera_foto %}
                         <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img">
                     {% else %}
-                        <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;">🏠</div>
+                        <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                     {% endif %}
                 {% endwith %}
                 <div class="card-body">
@@ -161,7 +161,7 @@
             </div>
             {% empty %}
             <div class="empty-state-modern" style="grid-column:1/-1;">
-                <div class="empty-icon">🏠</div>
+                <div class="empty-icon"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                 <h3>No hay propiedades publicadas</h3>
                 <p>Vuelve pronto o <a href="{% url 'publica' %}" style="color:var(--ds-primary);text-decoration:underline;">publica aquí</a>.</p>
             </div>

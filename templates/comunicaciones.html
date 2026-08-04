@@ -137,7 +137,7 @@
                             <td>
                                 <div style="display:flex;gap:3px;flex-wrap:nowrap;">
                                     {% if com.property_id %}
-                                    <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad">🏠</a>
+                                    <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></a>
                                     {% endif %}
                                     {% if com.related_object_id %}
                                         {% if com.related_object_type == 'servicio' %}
@@ -211,7 +211,7 @@
                             <td>
                                 <div style="display:flex;gap:3px;flex-wrap:nowrap;">
                                     {% if com.property_id %}
-                                    <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad">🏠</a>
+                                    <a href="{% url 'detalle_propiedad' com.property_id %}" class="com-btn-icon" title="Ver propiedad"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></a>
                                     {% endif %}
                                     {% if com.related_object_id %}
                                         {% if com.related_object_type == 'servicio' %}

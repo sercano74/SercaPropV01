@@ -224,7 +224,7 @@
         <button onclick="abrirModalCrear()" class="btn-airbnb btn-airbnb-sm">➕ Nuevo caso</button>
         {% endif %}
         <a href="{% url 'lista_servicios' %}" class="btn-airbnb-outline btn-airbnb-sm">🔨 Dato Constructor</a>
-        <a href="{% url 'home' %}" class="btn-airbnb-outline btn-airbnb-sm">🏠 Propiedades</a>
+        <a href="{% url 'home' %}" class="btn-airbnb-outline btn-airbnb-sm"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Propiedades</a>
     </div>
 </div>
 
@@ -245,7 +245,7 @@
                         <input type="radio" name="tipo_entidad" value="servicio" checked onchange="toggleTipoEntidad()"> 🔧 Servicio
                     </label>
                     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem;">
-                        <input type="radio" name="tipo_entidad" value="propiedad" onchange="toggleTipoEntidad()"> 🏠 Propiedad
+                        <input type="radio" name="tipo_entidad" value="propiedad" onchange="toggleTipoEntidad()"> <img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Propiedad
                     </label>
                 </div>
             </div>
@@ -270,7 +270,7 @@
                 <!-- Preview de propiedad cargada -->
                 <div id="prop-preview" style="display:none;border:1px solid #ebebeb;border-radius:12px;overflow:hidden;margin-bottom:12px;">
                     <div style="display:flex;gap:0;flex-wrap:wrap;">
-                        <div id="prop-preview-img" style="width:120px;height:120px;background:#f7f7f7;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">🏠</div>
+                        <div id="prop-preview-img" style="width:120px;height:120px;background:#f7f7f7;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                         <div style="flex:1;padding:12px 14px;min-width:180px;">
                             <div id="prop-preview-title" style="font-weight:700;font-size:0.95rem;color:#222;margin-bottom:4px;"></div>
                             <div id="prop-preview-meta" style="font-size:0.8rem;color:#717171;margin-bottom:4px;"></div>
@@ -349,7 +349,7 @@
                 {% if caso.servicio %}
                     {{ caso.servicio.categoria.icono|default:'🔧' }} {{ caso.servicio.categoria.nombre }}
                 {% elif caso.propiedad %}
-                    🏠 {{ caso.propiedad.get_tipo_prop_display }}
+                    <img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> {{ caso.propiedad.get_tipo_prop_display }}
                 {% else %}
                     🏆 Caso de éxito
                 {% endif %}
@@ -400,7 +400,7 @@
         <h3 style="font-size:1.2rem;font-weight:700;color:#222;margin:0 0 8px 0;">No hay casos de éxito publicados</h3>
         <p style="color:#717171;font-size:0.9rem;margin:0 0 20px 0;">Pronto compartiremos historias de clientes satisfechos y propiedades exitosas.</p>
         {% if not todos_casos %}
-        <a href="{% url 'home' %}" class="btn-airbnb">🏠 Volver al inicio</a>
+        <a href="{% url 'home' %}" class="btn-airbnb"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Volver al inicio</a>
         {% else %}
         <button onclick="abrirModalCrear()" class="btn-airbnb">➕ Crear el primer caso</button>
         {% endif %}
@@ -502,7 +502,7 @@ function cargarPropiedad() {
             if (data.foto_url) {
                 imgDiv.innerHTML = '<img src="' + data.foto_url + '" style="width:100%;height:100%;object-fit:cover;">';
             } else {
-                imgDiv.innerHTML = '🏠';
+                imgDiv.innerHTML = '<img src="{% get_static_prefix %}images/logo-serca.svg" alt="Serca" style="height:60px;">';
                 imgDiv.style.fontSize = '2.5rem';
             }
 
