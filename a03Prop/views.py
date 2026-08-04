@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
-from django.http import JsonResponse, HttpResponseNotAllowed
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -3569,18 +3569,82 @@ def declarar_ronda_no_superada(request, *args, **kwargs):
 
 
 @login_required
-def generar_afiche(request, *args, **kwargs):
-    messages.error(request, "Funcionalidad en mantenimiento.")
-    return redirect("home")
+def generar_afiche(request, prop_id=None, *args, **kwargs):
+    """
+    Genera el Afiche PDF (A4) con QR hacia el detalle de la propiedad
+    para imprimir y colocar en el inmueble (transedntes escanean y llegan
+    al detalle en la plataforma).
+    """
+    from .poster_utils import generate_poster
+
+    if prop_id is None:
+        prop_id = kwargs.get("prop_id")
+    propiedad = get_object_or_404(Propiedad, id=prop_id)
+
+    sitio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+    url = f"https://{sitio}/prop/detalle/{propiedad.id}/"
+
+    try:
+        pdf_bytes = generate_poster(url)
+    except Exception as e:
+        logger.error(f"Error generando afiche PDF propiedad #{propiedad.id}: {e}", exc_info=True)
+        messages.error(request, "No se pudo generar el afiche PDF. Intenta nuevamente.")
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="afiche-{propiedad.id}.pdf"'
+    return response
 
 
 @login_required
-def generar_story_instagram(request, *args, **kwargs):
-    messages.error(request, "Funcionalidad en mantenimiento.")
-    return redirect("home")
+def generar_story_instagram(request, prop_id=None, *args, **kwargs):
+    """
+    Genera la historia de Instagram (PNG 1080x1920) con las imágenes y
+    características de la propiedad para facilitar su publicación en IG.
+    """
+    from .market_utils import generate_instagram_story
+
+    if prop_id is None:
+        prop_id = kwargs.get("prop_id")
+    propiedad = get_object_or_404(Propiedad, id=prop_id)
+
+    sitio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+    url = f"https://{sitio}/prop/detalle/{propiedad.id}/"
+
+    try:
+        png_bytes = generate_instagram_story(propiedad, url)
+    except Exception as e:
+        logger.error(f"Error generando story IG propiedad #{propiedad.id}: {e}", exc_info=True)
+        messages.error(request, "No se pudo generar la historia de Instagram. Intenta nuevamente.")
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    response = HttpResponse(png_bytes, content_type="image/png")
+    response["Content-Disposition"] = f'attachment; filename="story-ig-{propiedad.id}.png"'
+    return response
 
 
 @login_required
-def generar_afiche_facebook(request, *args, **kwargs):
-    messages.error(request, "Funcionalidad en mantenimiento.")
-    return redirect("home")
+def generar_afiche_facebook(request, prop_id=None, *args, **kwargs):
+    """
+    Genera el afiche para Facebook Marketplace (PNG 1080x1350) con las
+    imágenes y características de la propiedad, listo para subir al Market.
+    """
+    from .market_utils import generate_facebook_poster
+
+    if prop_id is None:
+        prop_id = kwargs.get("prop_id")
+    propiedad = get_object_or_404(Propiedad, id=prop_id)
+
+    sitio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+    url = f"https://{sitio}/prop/detalle/{propiedad.id}/"
+
+    try:
+        png_bytes = generate_facebook_poster(propiedad, url)
+    except Exception as e:
+        logger.error(f"Error generando afiche FB propiedad #{propiedad.id}: {e}", exc_info=True)
+        messages.error(request, "No se pudo generar el afiche de Facebook. Intenta nuevamente.")
+        return redirect("detalle_propiedad", prop_id=propiedad.id)
+
+    response = HttpResponse(png_bytes, content_type="image/png")
+    response["Content-Disposition"] = f'attachment; filename="fb-market-{propiedad.id}.png"'
+    return response

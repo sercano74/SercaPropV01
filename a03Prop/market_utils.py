@@ -56,14 +56,38 @@ def _build_qr(url: str, size: int) -> Image.Image:
 
 
 def _load_first_photo(prop, target_size) -> Image.Image | None:
+    """
+    Carga la primera foto de la propiedad recortada al target_size.
+
+    Las imágenes están en Cloudinary (MediaCloudinaryStorage), por lo que
+    `.path` no existe en producción. Se descarga la imagen desde `.url`
+    vía HTTP y fallback a disco local si `.path` existe.
+    """
     try:
         first_photo = prop.fotos.first()
         if not first_photo or not first_photo.imagen:
             return None
-        path = first_photo.imagen.path
-        if not os.path.exists(path):
+
+        photo = None
+        # 1) Intentar descargar desde la URL (Cloudinary en producción)
+        try:
+            url = first_photo.imagen.url
+            import requests
+            resp = requests.get(url, timeout=15)
+            if resp.status_code == 200:
+                photo = Image.open(io.BytesIO(resp.content)).convert("RGB")
+        except Exception:
+            photo = None
+
+        # 2) Fallback: archivo local
+        if photo is None:
+            path = first_photo.imagen.path
+            if os.path.exists(path):
+                photo = Image.open(path).convert("RGB")
+
+        if photo is None:
             return None
-        photo = Image.open(path).convert("RGB")
+
         tw, th = target_size
         pw, ph = photo.size
         ratio = max(tw / pw, th / ph)
