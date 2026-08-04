@@ -197,7 +197,9 @@
                 {% endif %}
 
                 <a href="{% url 'lista_servicios' %}" class="nav-link" style="color:#e67e22;font-weight:700;">🔨 Dato Constructor</a>
-                <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" class="nav-link" style="color:#25D366;font-weight:600;">💬 WhatsApp</a>
+                <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" rel="noopener noreferrer" class="nav-link" style="display:inline-flex;align-items:center;color:#25D366;" aria-label="WhatsApp" title="WhatsApp">
+                    <img src="{% static 'images/icon-whatsapp.svg' %}" width="20" height="20" alt="WhatsApp" style="display:block;">
+                </a>
             </div>
 
             <div class="nav-actions">
@@ -327,10 +329,9 @@
             </div>
             <div>
                 <h4>Síguenos</h4>
-                <div style="display:flex;gap:16px;font-size:1.5rem;">
-                    <a href="#" aria-label="Facebook">📘</a>
-                    <a href="https://www.instagram.com/sercapropiedades?utm_source=qr&igsh=MXc1andwdHBiNTIwdQ==" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📸</a>
-                    <a href="#" aria-label="LinkedIn">💼</a>
+                <div style="display:flex;gap:16px;align-items:center;">
+                    <a href="#" aria-label="Facebook"><img src="{% static 'images/icon-facebook.svg' %}" width="30" height="30" alt="Facebook" style="display:block;"></a>
+                    <a href="https://www.instagram.com/sercapropiedades?utm_source=qr&igsh=MXc1andwdHBiNTIwdQ==" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><img src="{% static 'images/icon-instagram.svg' %}" width="30" height="30" alt="Instagram" style="display:block;"></a>
                 </div>
             </div>
         </div>
