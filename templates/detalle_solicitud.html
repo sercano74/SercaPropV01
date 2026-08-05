@@ -311,18 +311,41 @@
                         <strong>Usuario:</strong> {{ solicitud.usuario.get_full_name|default:solicitud.usuario.email }}<br>
                         <strong>Publicación:</strong> {{ solicitud.meses }} meses · {% if solicitud.es_destacada %}⭐ Destacada{% else %}Normal{% endif %}
                     </p>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                        <form method="POST" action="{% url 'aprobar_pago_solicitud' solicitud.id %}" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-success">✅ Aprobar pago</button>
-                        </form>
-                        <form method="POST" action="{% url 'rechazar_pago_solicitud' solicitud.id %}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                            {% csrf_token %}
-                            <input type="text" name="razon" placeholder="Razón del rechazo" required
-                                style="border:1px solid var(--ds-border);border-radius:6px;padding:8px 12px;font-size:0.85rem;">
-                            <button type="submit" class="btn btn-danger">❌ Rechazar</button>
-                        </form>
-                    </div>
+                    <form method="POST" action="{% url 'aprobar_pago_solicitud' solicitud.id %}">
+                        {% csrf_token %}
+                        <div style="border-top:1px dashed var(--ds-border);margin:12px 0;padding-top:12px;">
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label for="corredor_id" style="font-weight:600;font-size:0.9rem;">
+                                    👤 Asignar responsable (obligatorio para continuar)
+                                </label>
+                                <select name="corredor_id" id="corredor_id" required
+                                    style="width:100%;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.9rem;">
+                                    <option value="">Seleccionar corredor / gerente / superadmin...</option>
+                                    {% for c in corredores_disponibles %}
+                                    <option value="{{ c.id }}">{{ c.get_full_name|default:c.email }} · {{ c.get_rol_display }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-hint" style="font-size:0.8rem;color:var(--ds-text-secondary);margin-top:4px;">
+                                    Puedes asignar un corredor, gerente o superadmin. Tras validar y asignar, el responsable podrá subir la Orden de Gestión.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                            <button type="submit" class="btn btn-success">
+                                ✅ Aprobar pago y asignar responsable
+                            </button>
+                            <span style="font-size:0.8rem;color:var(--ds-text-secondary);">o</span>
+                            <button type="button" class="btn btn-danger" onclick="document.getElementById('rechazo_{{ solicitud.id }}').style.display='flex';this.style.display='none';">
+                                ❌ Rechazar pago
+                            </button>
+                        </div>
+                    </form>
+                    <form method="POST" action="{% url 'rechazar_pago_solicitud' solicitud.id %}" id="rechazo_{{ solicitud.id }}" style="display:none;margin-top:12px;gap:6px;align-items:center;flex-wrap:wrap;">
+                        {% csrf_token %}
+                        <input type="text" name="razon" placeholder="Razón del rechazo" required
+                            style="border:1px solid var(--ds-border);border-radius:6px;padding:8px 12px;font-size:0.85rem;flex:1;min-width:180px;">
+                        <button type="submit" class="btn btn-danger">❌ Confirmar rechazo</button>
+                    </form>
                 </div>
             </div>
         {% endif %}
@@ -330,19 +353,19 @@
         {% if solicitud.estado == 'pago_aprobado' or solicitud.estado == 'esperando_corredor' %}
             <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary-light);">
                 <div class="card-modern-body">
-                    <div class="card-modern-title">� Asignar corredor</div>
+                    <div class="card-modern-title">👤 Asignar corredor</div>
                     <p style="font-size:0.9rem;color:var(--ds-text-secondary);">
-                        Pago aprobado. Asigna un corredor para gestionar la publicación.
+                        Pago aprobado. Asigna un corredor, gerente o superadmin para gestionar la publicación.
                     </p>
                     <form method="POST" action="{% url 'asignar_corredor_solicitud' solicitud.id %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                         {% csrf_token %}
                         <select name="corredor_id" required style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
-                            <option value="">Seleccionar corredor...</option>
+                            <option value="">Seleccionar responsable...</option>
                             {% for c in corredores_disponibles %}
-                            <option value="{{ c.id }}">{{ c.get_full_name|default:c.email }} ({{ c.email }})</option>
+                            <option value="{{ c.id }}">{{ c.get_full_name|default:c.email }} · {{ c.get_rol_display }}</option>
                             {% endfor %}
                         </select>
-                        <button type="submit" class="btn btn-primary">� Asignar</button>
+                        <button type="submit" class="btn btn-primary">👤 Asignar</button>
                     </form>
                 </div>
             </div>

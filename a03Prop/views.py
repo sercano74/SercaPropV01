@@ -1034,7 +1034,9 @@ def detalle_solicitud(request, solicitud_id):
     comunas = Comuna.objects.all().order_by("nombre")
     regiones = Region.objects.all()
     config_pago = ConfiguracionPagoPubli.objects.filter(activo=True).first()
-    corredores_disponibles = User.objects.filter(rol="corredor", is_active=True)
+    corredores_disponibles = User.objects.filter(
+        rol__in=("corredor", "gerente", "superadmin"), is_active=True
+    )
 
     # --- Orientación de documentos legales según tipo de acción ---
     if solicitud.propiedad:
@@ -1130,6 +1132,66 @@ def aprobar_pago_solicitud(request, solicitud_id):
         messages.error(request, "Esta solicitud no está en revisión de pago.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
+    corredor_id = request.POST.get("corredor_id", "").strip()
+
+    if corredor_id:
+        # Aprobar pago y asignar corredor en un solo paso
+        try:
+            corredor = User.objects.get(
+                id=corredor_id,
+                rol__in=("corredor", "gerente", "superadmin"),
+                is_active=True,
+            )
+        except User.DoesNotExist:
+            messages.error(
+                request,
+                "El corredor seleccionado no es válido. Vuelve a intentarlo.",
+            )
+            return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+        solicitud.corredor_asignado = corredor
+        solicitud.estado = "en_revision_corredor"
+        solicitud.save()
+
+        if solicitud.propiedad:
+            CorredorProp.objects.get_or_create(
+                propiedad=solicitud.propiedad,
+                corredor=corredor,
+                defaults={"tipo_comision": "porcentaje", "estado": "activa"},
+            )
+
+        _notificar(
+            recipient=solicitud.usuario,
+            emitter=request.user,
+            source_type=SourceTypeChoices.GERENTE,
+            title="Pago aprobado y corredor asignado",
+            message=(
+                f"¡Tu pago por ${solicitud.total_pago:,.0f} ha sido aprobado! "
+                f"Se asignó a {corredor.get_full_name() or corredor.email} para gestionar tu publicación."
+            ),
+            related_object_id=solicitud.id,
+        )
+
+        _notificar(
+            recipient=corredor,
+            emitter=request.user,
+            source_type=SourceTypeChoices.GERENTE,
+            title="Nueva solicitud asignada",
+            message=(
+                f"Se te ha asignado la solicitud #{solicitud.id} del usuario "
+                f"{solicitud.usuario.get_full_name() or solicitud.usuario.email}. "
+                f"Debes subir la Orden de Gestión."
+            ),
+            related_object_id=solicitud.id,
+        )
+
+        messages.success(
+            request,
+            f"Pago aprobado y corredor {corredor.get_full_name() or corredor.email} asignado.",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    # Sin corredor seleccionado: solo aprobar pago
     solicitud.estado = "pago_aprobado"
     solicitud.save()
 
@@ -1202,7 +1264,12 @@ def asignar_corredor_solicitud(request, solicitud_id):
             messages.error(request, "Debes seleccionar un corredor.")
             return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
-        corredor = get_object_or_404(User, id=corredor_id, rol="corredor", is_active=True)
+        corredor = get_object_or_404(
+            User,
+            id=corredor_id,
+            rol__in=("corredor", "gerente", "superadmin"),
+            is_active=True,
+        )
         solicitud.corredor_asignado = corredor
         solicitud.estado = "en_revision_corredor"
         solicitud.save()
