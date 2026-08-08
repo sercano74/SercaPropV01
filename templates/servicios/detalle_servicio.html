@@ -8,9 +8,9 @@
     <a href="{% url 'home' %}" class="btn btn-ghost btn-sm"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Propiedades</a>
 </div>
 
-<div class="detail-modern-grid">
-    <!-- GALERÍA -->
-    <div>
+<div class="detail-modern-grid" style="grid-template-columns: 1.7fr 1fr; align-items: start;">
+    <!-- IZQUIERDA: IMAGEN + INFORMACIÓN DEL SERVICIO -->
+    <div style="min-width:0;">
         <div class="detail-modern-gallery" style="position:relative;">
             {% if servicio.imagen %}
             <img src="{{ servicio.imagen.url }}" alt="{{ servicio.titulo }}" style="width:100%;max-height:400px;object-fit:cover;">
@@ -30,105 +30,9 @@
             {% endif %}
         </div>
 
-        <!-- CASOS DE ÉXITO -->
-        {% if casos_exito %}
-        <div style="margin-top:24px;">
-            <h3 style="font-size:1.1rem;font-weight:700;margin:0 0 12px 0;">🏆 Casos de Éxito</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                {% for caso in casos_exito %}
-                <a href="{% url 'detalle_caso_exito' caso.id %}" class="card-modern" style="text-decoration:none;color:inherit;display:block;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.boxShadow='none'">
-                    <div class="card-modern-body">
-                        <div class="card-modern-title" style="font-size:0.9rem;">{{ caso.titulo }}</div>
-                        <p style="font-size:0.8rem;color:var(--ds-text-secondary);margin:4px 0;">{{ caso.descripcion|truncatechars:150 }}</p>
-                        {% if caso.imagen_antes and caso.imagen_despues %}
-                        <div style="display:flex;gap:8px;margin-top:8px;">
-                            <div style="flex:1;">
-                                <small style="font-size:0.65rem;color:var(--ds-text-muted);">Antes</small>
-                                <img src="{{ caso.imagen_antes.url }}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;">
-                            </div>
-                            <div style="flex:1;">
-                                <small style="font-size:0.65rem;color:var(--ds-text-muted);">Después</small>
-                                <img src="{{ caso.imagen_despues.url }}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;">
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if caso.cliente_testimonio %}
-                        <blockquote style="font-size:0.75rem;color:var(--ds-text-secondary);border-left:3px solid var(--ds-primary);padding-left:10px;margin:8px 0 0 0;">
-                            "{{ caso.cliente_testimonio }}"<br>
-                            <small>— {{ caso.cliente_nombre }}</small>
-                        </blockquote>
-                        {% endif %}
-                        <div style="margin-top:8px;">
-                            <span class="btn btn-outline btn-sm" style="font-size:0.7rem;">Ver caso completo →</span>
-                        </div>
-                    </div>
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- RATINGS -->
-        <div style="margin-top:24px;">
-            <h3 style="font-size:1.1rem;font-weight:700;margin:0 0 12px 0;">
-                ⭐ Calificaciones
-                {% if servicio.rating_promedio > 0 %}
-                <span style="font-size:0.9rem;color:var(--ds-text-secondary);font-weight:400;">
-                    ({{ servicio.rating_promedio }} promedio - {{ servicio.cantidad_ratings }} votos)
-                </span>
-                {% endif %}
-            </h3>
-
-            {% if user.is_authenticated %}
-            <div class="card-modern" style="margin-bottom:16px;">
-                <div class="card-modern-body">
-                    <form method="POST" action="{% url 'calificar_servicio' servicio.id %}">
-                        {% csrf_token %}
-                        <label style="font-weight:600;font-size:0.85rem;">Tu calificación:</label>
-                        <div style="display:flex;gap:4px;margin:8px 0;font-size:1.5rem;">
-                            {% for i in "12345"|make_list %}
-                            <label style="cursor:pointer;">
-                                <input type="radio" name="puntaje" value="{{ forloop.counter }}" {% if forloop.counter == 5 %}checked{% endif %} style="display:none;">
-                                <span class="star-rating" data-val="{{ forloop.counter }}">☆</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        <input type="text" name="nombre_mostrar" placeholder="Tu nombre (opcional)" class="form-modern" style="width:100%;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;margin-bottom:8px;font-size:0.85rem;">
-                        <textarea name="comentario" placeholder="Comparte tu experiencia (opcional)" class="form-modern" style="width:100%;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;margin-bottom:8px;font-size:0.85rem;min-height:60px;"></textarea>
-                        <button type="submit" class="btn btn-primary btn-sm">Enviar calificación</button>
-                    </form>
-                </div>
-            </div>
-            {% endif %}
-
-            {% for r in ratings %}
-            <div class="card-modern" style="margin-bottom:8px;">
-                <div class="card-modern-body" style="padding:10px 14px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:0.9rem;">
-                            {% for i in "12345"|make_list %}
-                                {% if forloop.counter <= r.puntaje %}⭐{% else %}☆{% endif %}
-                            {% endfor %}
-                        </span>
-                        <span style="font-size:0.75rem;color:var(--ds-text-secondary);">
-                            {{ r.nombre_mostrar|default:r.usuario.get_full_name|default:"Anónimo" }}
-                        </span>
-                    </div>
-                    {% if r.comentario %}
-                    <p style="font-size:0.85rem;margin:4px 0 0 0;color:var(--ds-text-secondary);">{{ r.comentario }}</p>
-                    {% endif %}
-                </div>
-            </div>
-            {% empty %}
-            <p style="font-size:0.85rem;color:var(--ds-text-secondary);">No hay calificaciones aún. ¡Sé el primero!</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- INFO + CONTACTO -->
-    <div>
-        <div class="detail-modern-info">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <!-- INFORMACIÓN DEL SERVICIO -->
+        <div class="detail-modern-info" style="margin-top:16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                 <span class="card-modern-badge">{{ servicio.categoria.icono|default:'🔧' }} {{ servicio.categoria.nombre }}</span>
                 {% if servicio.dias_restantes < 30 %}
                 <span class="badge-modern badge-modern-warning">⏳ {{ servicio.dias_restantes }} días</span>
@@ -137,7 +41,7 @@
             <h2 style="margin:0 0 8px 0;font-size:1.4rem;">{{ servicio.titulo }}</h2>
             <p style="font-size:0.95rem;color:var(--ds-text-secondary);line-height:1.6;">{{ servicio.descripcion|linebreaksbr }}</p>
 
-            <div style="margin:16px 0;padding:12px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);">
+            <div style="margin:16px 0 0 0;padding:12px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);">
                 <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">👤 Prestador</div>
                 <div style="font-size:0.9rem;">{{ servicio.publicante.get_full_name|default:servicio.publicante.email }}</div>
                 <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">✉️ {{ servicio.publicante.email }}</div>
@@ -146,64 +50,91 @@
                 {% elif servicio.telefono_contacto %}
                 <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">📱 {{ servicio.telefono_contacto }}</div>
                 {% endif %}
-            </div>
 
-            {% if servicio.sitio_web %}
-            <a href="{{ servicio.sitio_web }}" target="_blank" class="btn btn-outline btn-sm" style="margin-bottom:12px;width:100%;">
-                🌐 Visitar sitio web
-            </a>
-            {% endif %}
-
-            <!-- FORMULARIO DE CONTACTO -->
-            <div style="border:2px solid var(--ds-primary-light);border-radius:var(--ds-radius-lg);padding:20px;margin-top:16px;">
-                <h4 style="margin:0 0 12px 0;font-size:1rem;font-weight:700;">📩 Enviar mensaje al profesional</h4>
-                <form method="POST" action="{% url 'enviar_mensaje_servicio' servicio.id %}">
-                    {% csrf_token %}
-                    <div class="form-modern">
-                        <div class="form-group">
-                            <label>Tu nombre *</label>
-                            <input type="text" name="nombre" value="{{ datos_contacto.nombre }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Tu email *</label>
-                            <input type="email" name="email" value="{{ datos_contacto.email }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Tu teléfono *</label>
-                            <input type="tel" name="telefono" value="{{ datos_contacto.telefono }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Detalle de tu requerimiento *</label>
-                            <textarea name="mensaje" rows="4" required placeholder="Describe qué necesitas..."></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-block">✉️ Enviar mensaje</button>
-                    </div>
-                </form>
-                {% if servicio.telefono_contacto %}
-                <div style="text-align:center;margin-top:12px;">
-                    <a href="https://wa.me/{{ servicio.telefono_contacto|cut:'+'|cut:' '|cut:'-' }}" target="_blank" class="btn btn-success btn-sm" style="background:#25D366;border-color:#25D366;">
-                        💬 Contactar por WhatsApp
+                {% if servicio.sitio_web %}
+                <div style="margin-top:12px;">
+                    <a href="{{ servicio.sitio_web }}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;">
+                        🌐 Visitar sitio web
                     </a>
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
+
+    <!-- DERECHA: SOLO CONTACTO + WHATSAPP -->
+    <div class="detail-modern-info" style="position:sticky;top:88px;">
+        <div style="border:2px solid var(--ds-primary-light);border-radius:var(--ds-radius-lg);padding:20px;">
+            <h4 style="margin:0 0 12px 0;font-size:1rem;font-weight:700;">📩 Enviar mensaje al profesional</h4>
+            <form method="POST" action="{% url 'enviar_mensaje_servicio' servicio.id %}">
+                {% csrf_token %}
+                <div class="form-modern">
+                    <div class="form-group">
+                        <label>Tu nombre *</label>
+                        <input type="text" name="nombre" value="{{ datos_contacto.nombre }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tu email *</label>
+                        <input type="email" name="email" value="{{ datos_contacto.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tu teléfono *</label>
+                        <input type="tel" name="telefono" value="{{ datos_contacto.telefono }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Detalle de tu requerimiento *</label>
+                        <textarea name="mensaje" rows="4" required placeholder="Describe qué necesitas..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">✉️ Enviar mensaje</button>
+                </div>
+            </form>
+            {% if servicio.telefono_contacto %}
+            <div style="text-align:center;margin-top:12px;">
+                <a href="https://wa.me/{{ servicio.telefono_contacto|cut:'+'|cut:' '|cut:'-' }}" target="_blank" class="btn btn-success btn-sm" style="background:#25D366;border-color:#25D366;">
+                    💬 Contactar por WhatsApp
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
-<script>
-// Star rating interactivo
-document.querySelectorAll('.star-rating').forEach(function(star) {
-    star.addEventListener('click', function() {
-        var val = this.dataset.val;
-        var radio = this.parentElement.querySelector('input[type="radio"]');
-        radio.checked = true;
-        var siblings = this.parentElement.parentElement.querySelectorAll('.star-rating');
-        siblings.forEach(function(s, idx) {
-            s.textContent = idx < val ? '⭐' : '☆';
-        });
-    });
-});
-</script>
+<!-- CASOS DE ÉXITO (a ancho completo) -->
+{% if casos_exito %}
+<div style="margin-top:32px;">
+    <h3 style="font-size:1.1rem;font-weight:700;margin:0 0 12px 0;">🏆 Casos de Éxito</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        {% for caso in casos_exito %}
+        <a href="{% url 'detalle_caso_exito' caso.id %}" class="card-modern" style="text-decoration:none;color:inherit;display:block;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.boxShadow='none'">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:0.9rem;">{{ caso.titulo }}</div>
+                <p style="font-size:0.8rem;color:var(--ds-text-secondary);margin:4px 0;">{{ caso.descripcion|truncatechars:150 }}</p>
+                {% if caso.imagen_antes and caso.imagen_despues %}
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <div style="flex:1;">
+                        <small style="font-size:0.65rem;color:var(--ds-text-muted);">Antes</small>
+                        <img src="{{ caso.imagen_antes.url }}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;">
+                    </div>
+                    <div style="flex:1;">
+                        <small style="font-size:0.65rem;color:var(--ds-text-muted);">Después</small>
+                        <img src="{{ caso.imagen_despues.url }}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;">
+                    </div>
+                </div>
+                {% endif %}
+                {% if caso.cliente_testimonio %}
+                <blockquote style="font-size:0.75rem;color:var(--ds-text-secondary);border-left:3px solid var(--ds-primary);padding-left:10px;margin:8px 0 0 0;">
+                    "{{ caso.cliente_testimonio }}"<br>
+                    <small>— {{ caso.cliente_nombre }}</small>
+                </blockquote>
+                {% endif %}
+                <div style="margin-top:8px;">
+                    <span class="btn btn-outline btn-sm" style="font-size:0.7rem;">Ver caso completo →</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 {% endblock %}
