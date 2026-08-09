@@ -13,14 +13,23 @@ def _slug_unico(modelos, base):
 
 
 def poblar_slugs(apps, schema_editor):
-    """Asigna slug SEO a todas las propiedades existentes sin slug."""
+    """Asigna slug SEO a todas las propiedades existentes sin slug.
+
+    Usa QuerySet.update() (exactamente un UPDATE en SQL) para evitar
+    triggers/validaciones de save(); en Postgres un UPDATE directo con un
+    valor único no colisiona y si un slug ya existe se añade sufijo.
+    """
     Propiedad = apps.get_model("a03Prop", "Propiedad")
     for p in Propiedad.objects.filter(slug__isnull=True).order_by("id"):
-        comuna = str(p.comuna).lower() if p.comuna else "sin-comuna"
+        if p.comuna_id:
+            comuna = str(p.comuna).lower()
+        else:
+            comuna = "sin-comuna"
         comuna = slugify(comuna) or "sin-comuna"
         base = slugify(f"{p.tipo_accion}-{p.tipo_prop}-{comuna}-{p.id}")[:200] or f"propiedad-{p.id}"
-        p.slug = _slug_unico(Propiedad, base)
-        p.save(update_fields=["slug"])
+        slug = _slug_unico(Propiedad, base)
+        # update() → SQL puro, sin tocar otras columnas ni updated_at
+        Propiedad.objects.filter(pk=p.pk).update(slug=slug)
 
 
 def reverso(apps, schema_editor):
