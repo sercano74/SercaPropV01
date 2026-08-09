@@ -12,25 +12,45 @@ def _slug_unico(modelos, base):
     return slug
 
 
-def poblar_slugs(apps, schema_editor):
-    """Asigna slug SEO a todas las propiedades existentes sin slug.
+def _nombre_comuna(p):
+    """Nombre de la comuna o 'sin-comuna' si no tiene."""
+    if p.comuna_id and p.comuna:
+        return p.comuna.nombre
+    return "sin-comuna"
 
-    Usa QuerySet.update() (exactamente un UPDATE en SQL) para evitar
-    triggers/validaciones de save(); en Postgres un UPDATE directo con un
-    valor único no colisiona y si un slug ya existe se añade sufijo.
+
+def _base_slug(p):
+    """Construye la base del slug con datos legibles."""
+    comuna = slugify(_nombre_comuna(p)) or "sin-comuna"
+    base = slugify(f"{p.tipo_accion}-{p.tipo_prop}-{comuna}-{p.id}")[:200]
+    return base or f"propiedad-{p.id}"
+
+
+def poblar_slugs(apps, schema_editor):
+    """Asigna slug SEO a las propiedades sin slug.
+
+    Usa QuerySet.update() (SQL puro) y el nombre REAL de la comuna
+    (campo `nombre`), no el repr del objeto.
     """
     Propiedad = apps.get_model("a03Prop", "Propiedad")
     for p in Propiedad.objects.filter(slug__isnull=True).order_by("id"):
-        if p.comuna_id:
-            comuna = str(p.comuna).lower()
-        else:
-            comuna = "sin-comuna"
-        comuna = slugify(comuna) or "sin-comuna"
-        base = slugify(f"{p.tipo_accion}-{p.tipo_prop}-{comuna}-{p.id}")[:200] or f"propiedad-{p.id}"
-        # Importante: pasar el MANAGER (Propiedad.objects), no la clase.
-        slug = _slug_unico(Propiedad.objects, base)
-        # update() → SQL puro, sin tocar otras columnas ni updated_at
+        slug = _slug_unico(Propiedad.objects, _base_slug(p))
+        # Selecciona de nuevo el objeto para refrescar la FK comuna caché
         Propiedad.objects.filter(pk=p.pk).update(slug=slug)
+
+
+def regen_slugs(apps, schema_editor):
+    """(0019) Re-genera TODOS los slugs — arregla los generados con el
+    repr de la comuna (ej. 'comuna-object-322') por el nombre real.
+    """
+    Propiedad = apps.get_model("a03Prop", "Propiedad")
+    for p in Propiedad.objects.order_by("id"):
+        old = p.slug
+        # forzar re-lectura de la FK seteando a None y re-asignando
+        p.comuna_id = p.comuna_id
+        slug = _slug_unico(Propiedad.objects, _base_slug(p))
+        if slug != old:
+            Propiedad.objects.filter(pk=p.pk).update(slug=slug)
 
 
 def reverso(apps, schema_editor):
