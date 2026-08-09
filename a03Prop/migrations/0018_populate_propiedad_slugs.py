@@ -27,7 +27,8 @@ def poblar_slugs(apps, schema_editor):
             comuna = "sin-comuna"
         comuna = slugify(comuna) or "sin-comuna"
         base = slugify(f"{p.tipo_accion}-{p.tipo_prop}-{comuna}-{p.id}")[:200] or f"propiedad-{p.id}"
-        slug = _slug_unico(Propiedad, base)
+        # Importante: pasar el MANAGER (Propiedad.objects), no la clase.
+        slug = _slug_unico(Propiedad.objects, base)
         # update() → SQL puro, sin tocar otras columnas ni updated_at
         Propiedad.objects.filter(pk=p.pk).update(slug=slug)
 
