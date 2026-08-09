@@ -4,7 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Título Dinámico -->
     <title>{% block title %}Serca Propiedades{% endblock %} | {{ site_name }}</title>
+    
+    <!-- Meta Description -->
+    <meta name="description" content="{% block meta_description %}Encuentra casas, departamentos y servicios profesionales de ingeniería y gestión inmobiliaria.{% endblock %}">
+    
+    <!-- ===== SEO: Robots + Canonical ===== -->
+    <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+
+    <!-- ===== Open Graph (Facebook / WhatsApp / LinkedIn) ===== -->
+    <meta property="og:title" content="{% block og_title %}Serca Propiedades{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Encuentra casas, departamentos, oficinas y servicios profesionales de ingeniería, construcción y gestión inmobiliaria en Chile.{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://{{ request.get_host }}{% static 'images/logo-serca.svg' %}{% endblock %}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:site_name" content="{{ site_name }}">
+
+    <!-- ===== Twitter Card ===== -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}Serca Propiedades{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Encuentra casas, departamentos, oficinas y servicios profesionales de ingeniería, construcción y gestión inmobiliaria en Chile.{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://{{ request.get_host }}{% static 'images/logo-serca.svg' %}{% endblock %}">
+
+    <!-- ===== Bloques extra por vista (JSON-LD, etc.) ===== -->
+    {% block extra_head %}{% endblock %}
+    
     <!-- Bootstrap Icons CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Bootstrap (solo grid y utilidades, sin navbar) -->

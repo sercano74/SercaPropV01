@@ -2,7 +2,37 @@
 {% load static %}
 {% load humanize %}
 {% load prop_extras %}
-{% block title %}{{ propiedad.get_tipo_prop_display }} - {{ propiedad.calle }} #{{ propiedad.numero_calle }}{% endblock %}
+{% block title %}{{ propiedad.get_tipo_accion_display }} {{ propiedad.get_tipo_prop_display|lower }} en {{ propiedad.comuna }}{% endblock %}
+{% block meta_description %}{{ propiedad.descripcion_propiedad|truncatechars:160 }}{% endblock %}
+{% block og_title %}{{ propiedad.get_tipo_accion_display }} {{ propiedad.get_tipo_prop_display|lower }} en {{ propiedad.comuna }} - {{ site_name }}{% endblock %}
+{% block og_description %}{{ propiedad.descripcion_propiedad|truncatechars:160 }}{% endblock %}
+{% block og_type %}website{% endblock %}
+
+{% block extra_head %}
+{% with primera_foto=propiedad.fotos.first %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Residence",
+  "name": "{{ propiedad.get_tipo_accion_display }} {{ propiedad.get_tipo_prop_display|lower }} en {{ propiedad.comuna }}",
+  "description": "{{ propiedad.descripcion_propiedad|truncatechars:300 }}",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "{{ propiedad.comuna }}",
+    "addressCountry": "CL"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "{{ propiedad.precio }}",
+    "priceCurrency": "{% if propiedad.tipo_moneda == 'PCL' %}CLP{% else %}{{ propiedad.tipo_moneda }}{% endif %}"
+  }{% if primera_foto %},
+  "image": "{{ primera_foto.imagen.url }}"
+  {% endif %}
+}
+</script>
+{% endwith %}
+{% endblock %}
+
 {% block content %}
 {% with p=propiedad %}
 

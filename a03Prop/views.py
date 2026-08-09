@@ -68,12 +68,35 @@ def _get_docs_orientacion_texto(tipo_accion):
     return texto_venta
 
 
-def detalle_propiedad(request, prop_id):
+def detalle_propiedad_redirect(request, prop_id):
+    """Redirige 301 desde la URL antigua (solo ID) a la canónica con slug SEO."""
     try:
         propiedad = Propiedad.objects.get(id=prop_id)
     except Propiedad.DoesNotExist:
         messages.warning(request, "La propiedad que buscas no existe o ha sido removida.")
         return redirect("home")
+
+    slug = propiedad.slug or f"propiedad-{propiedad.id}"
+    return redirect("detalle_propiedad_slug", prop_id=propiedad.id, prop_slug=slug, permanent=True)
+
+
+def detalle_propiedad(request, prop_id, prop_slug=None):
+    try:
+        propiedad = Propiedad.objects.get(id=prop_id)
+    except Propiedad.DoesNotExist:
+        messages.warning(request, "La propiedad que buscas no existe o ha sido removida.")
+        return redirect("home")
+
+    # ===== SEO: Canonical URL =====
+    # Si el slug no coincide con el canónico, redirigir 301 a la URL correcta
+    slug_canonico = propiedad.slug or f"propiedad-{propiedad.id}"
+    if prop_slug != slug_canonico:
+        return redirect(
+            "detalle_propiedad_slug",
+            prop_id=propiedad.id,
+            prop_slug=slug_canonico,
+            permanent=True,
+        )
 
     fotos = propiedad.fotos.all()
     publicacion = propiedad.publicaciones.filter(estado="publicada").first()

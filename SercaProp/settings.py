@@ -53,6 +53,8 @@ ALLOWED_HOSTS = os.environ.get(
     '.railway.app,.serca.online,web-production-5f792c.up.railway.app,localhost,127.0.0.1'
 ).split(',')
 
+
+
 # ── Apps ───────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -60,6 +62,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sitemaps',  # SEO: generación de sitemap.xml
     'a00seg',  # antes que cloudinary_storage para que su comando collectstatic estándar tenga prioridad
     'cloudinary_storage',  # DEBE ir antes de django.contrib.staticfiles
     'django.contrib.staticfiles',
@@ -301,5 +304,6 @@ SITE_DOMAIN = os.environ.get('SITE_DOMAIN', 'propiedades.serca.online')
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
+    # *PRESERVE_WHITESPACE_ON_WWW_REDIRECT = os.environ.get('PRESERVE_WHITESPACE_ON_WWW_REDIRECT', 'False').lower() in ('true', '1', 'yes')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

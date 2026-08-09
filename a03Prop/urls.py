@@ -1,8 +1,12 @@
 from django.urls import path
+from django.views.generic.base import RedirectView
 from . import views
 
 urlpatterns = [
-    path('detalle/<int:prop_id>/', views.detalle_propiedad, name='detalle_propiedad'),
+    # URL canónica con slug SEO
+    path('detalle/<int:prop_id>/<slug:prop_slug>/', views.detalle_propiedad, name='detalle_propiedad_slug'),
+    # URL antigua con solo ID → redirige 301 a la canónica
+    path('detalle/<int:prop_id>/', views.detalle_propiedad_redirect, name='detalle_propiedad'),
 
     # ===== SOLICITUD DE VISITA =====
     path('api/agenda-disponible/<int:prop_id>/', views.agenda_disponible_api, name='agenda_disponible_api'),

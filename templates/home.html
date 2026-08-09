@@ -19,10 +19,10 @@
             <div class="carousel-destacadas-track" id="carousel-track">
                 {% for pub in destacadas %}
                 <div class="carousel-destacadas-slide">
-                    <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="card-modern" style="text-decoration:none;color:inherit;display:block;">
+                    <a href="{{ pub.propiedad.get_absolute_url }}" class="card-modern" style="text-decoration:none;color:inherit;display:block;">
                         {% with primera_foto=pub.propiedad.fotos.first %}
                             {% if primera_foto %}
-                                <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-modern-img">
+                                <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-modern-img" loading="lazy">
                             {% else %}
                                 <div class="card-modern-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:2rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                             {% endif %}
@@ -114,7 +114,7 @@
                 {% endif %}
                 {% with primera_foto=pub.propiedad.fotos.first %}
                     {% if primera_foto %}
-                        <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img">
+                        <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img" loading="lazy">
                     {% else %}
                         <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                     {% endif %}
@@ -133,7 +133,7 @@
                         {% if pub.propiedad.m_construidos %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Metros construídos">📐 {{ pub.propiedad.m_construidos }} m²</span>{% endif %}
                     </div>
                     
-                    <a href="{% url 'detalle_propiedad' pub.propiedad.id %}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver detalle →</a>
+                    <a href="{{ pub.propiedad.get_absolute_url }}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver detalle →</a>
 
                 </div>
             </div>

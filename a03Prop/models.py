@@ -1,4 +1,17 @@
 from django.db import models
+from django.utils.text import slugify
+
+
+def _generar_slug_unico(base, modelo, campo="slug"):
+    """Genera un slug único agregando un sufijo numérico si es necesario."""
+    slug = base
+    contador = 1
+    filtro = {campo: slug}
+    while modelo.objects.filter(**filtro).exists():
+        slug = f"{base}-{contador}"
+        contador += 1
+        filtro = {campo: slug}
+    return slug
 
 
 class ServiciosProp(models.Model):
@@ -90,6 +103,11 @@ class Propiedad(models.Model):
     estado = models.CharField(
         max_length=20, choices=ESTADO_CHOICES, default="borrador", verbose_name="Estado"
     )
+    slug = models.SlugField(
+        max_length=255, unique=True, blank=True, null=True,
+        verbose_name="Slug SEO",
+        help_text="URL amigable para motores de búsqueda. Se genera automáticamente.",
+    )
     tipo_accion = models.CharField(
         max_length=20, choices=TIPO_ACCION_CHOICES, verbose_name="Tipo de acción"
     )
@@ -130,8 +148,33 @@ class Propiedad(models.Model):
         verbose_name_plural = "Propiedades"
         ordering = ["-created_at"]
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Primera vez: generar slug base (sin id aún)
+            comuna_str = str(self.comuna) if self.comuna else "sin-comuna"
+            tipo_prop = self.get_tipo_prop_display().lower()
+            tipo_accion = self.get_tipo_accion_display().lower()
+            base_slug = slugify(f"{tipo_accion}-{tipo_prop}-{comuna_str}")
+            self.slug = base_slug
+            super().save(*args, **kwargs)
+            # Ahora que tenemos id, regenerar con sufijo único
+            slug_final = _generar_slug_unico(
+                f"{base_slug}-{self.id}", Propiedad
+            )
+            if slug_final != self.slug:
+                Propiedad.objects.filter(pk=self.pk).update(slug=slug_final)
+                self.slug = slug_final
+        else:
+            super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.get_tipo_prop_display()} - {self.calle} #{self.numero_calle} ({self.get_estado_display()})"
+
+    def get_absolute_url(self):
+        """URL canónica SEO de la propiedad."""
+        from django.urls import reverse
+        slug = self.slug or f"propiedad-{self.id}"
+        return reverse("detalle_propiedad_slug", kwargs={"prop_id": self.id, "prop_slug": slug})
 
     def display_name_public(self):
         """Nombre público de la propiedad, sin dirección exacta (solo comuna + tipo)."""

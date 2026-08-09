@@ -1,6 +1,24 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.conf import settings
+
+
+def robots_txt(request):
+    """robots.txt dinámico: indica sitemap y bloquea paneles internos."""
+    dominio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+    contenido = (
+        "User-agent: *\n"
+        "Disallow: /admin/\n"
+        "Disallow: /cuenta/\n"
+        "Disallow: /api/\n"
+        "Disallow: /gestion/\n"
+        "Disallow: /accounts/\n"
+        "Disallow: /perfil/\n\n"
+        f"Sitemap: https://{dominio}/sitemap.xml\n"
+    )
+    return HttpResponse(contenido, content_type="text/plain")
 from django.db.models import Q
 from .models import Communication
 
