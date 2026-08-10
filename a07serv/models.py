@@ -128,13 +128,36 @@ class ServicioPublicitario(models.Model):
 class MensajeServicio(models.Model):
     """
     Mensaje que un usuario envía al publicante de un servicio.
-    El publicante gestiona estos mensajes en su panel.
+    El publicante gestiona estos mensajes en su panel y en el detalle del servicio.
+
+    - `remitente`: usuario autenticado que escribió el mensaje (None si fue anónimo).
+    - `destinatario`: publicante del servicio (copia de servicio.publicante para
+      consultas rápidas por usuario).
+    El publicante puede ver todos los mensajes de su servicio; un usuario autenticado
+    solo puede ver los mensajes que él mismo envió (remitente=usuario) y las
+    respuestas que el publicante le dio.
     """
     servicio = models.ForeignKey(
         ServicioPublicitario,
         on_delete=models.CASCADE,
         related_name="mensajes",
         verbose_name="Servicio",
+    )
+    remitente = models.ForeignKey(
+        "a00seg.User",
+        on_delete=models.SET_NULL,
+        blank=True, null=True,
+        related_name="mensajes_servicios_enviados",
+        verbose_name="Remitente (usuario autenticado)",
+        help_text="Usuario autenticado que envió el mensaje. Null si fue anónimo.",
+    )
+    destinatario = models.ForeignKey(
+        "a00seg.User",
+        on_delete=models.SET_NULL,
+        blank=True, null=True,
+        related_name="mensajes_servicios_recibidos",
+        verbose_name="Destinatario (publicante)",
+        help_text="Publicante del servicio que recibe el mensaje.",
     )
     nombre_remitente = models.CharField(max_length=255, verbose_name="Nombre completo")
     email_remitente = models.EmailField(verbose_name="Email")
@@ -152,6 +175,10 @@ class MensajeServicio(models.Model):
         verbose_name = "Mensaje de servicio"
         verbose_name_plural = "Mensajes de servicios"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["servicio", "remitente"], name="msg_serv_rem_idx"),
+            models.Index(fields=["servicio", "email_remitente"], name="msg_serv_email_idx"),
+        ]
 
     def __str__(self):
         return f"Mensaje de {self.nombre_remitente} → {self.servicio.titulo}"

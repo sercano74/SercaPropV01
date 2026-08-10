@@ -46,10 +46,11 @@ class MensajeServicioInline(admin.TabularInline):
 
 @admin.register(MensajeServicio)
 class MensajeServicioAdmin(admin.ModelAdmin):
-    list_display = ["servicio", "nombre_remitente", "email_remitente", "is_leido", "created_at"]
+    list_display = ["servicio", "nombre_remitente", "remitente", "email_remitente", "is_leido", "created_at"]
     list_filter = ["is_leido"]
-    search_fields = ["nombre_remitente", "email_remitente", "servicio__titulo"]
+    search_fields = ["nombre_remitente", "email_remitente", "remitente__email", "servicio__titulo"]
     readonly_fields = ["created_at"]
+    raw_id_fields = ["servicio", "remitente", "destinatario"]
 
 
 @admin.register(PagoServicio)

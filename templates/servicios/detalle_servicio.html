@@ -8,8 +8,8 @@
     <a href="{% url 'home' %}" class="btn btn-ghost btn-sm"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"> Propiedades</a>
 </div>
 
-<div class="detail-modern-grid" style="grid-template-columns: 1.7fr 1fr; align-items: start;">
-    <!-- IZQUIERDA: IMAGEN + INFORMACIÓN DEL SERVICIO -->
+<div class="detail-modern-grid" style="grid-template-columns: 1.7fr 1.2fr; align-items: start;">
+    <!-- ============ IZQUIERDA: IMAGEN + BADGE + DESCRIPCIÓN ============ -->
     <div style="min-width:0;">
         <div class="detail-modern-gallery" style="position:relative;">
             {% if servicio.imagen %}
@@ -30,69 +30,175 @@
             {% endif %}
         </div>
 
-        <!-- INFORMACIÓN DEL SERVICIO -->
-        <div class="detail-modern-info" style="margin-top:16px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                <span class="card-modern-badge">{{ servicio.categoria.icono|default:'🔧' }} {{ servicio.categoria.nombre }}</span>
-                {% if servicio.dias_restantes < 30 %}
-                <span class="badge-modern badge-modern-warning">⏳ {{ servicio.dias_restantes }} días</span>
-                {% endif %}
-            </div>
+        <!-- BADGE DEL TIPO DE SERVICIO -->
+        <div style="margin-top:16px;">
+            <span class="card-modern-badge">{{ servicio.categoria.icono|default:'🔧' }} {{ servicio.categoria.nombre }}</span>
+            {% if servicio.dias_restantes < 30 %}
+            <span class="badge-modern badge-modern-warning">⏳ {{ servicio.dias_restantes }} días</span>
+            {% endif %}
+            {% if servicio.rating_promedio > 0 %}
+            <span class="badge-modern badge-modern-neutral">⭐ {{ servicio.rating_promedio }} ({{ servicio.cantidad_ratings }})</span>
+            {% endif %}
+        </div>
+
+        <!-- DESCRIPCIÓN DEL SERVICIO -->
+        <div class="detail-modern-info" style="margin-top:12px;">
             <h2 style="margin:0 0 8px 0;font-size:1.4rem;">{{ servicio.titulo }}</h2>
-            <p style="font-size:0.95rem;color:var(--ds-text-secondary);line-height:1.6;">{{ servicio.descripcion|linebreaksbr }}</p>
-
-            <div style="margin:16px 0 0 0;padding:12px;background:var(--ds-bg-secondary);border-radius:var(--ds-radius-md);">
-                <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;">👤 Prestador</div>
-                <div style="font-size:0.9rem;">{{ servicio.publicante.get_full_name|default:servicio.publicante.email }}</div>
-                <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">✉️ {{ servicio.publicante.email }}</div>
-                {% if servicio.publicante.cel_phone %}
-                <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">📱 {{ servicio.publicante.cel_phone }}</div>
-                {% elif servicio.telefono_contacto %}
-                <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-top:4px;">📱 {{ servicio.telefono_contacto }}</div>
-                {% endif %}
-
-                {% if servicio.sitio_web %}
-                <div style="margin-top:12px;">
-                    <a href="{{ servicio.sitio_web }}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;">
-                        🌐 Visitar sitio web
-                    </a>
-                </div>
-                {% endif %}
-            </div>
+            <p style="font-size:0.95rem;color:var(--ds-text-secondary);line-height:1.6;margin:0;">{{ servicio.descripcion|linebreaksbr }}</p>
         </div>
     </div>
 
-    <!-- DERECHA: SOLO CONTACTO + WHATSAPP -->
-    <div class="detail-modern-info" style="position:sticky;top:88px;">
-        <div style="border:2px solid var(--ds-primary-light);border-radius:var(--ds-radius-lg);padding:20px;">
+    <!-- ============ DERECHA: PRESTADOR + FORMULARIO + CONVERSACIÓN ============ -->
+    <div style="min-width:0;">
+        <!-- CARD DEL PRESTADOR -->
+        <div class="detail-modern-info" style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div class="avatar-circle-sm" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span style="font-size:1.2rem;">👤</span>
+                </div>
+                <div style="min-width:0;">
+                    <div style="font-weight:700;font-size:1rem;">{{ servicio.publicante.get_full_name|default:servicio.publicante.email }}</div>
+                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">Prestador del servicio</div>
+                </div>
+            </div>
+
+            {% if servicio.publicante.cel_phone or servicio.telefono_contacto %}
+            <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:4px;">
+                📱 {{ servicio.publicante.cel_phone|default:servicio.telefono_contacto }}
+            </div>
+            {% endif %}
+
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                {% if servicio.sitio_web %}
+                <a href="{{ servicio.sitio_web }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="flex:1;white-space:nowrap;">
+                    🌐 Página web
+                </a>
+                {% endif %}
+                {% if servicio.telefono_contacto %}
+                <a href="https://wa.me/{{ servicio.telefono_contacto|cut:'+'|cut:' '|cut:'-' }}" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm" style="flex:1;background:#25D366;border-color:#25D366;white-space:nowrap;">
+                    💬 WhatsApp
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- FORMULARIO DE MENSAJE (solo usuarios autenticados) -->
+        <div class="detail-modern-info" style="margin-bottom:12px;">
+            {% if user.is_authenticated %}
             <h4 style="margin:0 0 12px 0;font-size:1rem;font-weight:700;">📩 Enviar mensaje al profesional</h4>
             <form method="POST" action="{% url 'enviar_mensaje_servicio' servicio.id %}">
                 {% csrf_token %}
                 <div class="form-modern">
                     <div class="form-group">
-                        <label>Tu nombre *</label>
-                        <input type="text" name="nombre" value="{{ datos_contacto.nombre }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tu email *</label>
-                        <input type="email" name="email" value="{{ datos_contacto.email }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tu teléfono *</label>
-                        <input type="tel" name="telefono" value="{{ datos_contacto.telefono }}" required>
-                    </div>
-                    <div class="form-group">
                         <label>Detalle de tu requerimiento *</label>
                         <textarea name="mensaje" rows="4" required placeholder="Describe qué necesitas..."></textarea>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-bottom:10px;">
+                        Enviarás como <strong>{{ user.get_full_name|default:user.email }}</strong>
+                        {% if user.email %} ({{ user.email }}){% endif %}.
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">✉️ Enviar mensaje</button>
                 </div>
             </form>
-            {% if servicio.telefono_contacto %}
-            <div style="text-align:center;margin-top:12px;">
-                <a href="https://wa.me/{{ servicio.telefono_contacto|cut:'+'|cut:' '|cut:'-' }}" target="_blank" class="btn btn-success btn-sm" style="background:#25D366;border-color:#25D366;">
-                    💬 Contactar por WhatsApp
-                </a>
+            {% else %}
+            <h4 style="margin:0 0 12px 0;font-size:1rem;font-weight:700;">📩 Enviar mensaje al profesional</h4>
+            <div style="text-align:center;padding:16px 12px;color:var(--ds-text-secondary);font-size:0.85rem;">
+                🔒 <a href="{% url 'account_login' %}?next={{ request.path }}">Inicia sesión</a> para enviar un mensaje a este profesional.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- CONVERSACIONES (ACORDEONES ESTILO WHATSAPP) -->
+        <div class="detail-modern-info">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                <h4 style="margin:0;font-size:1rem;font-weight:700;">💬 conversación{{ hilos|length|pluralize }}</h4>
+                {% if hilos %}
+                <div style="display:flex;gap:6px;">
+                    <button type="button" onclick="expandirTodasConversaciones()" class="btn btn-ghost btn-sm" style="font-size:0.75rem;">Abrir todas</button>
+                    <button type="button" onclick="colapsarTodasConversaciones()" class="btn btn-ghost btn-sm" style="font-size:0.75rem;">Cerrar todas</button>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if hilos %}
+            {% for hilo in hilos %}
+            <div class="conv-acordeon" style="border:1px solid var(--ds-border-light);border-radius:var(--ds-radius-md);margin-bottom:8px;overflow:hidden;background:var(--ds-bg-secondary);">
+                <button type="button" class="conv-acordeon-header" onclick="toggleConversacion(this)" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:transparent;border:none;cursor:pointer;text-align:left;font-family:inherit;">
+                    <span style="width:36px;height:36px;border-radius:50%;background:var(--ds-primary-light);color:var(--ds-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0;">
+                        {{ hilo.nombre|slice:":1"|upper|default:"?" }}
+                    </span>
+                    <span style="flex:1;min-width:0;">
+                        <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <strong style="font-size:0.9rem;">{{ hilo.nombre }}</strong>
+                            {% if hilo.mensajes_no_leidos > 0 %}
+                            <span class="badge-modern badge-modern-primary" style="font-size:0.65rem;">{{ hilo.mensajes_no_leidos }} nuevo{{ hilo.mensajes_no_leidos|pluralize }}</span>
+                            {% endif %}
+                        </span>
+                        <span style="display:block;font-size:0.75rem;color:var(--ds-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            {{ hilo.ultimo_mensaje|truncatechars:70 }}
+                        </span>
+                    </span>
+                    <span class="conv-acordeon-flecha" style="color:var(--ds-text-secondary);font-size:0.8rem;transition:transform 0.2s;flex-shrink:0;">▼</span>
+                </button>
+
+                <div class="conv-acordeon-body" style="display:none;padding:0 14px 14px 14px;">
+                    <!-- Conversación estilo WhatsApp -->
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:12px;background:#E5DDD5;border-radius:var(--ds-radius-md);max-height:340px;overflow-y:auto;">
+                        {% for m in hilo.mensajes %}
+                        {% if m.respuesta %}
+                        <!-- RESPUESTA DEL PUBLICANTE (derecha) -->
+                        <div style="display:flex;justify-content:flex-end;">
+                            <div style="background:#DCF8C6;padding:8px 12px;border-radius:12px 12px 2px 12px;max-width:80%;box-shadow:0 1px 2px rgba(0,0,0,0.08);">
+                                <div style="font-size:0.7rem;font-weight:700;color:#075E54;margin-bottom:2px;">{{ servicio.publicante.get_full_name|default:"Prestador" }}</div>
+                                <div style="font-size:0.85rem;">{{ m.respuesta|linebreaksbr }}</div>
+                                <div style="font-size:0.65rem;color:var(--ds-text-muted);text-align:right;margin-top:2px;">{{ m.respondido_at|date:'d/m H:i' }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if m.respuesta and m.mensaje %}
+                        <div style="font-size:0.65rem;color:var(--ds-text-muted);text-align:center;margin:2px 0;">・ ・ ・</div>
+                        {% endif %}
+
+                        <!-- MENSAJE DEL INTERESADO (izquierda) -->
+                        {% if m.mensaje %}
+                        <div style="display:flex;justify-content:flex-start;">
+                            <div style="background:#FFFFFF;padding:8px 12px;border-radius:12px 12px 12px 2px;max-width:80%;box-shadow:0 1px 2px rgba(0,0,0,0.08);">
+                                {% if es_publicante %}
+                                <div style="font-size:0.7rem;font-weight:700;color:var(--ds-primary);margin-bottom:2px;">{{ hilo.nombre }}</div>
+                                {% endif %}
+                                <div style="font-size:0.85rem;">{{ m.mensaje|linebreaksbr }}</div>
+                                <div style="font-size:0.65rem;color:var(--ds-text-muted);text-align:right;margin-top:2px;">{{ m.created_at|date:'d/m H:i' }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Formulario de respuesta (solo publicante) -->
+                    {% if es_publicante %}
+                    {% with ultimo_mensaje=hilo.mensajes|last %}
+                    <form method="POST" action="{% url 'responder_mensaje_servicio' servicio.id ultimo_mensaje.id %}" style="display:flex;gap:8px;margin-top:10px;">
+                        {% csrf_token %}
+                        <textarea name="respuesta" rows="2" placeholder="Escribe tu respuesta..." style="flex:1;padding:8px 12px;border:1px solid var(--ds-border);border-radius:8px;font-size:0.85rem;font-family:inherit;resize:vertical;"></textarea>
+                        <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start;">➤</button>
+                    </form>
+                    {% endwith %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% elif es_publicante %}
+            <div style="text-align:center;padding:20px 12px;color:var(--ds-text-secondary);font-size:0.85rem;">
+                📭 Aún no recibes mensajes. Los interesados te escribirán aquí.
+            </div>
+            {% elif user.is_authenticated %}
+            <div style="text-align:center;padding:20px 12px;color:var(--ds-text-secondary);font-size:0.85rem;">
+                📭 Aún no has enviado mensajes a este profesional.
+            </div>
+            {% else %}
+            <div style="text-align:center;padding:20px 12px;color:var(--ds-text-secondary);font-size:0.85rem;">
+                🔒 <a href="{% url 'account_login' %}?next={{ request.path }}">Inicia sesión</a> para ver tus conversaciones con este profesional.
             </div>
             {% endif %}
         </div>
@@ -136,5 +242,24 @@
     </div>
 </div>
 {% endif %}
+
+<style>
+.conv-acordeon-header:hover { background: rgba(0,0,0,0.03); }
+.conv-acordeon.open .conv-acordeon-flecha { transform: rotate(180deg); }
+.conv-acordeon.open .conv-acordeon-body { display: block; }
+</style>
+
+<script>
+function toggleConversacion(btn) {
+    var acordeon = btn.closest('.conv-acordeon');
+    acordeon.classList.toggle('open');
+}
+function expandirTodasConversaciones() {
+    document.querySelectorAll('.conv-acordeon').forEach(function(a) { a.classList.add('open'); });
+}
+function colapsarTodasConversaciones() {
+    document.querySelectorAll('.conv-acordeon').forEach(function(a) { a.classList.remove('open'); });
+}
+</script>
 
 {% endblock %}

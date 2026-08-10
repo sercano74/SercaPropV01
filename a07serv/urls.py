@@ -6,6 +6,7 @@ urlpatterns = [
     path('', views.lista_servicios, name='lista_servicios'),
     path('detalle/<int:servicio_id>/', views.detalle_servicio, name='detalle_servicio'),
     path('detalle/<int:servicio_id>/mensaje/', views.enviar_mensaje_servicio, name='enviar_mensaje_servicio'),
+    path('detalle/<int:servicio_id>/mensaje/<int:mensaje_id>/responder/', views.responder_mensaje_servicio, name='responder_mensaje_servicio'),
     path('detalle/<int:servicio_id>/calificar/', views.calificar_servicio, name='calificar_servicio'),
 
     # Contratar (publicante)

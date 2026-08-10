@@ -195,6 +195,72 @@ def _reenviar_revision_servicio(servicio):
     return True, f"✅ Servicio '{servicio.titulo}' reenviado a revisión."
 
 
+def _agrupar_hilos_servicio(servicio, user):
+    """Agrupa los mensajes de un servicio en hilos de conversación.
+
+    - Publicante: ve TODOS los hilos (un hilo por interesado), anónimos o no.
+    - Usuario autenticado: ve solo los hilos donde él es remitente
+      (o donde su email coincide con un mensaje anónimo suyo).
+    - Visitante anónimo: no ve ningún hilo.
+
+    Cada hilo trae:
+      nombre / email / telefono: datos del interesado (usados como encabezado).
+      remitente_id: id de usuario del interesado (None si es anónimo).
+      mensajes: lista ordenada de menor a mayor fecha (orden de la conversación).
+      mensajes_no_leidos, ultimo_mensaje, ultima_fecha: para la previsualización.
+    """
+    mensajes = list(
+        servicio.mensajes.select_related("remitente", "destinatario").order_by("created_at")
+    )
+
+    es_publicante = user.is_authenticated and servicio.publicante_id == user.id
+
+    hilos_map = {}
+    if es_publicante:
+        for m in mensajes:
+            if m.remitente_id:
+                clave = f"user:{m.remitente_id}"
+            else:
+                clave = f"anon:{m.email_remitente.lower()}"
+            hilo = hilos_map.setdefault(clave, {
+                "nombre": m.nombre_remitente,
+                "email": m.email_remitente,
+                "telefono": m.telefono_remitente,
+                "remitente_id": m.remitente_id,
+                "mensajes": [],
+            })
+            hilo["mensajes"].append(m)
+    elif user.is_authenticated:
+        email_user = (user.email or "").strip().lower()
+        for m in mensajes:
+            es_propio = (
+                m.remitente_id == user.id
+                or (m.remitente_id is None and m.email_remitente.lower() == email_user)
+            )
+            if not es_propio:
+                continue
+            hilo = hilos_map.setdefault("yo", {
+                "nombre": user.get_full_name() or user.email,
+                "email": user.email,
+                "telefono": user.cel_phone or "",
+                "remitente_id": user.id,
+                "mensajes": [],
+            })
+            hilo["mensajes"].append(m)
+
+    hilos = []
+    for h in hilos_map.values():
+        h["mensajes_no_leidos"] = sum(1 for m in h["mensajes"] if not m.is_leido)
+        ultimo = h["mensajes"][-1] if h["mensajes"] else None
+        h["ultimo_mensaje"] = ultimo.mensaje if ultimo else ""
+        h["ultima_fecha"] = ultimo.created_at if ultimo else None
+        hilos.append(h)
+
+    # Hilos con actividad más reciente primero
+    hilos.sort(key=lambda h: h["ultima_fecha"] or timezone.now(), reverse=True)
+    return hilos
+
+
 # ─────────────────────────────────────────────────────────
 # VISTAS PÚBLICAS (Directorio de Servicios)
 # ─────────────────────────────────────────────────────────
@@ -261,12 +327,17 @@ def detalle_servicio(request, servicio_id):
         )
     )
 
+    es_publicante = request.user.is_authenticated and servicio.publicante_id == request.user.id
+    hilos = _agrupar_hilos_servicio(servicio, request.user)
+
     return render(request, "servicios/detalle_servicio.html", {
         "servicio": servicio,
         "casos_exito": casos_exito,
         "ratings": ratings,
         "datos_contacto": datos_contacto,
         "puede_editar_imagen": puede_editar_imagen,
+        "es_publicante": es_publicante,
+        "hilos": hilos,
     })
 
 
@@ -274,22 +345,32 @@ def detalle_servicio(request, servicio_id):
 # ENVÍO DE MENSAJE AL PUBLICANTE
 # ─────────────────────────────────────────────────────────
 
+@login_required
 def enviar_mensaje_servicio(request, servicio_id):
-    """Usuario envía un mensaje al publicante del servicio."""
+    """Usuario AUTENTICADO envía un mensaje al publicante del servicio.
+
+    Los visitantes anónimos no pueden enviar mensajes: el decorador
+    @login_required los redirige a la pantalla de inicio de sesión.
+    Los datos de contacto se toman de la cuenta del usuario (no de los
+    campos del formulario) para evitar suplantación de identidad.
+    """
     servicio = get_object_or_404(ServicioPublicitario, id=servicio_id, estado="activo")
 
     if request.method == "POST":
-        nombre = request.POST.get("nombre", "").strip()
-        email = request.POST.get("email", "").strip()
-        telefono = request.POST.get("telefono", "").strip()
         mensaje_texto = request.POST.get("mensaje", "").strip()
 
-        if not all([nombre, email, telefono, mensaje_texto]):
-            messages.error(request, "Todos los campos son obligatorios.")
+        if not mensaje_texto:
+            messages.error(request, "Debes escribir el detalle de tu requerimiento.")
             return redirect("detalle_servicio", servicio_id=servicio.id)
+
+        nombre = request.user.get_full_name() or request.user.email
+        email = request.user.email or ""
+        telefono = request.user.cel_phone or ""
 
         MensajeServicio.objects.create(
             servicio=servicio,
+            remitente=request.user,
+            destinatario=servicio.publicante,
             nombre_remitente=nombre,
             email_remitente=email,
             telefono_remitente=telefono,
@@ -299,8 +380,8 @@ def enviar_mensaje_servicio(request, servicio_id):
         # Notificar al publicante
         _notificar(
             recipient=servicio.publicante,
-            emitter=request.user if request.user.is_authenticated else servicio.publicante,
-            source_type=SourceTypeChoices.USUARIO_BASE if request.user.is_authenticated else SourceTypeChoices.SISTEMA,
+            emitter=request.user,
+            source_type=SourceTypeChoices.USUARIO_BASE,
             title=f"Nuevo mensaje sobre: {servicio.titulo}",
             message=f"{nombre} ({email}, {telefono}) ha enviado un mensaje sobre tu servicio '{servicio.titulo}':\n{mensaje_texto[:300]}",
             related_object_id=servicio.id,
@@ -310,6 +391,48 @@ def enviar_mensaje_servicio(request, servicio_id):
             request,
             "✅ Mensaje enviado correctamente. El prestador del servicio te contactará pronto."
         )
+        return redirect("detalle_servicio", servicio_id=servicio.id)
+
+    return redirect("detalle_servicio", servicio_id=servicio.id)
+
+
+@login_required
+def responder_mensaje_servicio(request, servicio_id, mensaje_id):
+    """El publicante responde un mensaje desde el detalle del servicio."""
+    servicio = get_object_or_404(
+        ServicioPublicitario,
+        id=servicio_id,
+        publicante=request.user,
+    )
+    mensaje = get_object_or_404(MensajeServicio, id=mensaje_id, servicio=servicio)
+
+    if request.method == "POST":
+        respuesta = request.POST.get("respuesta", "").strip()
+        if not respuesta:
+            messages.error(request, "Debes escribir una respuesta.")
+            return redirect("detalle_servicio", servicio_id=servicio.id)
+
+        mensaje.respuesta = respuesta
+        mensaje.respondido_at = timezone.now()
+        mensaje.is_leido = True
+        mensaje.leido_at = mensaje.leido_at or timezone.now()
+        mensaje.save()
+
+        # Notificar al interesado si es un usuario autenticado
+        if mensaje.remitente_id and mensaje.remitente_id != request.user.id:
+            _notificar(
+                recipient=mensaje.remitente,
+                emitter=request.user,
+                source_type=SourceTypeChoices.USUARIO_BASE,
+                title=f"Respuesta sobre: {servicio.titulo}",
+                message=(
+                    f"{request.user.get_full_name() or request.user.email} respondió a tu "
+                    f"consulta sobre '{servicio.titulo}':\n{respuesta}"
+                ),
+                related_object_id=servicio.id,
+            )
+
+        messages.success(request, "✅ Respuesta enviada correctamente.")
         return redirect("detalle_servicio", servicio_id=servicio.id)
 
     return redirect("detalle_servicio", servicio_id=servicio.id)
