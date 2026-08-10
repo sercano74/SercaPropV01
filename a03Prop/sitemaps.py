@@ -1,7 +1,11 @@
 from django.conf import settings
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
-from .models import Propiedad
+from django.db.models import Count
+from django.utils import timezone
+
+from .models import Propiedad, PublicacionProp
+from a00seg.models import Comuna
 
 
 def _dominio():
@@ -64,3 +68,37 @@ class StaticViewSitemap(Sitemap):
 
     def location(self, item):
         return reverse(item)
+
+
+class LandingSitemap(Sitemap):
+    """Sitemap para las landing pages por comuna/categoría.
+
+    Solo indexa combinaciones (comuna × acción × tipo) que tengan al menos
+    una publicación activa, para no enviar landing vacías a Google.
+    """
+    changefreq = "weekly"
+    priority = 0.6
+
+    def items(self):
+        combos = (
+            PublicacionProp.objects.filter(
+                estado="publicada",
+                expira_at__gte=timezone.now(),
+                propiedad__comuna__isnull=False,
+            )
+            .values_list(
+                "propiedad__comuna__slug",
+                "propiedad__tipo_accion",
+                "propiedad__tipo_prop",
+            )
+            .distinct()
+        )
+        return list(combos)
+
+    def location(self, item):
+        comuna_slug, accion, tipo_prop = item
+        return reverse("landing_propiedades", kwargs={
+            "accion": accion,
+            "tipo_prop": tipo_prop,
+            "comuna_slug": comuna_slug,
+        })

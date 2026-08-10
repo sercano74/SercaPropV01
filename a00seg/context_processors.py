@@ -1,3 +1,4 @@
+from django.conf import settings
 from .models import Funcionario, User
 from a01Com.models import Communication
 
@@ -8,6 +9,7 @@ def site_info(request):
         "site_name": "Serca Propiedades",
         "site_slogan": "Corretaje de Propiedades",
         "funcionarios": Funcionario.objects.filter(is_active=True),
+        "ga4_measurement_id": getattr(settings, "GA4_MEASUREMENT_ID", ""),
     }
 
     # CDC badge: mensajes no leídos para el usuario autenticado

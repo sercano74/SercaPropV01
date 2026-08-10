@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
-from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponse
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -504,6 +504,43 @@ def buscar_propiedades_api(request):
         })
 
     return JsonResponse({"data": data})
+
+
+# ================================================================
+# LANDING PAGES SEO (por comuna / categoría)
+# ================================================================
+
+def landing_propiedades(request, accion, tipo_prop, comuna_slug):
+    """Landing page de propiedades publicadas en una comuna para una
+    acción (venta/arriendo/srt) y tipo (casa/departamento/...).
+
+    Estas páginas capturan búsquedas del tipo "departamento en arriendo
+    providencia" y enlazan a los detalles canónicos de cada propiedad.
+    """
+    comuna = get_object_or_404(Comuna, slug=comuna_slug)
+
+    acciones_validas = dict(Propiedad.TIPO_ACCION_CHOICES)
+    tipos_validos = dict(Propiedad.TIPO_PROP_CHOICES)
+    if accion not in acciones_validas or tipo_prop not in tipos_validos:
+        raise Http404("Combinación de acción/tipo/comuna no válida.")
+
+    publicadas = PublicacionProp.objects.filter(
+        estado="publicada",
+        expira_at__gte=timezone.now(),
+        propiedad__comuna=comuna,
+        propiedad__tipo_accion=accion,
+        propiedad__tipo_prop=tipo_prop,
+    ).select_related("propiedad").prefetch_related("propiedad__fotos").order_by("-es_destacada", "-inicia_at")
+
+    return render(request, "landing_propiedades.html", {
+        "comuna": comuna,
+        "accion": accion,
+        "accion_display": acciones_validas[accion],
+        "tipo_prop": tipo_prop,
+        "tipo_prop_display": tipos_validos[tipo_prop],
+        "publicadas": publicadas,
+        "total": publicadas.count(),
+    })
 
 
 # ================================================================

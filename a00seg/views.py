@@ -67,6 +67,17 @@ def home(request):
         publicadas = publicadas.filter(q_filter)
 
     comunas = Comuna.objects.all().order_by("nombre")
+
+    # Comunas con al menos una publicación activa → enlaces a landing pages
+    comunas_con_inventario = PublicacionProp.objects.filter(
+        estado="publicada",
+        expira_at__gte=timezone.now(),
+        propiedad__comuna__isnull=False,
+    ).values_list("propiedad__comuna_id", flat=True).distinct()
+    comunas_landing = Comuna.objects.filter(
+        id__in=comunas_con_inventario
+    ).order_by("nombre")
+
     config_pago = ConfiguracionPagoPubli.objects.filter(activo=True).first()
 
     # IDs de propiedades favoritas del usuario autenticado
@@ -91,6 +102,7 @@ def home(request):
         "destacadas": destacadas,
         "publicadas": publicadas_page,
         "comunas": comunas,
+        "comunas_landing": comunas_landing,
         "config_pago": config_pago,
         "current_filters": {
             "tipo_accion": tipo_accion,

@@ -307,3 +307,6 @@ if not DEBUG:
     # *PRESERVE_WHITESPACE_ON_WWW_REDIRECT = os.environ.get('PRESERVE_WHITESPACE_ON_WWW_REDIRECT', 'False').lower() in ('true', '1', 'yes')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+
+GA4_MEASUREMENT_ID = os.environ.get('GA4_MEASUREMENT_ID', '')

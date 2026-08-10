@@ -8,6 +8,19 @@
     <p>Venta   ·   Arriendo   ·   Short Rental Time</p>
 </div>
 
+{% if comunas_landing %}
+<div class="filter-card-modern" style="margin-bottom:16px;">
+    <div class="filter-card-modern-header">
+        <span>📍</span> <strong>Explora por comuna</strong>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:14px;">
+        {% for c in comunas_landing %}
+        <a href="{% url 'landing_propiedades' 'venta' 'departamento' c.slug %}" class="btn btn-ghost btn-sm" style="text-decoration:none;">{{ c.nombre }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% comment %} {% bloque_home_servicios %} {% endcomment %}
 
 <div class="layout-3col">

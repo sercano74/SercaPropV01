@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from a03Prop.sitemaps import PropiedadSitemap, StaticViewSitemap, _urls_sitemap
+from a03Prop.sitemaps import PropiedadSitemap, StaticViewSitemap, LandingSitemap, _urls_sitemap
 from a01Com.views import robots_txt
 
 
@@ -15,6 +15,7 @@ def sitemap_xml(request):
     dominio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
     urls = _urls_sitemap(PropiedadSitemap(), dominio)
     urls += _urls_sitemap(StaticViewSitemap(), dominio)
+    urls += _urls_sitemap(LandingSitemap(), dominio)
 
     root = ET.Element("urlset")
     root.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")

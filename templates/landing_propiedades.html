@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ tipo_prop_display }}s en {{ accion_display }} en {{ comuna.nombre }}{% endblock %}
+{% block meta_description %}{{ total }} {{ tipo_prop_display|lower }} en {{ accion_display|lower }} disponibles en {{ comuna.nombre }}. Precios, fotos y contactos directos. Venta, arriendo y SRT en {{ comuna.nombre }}.{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Inicio", "item": "{{ request.scheme }}://{{ request.get_host }}/"},
+    {"@type": "ListItem", "position": 2, "name": "{{ accion_display }}", "item": "{{ request.build_absolute_uri }}"}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="hero-modern">
+    <h1>{{ tipo_prop_display }} en {{ accion_display }} en {{ comuna.nombre }}</h1>
+    <p>Explora las {{ total }} {% if total == 1 %}propiedad publicada{% else %}propiedades publicadas{% endif %} en {{ comuna.nombre }} · {{ comuna.region.nombre }}</p>
+</div>
+
+<!-- BARRA DE MIGAS -->
+<nav aria-label="breadcrumb" style="font-size:0.85rem;margin-bottom:16px;color:var(--ds-text-secondary);">
+    <a href="{% url 'home' %}" style="color:var(--ds-primary);">Inicio</a>
+    » <a href="{% url 'home' %}" style="color:var(--ds-primary);">{{ accion_display }}</a>
+    » <span style="font-weight:600;color:var(--ds-text);">{{ tipo_prop_display }} · {{ comuna.nombre }}</span>
+</nav>
+
+<!-- LISTADO DE PROPIEDADES -->
+<div class="card-grid vitrina-grid">
+    {% for pub in publicadas %}
+    <div class="property-card-modern" style="position:relative;">
+        {% if pub.es_destacada %}<div class="badge-destacada">⭐ Destacada</div>{% endif %}
+        {% with primera_foto=pub.propiedad.fotos.first %}
+            {% if primera_foto %}
+                <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img" loading="lazy">
+            {% else %}
+                <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
+            {% endif %}
+        {% endwith %}
+        <div class="card-body">
+            <span class="card-badge">{{ pub.propiedad.get_tipo_accion_display }}</span>
+            <div class="card-title">🆔 <strong>{{ pub.propiedad.id }} - {{ pub.propiedad.get_tipo_prop_display }}</strong></div>
+            {% if pub.propiedad.comuna %}<div class="card-location"><strong>📍 {{ pub.propiedad.comuna }}</strong></div>{% endif %}
+            <div class="card-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|floatformat:0 }}</div>
+            <div class="card-details">
+                {% if pub.propiedad.numero_dormitorios %}<span title="Dormitorios">🛏️ {{ pub.propiedad.numero_dormitorios }}</span>{% endif %}
+                {% if pub.propiedad.numero_banos %}<span title="Baños">🛁 {{ pub.propiedad.numero_banos }}</span>{% endif %}
+                {% if pub.propiedad.m_construidos %}<span title="Metros construidos">📐 {{ pub.propiedad.m_construidos }} m²</span>{% endif %}
+            </div>
+            <a href="{{ pub.propiedad.get_absolute_url }}" class="btn btn-outline btn-sm" style="margin-top:8px;">Ver detalle →</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state-modern" style="grid-column:1/-1;">
+        <div class="empty-icon"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
+        <h3>No hay {{ tipo_prop_display|lower }}s en {{ accion_display|lower }} en {{ comuna.nombre }} en este momento</h3>
+        <p>Revisa la <a href="{% url 'home' %}" style="color:var(--ds-primary);text-decoration:underline;">vitrina completa</a> o <a href="{% url 'publica' %}" style="color:var(--ds-primary);text-decoration:underline;">publica tu propiedad aquí</a>.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- BLOQUE SEO ÚNICO POR COMUNA -->
+<div style="margin-top:32px;padding:24px;background:var(--ds-bg-secondary);border-radius:16px;border:2px solid var(--ds-border);">
+    <h2 style="font-size:1.3rem;margin-bottom:8px;">¿Por qué buscar {{ tipo_prop_display|lower }}s en {{ accion_display|lower }} en {{ comuna.nombre }}?</h2>
+    <p style="font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.6;">
+        {{ comuna.region.nombre }} es una de las comunas con mayor demanda de {{ tipo_prop_display|lower }}s en {{ accion_display|lower }}.
+        En Serca Propiedades publicamos solo propiedades verificadas, con fotos reales y contacto directo con el corredor asignado.
+    </p>
+    <p style="font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.6;">
+        Si estás buscando {{ tipo_prop_display|lower }} en {{ accion_display|lower }} en {{ comuna.nombre }}, aquí encontrarás
+        {% if total > 0 %}las <strong>{{ total }}</strong> propiedades que tenemos publicadas hoy{% else %}el listado actualizado de propiedades con las condiciones que buscas{% endif %}.
+        Cada publicación incluye {{ tipo_prop_display|lower }} en {{ accion_display|lower }} con detalle de dormitorios, baños, metros construidos y precio.
+    </p>
+</div>
+{% endblock %}

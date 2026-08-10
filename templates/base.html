@@ -124,6 +124,19 @@
             .nav-dropdown.active .dropdown-content { display: block; }
         }
     </style>
+
+    {% if ga4_measurement_id %}
+    <!-- Google tag (gtag.js) GA4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga4_measurement_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ ga4_measurement_id }}');
+    </script>
+    {% endif %}
+
+
 </head>
 <body>
 

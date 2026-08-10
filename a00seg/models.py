@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 class Region(models.Model):
@@ -18,6 +19,11 @@ class Region(models.Model):
 
 class Comuna(models.Model):
     nombre = models.CharField(max_length=255, verbose_name="Comuna")
+    slug = models.SlugField(
+        max_length=255, unique=True, blank=True, null=True,
+        verbose_name="Slug SEO",
+        help_text="URL amigable para landing pages por comuna. Se genera automáticamente.",
+    )
     region = models.ForeignKey(
         Region, 
         on_delete=models.CASCADE, 
@@ -32,6 +38,11 @@ class Comuna(models.Model):
 
     def __str__(self):
         return f"{self.nombre}, {self.region.nombre}"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.nombre) or f"comuna-{self.id}"
+        super().save(*args, **kwargs)
 
 
 class User(AbstractUser):

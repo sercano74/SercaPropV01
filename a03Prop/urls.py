@@ -83,6 +83,9 @@ urlpatterns = [
     # ===== AFICHE / POSTER PDF =====
     path('afiche/<int:prop_id>/', views.generar_afiche, name='generar_afiche'),
 
+    # ===== LANDING PAGES SEO (por comuna / categoría) =====
+    path('propiedades/<slug:accion>/<slug:tipo_prop>/<slug:comuna_slug>/', views.landing_propiedades, name='landing_propiedades'),
+
     # ===== MARKETING IMAGES (Instagram Story + Facebook Afiche) =====
     path('story-ig/<int:prop_id>/', views.generar_story_instagram, name='generar_story_instagram'),
     path('afiche-fb/<int:prop_id>/', views.generar_afiche_facebook, name='generar_afiche_facebook'),
