@@ -50,6 +50,7 @@
 
     <!-- ============ DERECHA: PRESTADOR + FORMULARIO + CONVERSACIÓN ============ -->
     <div style="min-width:0;">
+        {% if not es_publicante %}
         <!-- CARD DEL PRESTADOR -->
         <div class="detail-modern-info" style="margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -82,7 +83,7 @@
             </div>
         </div>
 
-        <!-- FORMULARIO DE MENSAJE (solo usuarios autenticados) -->
+        <!-- FORMULARIO DE MENSAJE (solo usuarios autenticados, no el publicante) -->
         <div class="detail-modern-info" style="margin-bottom:12px;">
             {% if user.is_authenticated %}
             <h4 style="margin:0 0 12px 0;font-size:1rem;font-weight:700;">📩 Enviar mensaje al profesional</h4>
@@ -107,6 +108,7 @@
             </div>
             {% endif %}
         </div>
+        {% endif %}
 
         <!-- CONVERSACIONES (ACORDEONES ESTILO WHATSAPP) -->
         <div class="detail-modern-info">
@@ -246,19 +248,31 @@
 <style>
 .conv-acordeon-header:hover { background: rgba(0,0,0,0.03); }
 .conv-acordeon.open .conv-acordeon-flecha { transform: rotate(180deg); }
-.conv-acordeon.open .conv-acordeon-body { display: block; }
 </style>
 
 <script>
 function toggleConversacion(btn) {
     var acordeon = btn.closest('.conv-acordeon');
-    acordeon.classList.toggle('open');
+    var body = acordeon.querySelector('.conv-acordeon-body');
+    if (acordeon.classList.contains('open')) {
+        acordeon.classList.remove('open');
+        body.style.display = 'none';
+    } else {
+        acordeon.classList.add('open');
+        body.style.display = 'block';
+    }
 }
 function expandirTodasConversaciones() {
-    document.querySelectorAll('.conv-acordeon').forEach(function(a) { a.classList.add('open'); });
+    document.querySelectorAll('.conv-acordeon').forEach(function(a) {
+        a.classList.add('open');
+        a.querySelector('.conv-acordeon-body').style.display = 'block';
+    });
 }
 function colapsarTodasConversaciones() {
-    document.querySelectorAll('.conv-acordeon').forEach(function(a) { a.classList.remove('open'); });
+    document.querySelectorAll('.conv-acordeon').forEach(function(a) {
+        a.classList.remove('open');
+        a.querySelector('.conv-acordeon-body').style.display = 'none';
+    });
 }
 </script>
 
