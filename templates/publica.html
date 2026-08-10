@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prop_extras %}
 {% block content %}
 <div class="form-modern-container" style="max-width:800px;">
     <h2>📋 Publicar Propiedad</h2>
@@ -180,12 +181,12 @@
         <div class="card" style="margin-bottom:15px;">
             <h3>💰 Valores de publicación</h3>
             <table style="width:100%;font-size:0.85rem;">
-                <tr><td>Normal venta</td><td><strong>${{ config_pago.valor_pub_venta_mensual }}/mes</strong></td></tr>
-                <tr><td>Destacada venta</td><td><strong>${{ config_pago.valor_destacado_venta_mensual }}/mes</strong></td></tr>
-                <tr><td>Normal arriendo</td><td><strong>${{ config_pago.valor_pub_arriendo_mensual }}/mes</strong></td></tr>
-                <tr><td>Destacada arriendo</td><td><strong>${{ config_pago.valor_destacado_arriendo_mensual }}/mes</strong></td></tr>
-                <tr><td>Normal SRT</td><td><strong>${{ config_pago.valor_pub_str_dia }}/día</strong></td></tr>
-                <tr><td>Destacada SRT</td><td><strong>${{ config_pago.valor_destacado_str_dia }}/día</strong></td></tr>
+                <tr><td>Normal venta</td><td><strong>${{ config_pago.valor_pub_venta_mensual|money }}/mes</strong></td></tr>
+                <tr><td>Destacada venta</td><td><strong>${{ config_pago.valor_destacado_venta_mensual|money }}/mes</strong></td></tr>
+                <tr><td>Normal arriendo</td><td><strong>${{ config_pago.valor_pub_arriendo_mensual|money }}/mes</strong></td></tr>
+                <tr><td>Destacada arriendo</td><td><strong>${{ config_pago.valor_destacado_arriendo_mensual|money }}/mes</strong></td></tr>
+                <tr><td>Normal SRT</td><td><strong>${{ config_pago.valor_pub_str_dia|money }}/día</strong></td></tr>
+                <tr><td>Destacada SRT</td><td><strong>${{ config_pago.valor_destacado_str_dia|money }}/día</strong></td></tr>
             </table>
             <p style="margin-top:8px;font-size:0.85rem;font-weight:700;" id="total-estimado">Total estimado: $0</p>
         </div>

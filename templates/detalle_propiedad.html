@@ -195,7 +195,7 @@
 
     <div>
         <div class="detail-modern-info">
-            <div class="detail-modern-price">{{ p.get_tipo_moneda_display }} {{ p.precio|floatformat:0|intcomma }}</div>
+            <div class="detail-modern-price">{{ p.get_tipo_moneda_display }} {{ p.precio|money }}</div>
             <hr style="margin:16px 0;border:none;border-top:1px solid var(--ds-border-light);">
             <div style="display:grid;gap:6px;font-size:0.9rem;color:var(--ds-text);">
                 {% if user == p.dueno or user.rol in 'gerente,superadmin' %}
@@ -205,10 +205,10 @@
                 {% if p.poblacion_localidad %}<div><strong>🏘️:</strong> {{ p.poblacion_localidad }}</div>{% endif %}
                 {% if p.comuna %}<div><strong>📍 Comuna:</strong> {{ p.comuna }}</div>{% endif %}
                 {% if p.montomensual_gastoscomunes_pcl %}
-                <div><strong>💵 Gastos comunes:</strong> ${{ p.montomensual_gastoscomunes_pcl|floatformat:0|intcomma }}</div>
+                <div><strong>💵 Gastos comunes:</strong> ${{ p.montomensual_gastoscomunes_pcl|money }}</div>
                 {% endif %}
                 {% if p.montoanual_contribuciones_pcl %}
-                <div><strong>💰 Contribuciones:</strong> ${{ p.montoanual_contribuciones_pcl|floatformat:0|intcomma }}</div>
+                <div><strong>💰 Contribuciones:</strong> ${{ p.montoanual_contribuciones_pcl|money }}</div>
                 {% endif %}
             </div>
             <hr style="margin:16px 0;border:none;border-top:1px solid var(--ds-border-light);">
@@ -637,7 +637,7 @@ document.getElementById('modal-visita')?.addEventListener('click', function(e) {
                                 <div style="display:flex;justify-content:flex-start;margin-bottom:8px;">
                                     <div style="max-width:85%;background:#e8f5e9;border:2px solid #a5d6a7;border-radius:16px 16px 16px 4px;padding:10px 14px;box-shadow:2px 2px 0 rgba(0,0,0,0.05);">
                                         <div style="font-size:0.7rem;color:#2e7d32;font-weight:600;margin-bottom:2px;">{{ propuesta.nombre_comprador }} · 💰 Propuesta</div>
-                                        <div style="font-size:0.95rem;font-weight:700;">{{ propuesta.moneda }} ${{ propuesta.monto_ofrecido|floatformat:0|intcomma }}</div>
+                                        <div style="font-size:0.95rem;font-weight:700;">{{ propuesta.moneda }} ${{ propuesta.monto_ofrecido|money }}</div>
                                         {% if propuesta.condiciones %}
                                         <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-top:2px;">📝 {{ propuesta.condiciones|truncatechars:100 }}</div>
                                         {% endif %}

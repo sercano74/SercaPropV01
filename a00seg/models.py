@@ -24,6 +24,13 @@ class Comuna(models.Model):
         verbose_name="Slug SEO",
         help_text="URL amigable para landing pages por comuna. Se genera automáticamente.",
     )
+    descripcion_seo = models.TextField(
+        blank=True,
+        verbose_name="Descripción SEO (landing page)",
+        help_text="Texto único que aparece al final de la landing page de esta comuna. "
+                  "Si está vacío se muestra un texto genérico. Escribe 2-3 frases que "
+                  "describan la comuna: conectividad, comercio, colegios, parques, etc.",
+    )
     region = models.ForeignKey(
         Region, 
         on_delete=models.CASCADE, 

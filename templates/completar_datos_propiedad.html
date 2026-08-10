@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load humanize %}
+{% load prop_extras %}
 {% block title %}Completar datos de propiedad{% endblock %}
 {% block content %}
 <div class="form-modern-container" style="max-width:800px;">
@@ -50,7 +51,7 @@
                 <label>Precio *</label>
                 <input type="number" name="precio" required step="0.01"
                     value="{% if propiedad.precio %}{{ propiedad.precio|floatformat:0 }}{% endif %}">
-                <span class="form-hint">Valor indicado en la solicitud: {% if propiedad.precio %}${{ propiedad.precio|floatformat:0|intcomma }}{% else %}—{% endif %}</span>
+                <span class="form-hint">Valor indicado en la solicitud: {% if propiedad.precio %}${{ propiedad.precio|money }}{% else %}—{% endif %}</span>
             </div>
         </div>
         <div class="form-row">

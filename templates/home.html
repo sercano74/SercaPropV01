@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load servicios_extras %}
+{% load prop_extras %}
 {% block content %}
 
 <div class="hero-modern">
@@ -47,7 +48,7 @@
                             <div class="card-modern-title">🆔 {{pub.propiedad.id}} · {{ pub.propiedad.get_tipo_prop_display }}</div>
                             {% comment %} <div class="card-modern-subtitle">{{ pub.propiedad.calle }} #{{ pub.propiedad.numero_calle }}</div> {% endcomment %}
                             <div class="card-modern-location">🗺️ {{pub.propiedad.comuna}}</div>
-                            <div class="card-modern-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|floatformat:0 }}</div>
+                            <div class="card-modern-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|money }}</div>
                         </div>
                     </a>
                 </div>
@@ -139,7 +140,7 @@
                     <div class="card-subtitle"><strong>{{ pub.propiedad.calle }} #{{ pub.propiedad.numero_calle }}</strong></div>
                     {% endif %}
                     {% if pub.propiedad.comuna %}<div class="card-location"><strong>📍 {{ pub.propiedad.comuna }}</strong></div>{% endif %}
-                    <div class="card-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|floatformat:0 }}</div>
+                    <div class="card-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|money }}</div>
                     <div class="card-details">
                         {% if pub.propiedad.numero_dormitorios %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Dormitorios">🛏️ {{ pub.propiedad.numero_dormitorios }}</span>{% endif %}
                         {% if pub.propiedad.numero_banos %}<span data-bs-toggle="tooltip" data-bs-placement="bottom" title="Baños">🛁 {{ pub.propiedad.numero_banos }}</span>{% endif %}

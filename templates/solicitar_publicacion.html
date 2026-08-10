@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load humanize %}
+{% load prop_extras %}
 {% block title %}Paso 1 - Solicitar publicación{% endblock %}
 {% block content %}
 <div class="form-modern-container" style="max-width:800px;">
@@ -159,12 +160,12 @@
         <div class="card" style="margin-bottom:15px;border:2px solid var(--ds-primary-light);border-radius:12px;padding:16px;">
             <h3 style="font-size:1rem;font-weight:700;margin-bottom:10px;">💰 Valores de publicación</h3>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.85rem;">
-                <span>Normal venta</span><span><strong>${{ config_pago.valor_pub_venta_mensual|intcomma }}/mes</strong></span>
-                <span>Destacada venta</span><span><strong>${{ config_pago.valor_destacado_venta_mensual|intcomma }}/mes</strong></span>
-                <span>Normal arriendo</span><span><strong>${{ config_pago.valor_pub_arriendo_mensual|intcomma }}/mes</strong></span>
-                <span>Destacada arriendo</span><span><strong>${{ config_pago.valor_destacado_arriendo_mensual|intcomma }}/mes</strong></span>
-                <span>Normal SRT</span><span><strong>${{ config_pago.valor_pub_str_dia|intcomma }}/día</strong></span>
-                <span>Destacada SRT</span><span><strong>${{ config_pago.valor_destacado_str_dia|intcomma }}/día</strong></span>
+                <span>Normal venta</span><span><strong>${{ config_pago.valor_pub_venta_mensual|money }}/mes</strong></span>
+                <span>Destacada venta</span><span><strong>${{ config_pago.valor_destacado_venta_mensual|money }}/mes</strong></span>
+                <span>Normal arriendo</span><span><strong>${{ config_pago.valor_pub_arriendo_mensual|money }}/mes</strong></span>
+                <span>Destacada arriendo</span><span><strong>${{ config_pago.valor_destacado_arriendo_mensual|money }}/mes</strong></span>
+                <span>Normal SRT</span><span><strong>${{ config_pago.valor_pub_str_dia|money }}/día</strong></span>
+                <span>Destacada SRT</span><span><strong>${{ config_pago.valor_destacado_str_dia|money }}/día</strong></span>
             </div>
             <p style="margin-top:12px;font-size:1.1rem;font-weight:800;color:var(--ds-primary);" id="total-estimado">Total estimado: $0</p>
         </div>

@@ -21,9 +21,24 @@ class RegionAdmin(admin.ModelAdmin):
 
 @admin.register(Comuna)
 class ComunaAdmin(admin.ModelAdmin):
-    list_display = ["nombre", "region"]
+    list_display = ["nombre", "region", "descripcion_seo"]
     list_filter = ["region"]
     search_fields = ["nombre", "region__nombre"]
+    fieldsets = (
+        (None, {"fields": ("nombre", "region", "slug")}),
+        (
+            "SEO Landing Page",
+            {
+                "classes": ("wide",),
+                "description": (
+                    "Texto único que la landing page mostrará al final. "
+                    "Si lo dejas vacío se usa un texto genérico."
+                ),
+                "fields": ("descripcion_seo",),
+            },
+        ),
+    )
+    readonly_fields = ["slug"]
 
 
 @admin.register(User)

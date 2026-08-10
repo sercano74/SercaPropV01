@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load humanize %}
 {% load static %}
+{% load prop_extras %}
 {% block title %}Editar {{ propiedad.get_tipo_prop_display }} - {{ propiedad.calle }}{% endblock %}
 {% block content %}
 <div class="form-modern-container" style="max-width:900px;">

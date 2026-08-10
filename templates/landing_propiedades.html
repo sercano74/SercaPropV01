@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prop_extras %}
 {% block title %}{{ tipo_prop_display }}s en {{ accion_display }} en {{ comuna.nombre }}{% endblock %}
 {% block meta_description %}{{ total }} {{ tipo_prop_display|lower }} en {{ accion_display|lower }} disponibles en {{ comuna.nombre }}. Precios, fotos y contactos directos. Venta, arriendo y SRT en {{ comuna.nombre }}.{% endblock %}
 
@@ -45,7 +46,7 @@
             <span class="card-badge">{{ pub.propiedad.get_tipo_accion_display }}</span>
             <div class="card-title">🆔 <strong>{{ pub.propiedad.id }} - {{ pub.propiedad.get_tipo_prop_display }}</strong></div>
             {% if pub.propiedad.comuna %}<div class="card-location"><strong>📍 {{ pub.propiedad.comuna }}</strong></div>{% endif %}
-            <div class="card-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|floatformat:0 }}</div>
+            <div class="card-price">{{ pub.propiedad.get_tipo_moneda_display }} {{ pub.propiedad.precio|money }}</div>
             <div class="card-details">
                 {% if pub.propiedad.numero_dormitorios %}<span title="Dormitorios">🛏️ {{ pub.propiedad.numero_dormitorios }}</span>{% endif %}
                 {% if pub.propiedad.numero_banos %}<span title="Baños">🛁 {{ pub.propiedad.numero_banos }}</span>{% endif %}
@@ -65,6 +66,10 @@
 
 <!-- BLOQUE SEO ÚNICO POR COMUNA -->
 <div style="margin-top:32px;padding:24px;background:var(--ds-bg-secondary);border-radius:16px;border:2px solid var(--ds-border);">
+    {% if comuna.descripcion_seo %}
+    <h2 style="font-size:1.3rem;margin-bottom:8px;">Vivir en {{ comuna.nombre }}</h2>
+    <p style="font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.6;white-space:pre-line;">{{ comuna.descripcion_seo }}</p>
+    {% else %}
     <h2 style="font-size:1.3rem;margin-bottom:8px;">¿Por qué buscar {{ tipo_prop_display|lower }}s en {{ accion_display|lower }} en {{ comuna.nombre }}?</h2>
     <p style="font-size:0.9rem;color:var(--ds-text-secondary);line-height:1.6;">
         {{ comuna.region.nombre }} es una de las comunas con mayor demanda de {{ tipo_prop_display|lower }}s en {{ accion_display|lower }}.
@@ -75,5 +80,6 @@
         {% if total > 0 %}las <strong>{{ total }}</strong> propiedades que tenemos publicadas hoy{% else %}el listado actualizado de propiedades con las condiciones que buscas{% endif %}.
         Cada publicación incluye {{ tipo_prop_display|lower }} en {{ accion_display|lower }} con detalle de dormitorios, baños, metros construidos y precio.
     </p>
+    {% endif %}
 </div>
 {% endblock %}

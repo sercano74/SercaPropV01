@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load prop_extras %}
 {% block content %}
 <div class="hero-modern">
     <h1>⭐ Mis favoritas</h1>
@@ -9,7 +10,7 @@
     <div class="property-card-modern">
         <div class="card-body">
             <div class="card-title">{{ prop.get_tipo_prop_display }} - {{ prop.calle }} #{{ prop.numero_calle }}</div>
-            <div class="card-price">{{ prop.get_tipo_moneda_display }} {{ prop.precio|floatformat:0 }}</div>
+            <div class="card-price">{{ prop.get_tipo_moneda_display }} {{ prop.precio|money }}</div>
             <div class="card-details">
                 <span>🛏️ {{ prop.numero_dormitorios }}</span>
                 <span>🚿 {{ prop.numero_banos }}</span>
