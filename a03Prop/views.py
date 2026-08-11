@@ -297,11 +297,16 @@ def asignar_corredor(request, prop_id):
         return redirect("detalle_propiedad", prop_id=prop_id)
 
     propiedad = get_object_or_404(Propiedad, id=prop_id)
-    corredores = User.objects.filter(rol="corredor", is_active=True)
+    corredores = User.objects.filter(rol__in=("corredor", "gerente", "superadmin"), is_active=True)
 
     if request.method == "POST":
         corredor_id = request.POST.get("corredor_id")
-        corredor = get_object_or_404(User, id=corredor_id, rol="corredor")
+        corredor = get_object_or_404(
+            User,
+            id=corredor_id,
+            rol__in=("corredor", "gerente", "superadmin"),
+            is_active=True,
+        )
 
         CorredorProp.objects.create(
             propiedad=propiedad,

@@ -558,6 +558,66 @@ a { color: inherit; }
 }
 
 /* =========================================================
+   SERVICIO CHECKBOX (badges de servicios de propiedad)
+   Fondo claro e invariante — solo el check cambia gris → coral oscuro
+   ========================================================= */
+.servicio-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400;
+    font-size: 0.85rem;
+    border: 2px solid var(--ds-border);
+    border-radius: 9999px;
+    padding: 6px 16px 6px 12px;
+    cursor: pointer;
+    background: var(--ds-bg);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+}
+.servicio-checkbox-label:hover {
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.1);
+}
+/* Círculo-check: gris cuando está inactivo */
+.servicio-checkbox-input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #BDBDBD;
+    background: var(--ds-bg);
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.servicio-checkbox-input::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: transparent;
+    transition: color 0.2s ease;
+}
+.servicio-checkbox-input:hover {
+    border-color: var(--ds-primary-dark);
+}
+/* Círculo-check: coral oscuro cuando está activo */
+.servicio-checkbox-input:checked {
+    background: var(--ds-primary-dark);
+    border-color: var(--ds-primary-dark);
+}
+.servicio-checkbox-input:checked::after {
+    color: var(--ds-text-inverse);
+}
+
+/* =========================================================
    FILTER CARD (modern elegant)
    ========================================================= */
 .filter-card-modern {

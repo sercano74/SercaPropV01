@@ -6,9 +6,9 @@
     <form method="POST" class="form-modern">
         {% csrf_token %}
         <div class="form-group">
-            <label>Corredor</label>
+            <label>Responsable (corredor, gerente o superadmin)</label>
             <select name="corredor_id" required>
-                <option value="">Seleccionar corredor...</option>
+                <option value="">Seleccionar responsable...</option>
                 {% for c in corredores %}
                 <option value="{{ c.id }}">{{ c.get_full_name|default:c.username }} ({{ c.email }})</option>
                 {% endfor %}

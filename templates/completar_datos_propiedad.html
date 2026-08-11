@@ -33,11 +33,10 @@
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 {% for s in grupo.list %}
-                <label class="servicio-checkbox-label" style="display:inline-flex;align-items:center;gap:8px;font-weight:400;font-size:0.85rem;border:2px solid {% if s in propiedad.servicios_prop.all %}var(--ds-primary){% else %}var(--ds-border){% endif %};border-radius:9999px;padding:6px 16px 6px 12px;cursor:pointer;background:{% if s in propiedad.servicios_prop.all %}var(--ds-primary-light){% else %}var(--ds-bg){% endif %};transition:all 0.2s ease;user-select:none;">
-                    <input type="checkbox" name="servicios" value="{{ s.id }}"
-                        {% if s in propiedad.servicios_prop.all %}checked{% endif %}
-                        style="width:18px;height:18px;accent-color:var(--ds-primary);cursor:pointer;">
-                    {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1.1rem;color:var(--ds-primary);"></i>{% endif %}
+                <label class="servicio-checkbox-label">
+                    <input type="checkbox" class="servicio-checkbox-input" name="servicios" value="{{ s.id }}"
+                        {% if s in propiedad.servicios_prop.all %}checked{% endif %}>
+                    {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1.1rem;color:var(--ds-primary-dark);"></i>{% endif %}
                     <span style="white-space:nowrap;">{{ s.nombre }}</span>
                 </label>
                 {% endfor %}
@@ -174,15 +173,4 @@ function updateFotoCount() {
 }
 </script>
 
-<style>
-/* Airbnb-style checkbox labels */
-.servicio-checkbox-label:hover {
-    border-color: var(--ds-primary) !important;
-    box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.1);
-}
-.servicio-checkbox-label:has(input:checked) {
-    border-color: var(--ds-primary) !important;
-    background: var(--ds-primary-light) !important;
-}
-</style>
 {% endblock %}

@@ -158,9 +158,9 @@
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 {% for s in grupo.list %}
-                <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;font-size:0.85rem;border:2px solid var(--ds-border);border-radius:9999px;padding:5px 12px;cursor:pointer;background:var(--ds-bg);transition:all 0.15s;">
-                    <input type="checkbox" name="servicios" value="{{ s.id }}" style="width:16px;height:16px;accent-color:var(--ds-primary);cursor:pointer;">
-                    {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1rem;color:var(--ds-primary);"></i>{% endif %}
+                <label class="servicio-checkbox-label">
+                    <input type="checkbox" class="servicio-checkbox-input" name="servicios" value="{{ s.id }}">
+                    {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1rem;color:var(--ds-primary-dark);"></i>{% endif %}
                     <span style="white-space:nowrap;">{{ s.nombre }}</span>
                 </label>
                 {% endfor %}
