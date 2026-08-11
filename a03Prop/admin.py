@@ -33,7 +33,8 @@ class PublicacionPropInline(admin.TabularInline):
 
 @admin.register(ServiciosProp)
 class ServiciosPropAdmin(admin.ModelAdmin):
-    list_display = ["nombre", "icono", "is_active"]
+    list_display = ["nombre", "icono", "get_categoria_display", "is_active"]
+    list_filter = ["categoria", "is_active"]
     search_fields = ["nombre"]
 
 

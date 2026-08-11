@@ -11,7 +11,12 @@
             {% csrf_token %}
             <input type="hidden" name="accion" value="crear">
             <input type="text" name="nombre" placeholder="Nombre del servicio" required style="flex:1;min-width:150px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
-            <input type="text" name="icono" placeholder="Icono (emoji/clase CSS)" style="width:120px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
+            <input type="text" name="icono" placeholder="Icono (ej: fa-solid fa-wifi)" style="width:180px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
+            <select name="categoria" style="width:200px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:6px;">
+                {% for value, label in categorias_disponibles %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
             <button type="submit" class="btn btn-primary btn-sm">Crear</button>
         </form>
     </div>
@@ -20,12 +25,13 @@
     <div class="card-modern-body">
         <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:12px;">📋 Servicios existentes</div>
         <table class="table-modern">
-            <thead><tr><th>Icono</th><th>Nombre</th><th>Estado</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Icono</th><th>Nombre</th><th>Categoría</th><th>Estado</th><th>Acción</th></tr></thead>
             <tbody>
             {% for s in servicios %}
             <tr>
-                <td>{{ s.icono|default:"-" }}</td>
+                <td>{% if s.icono %}<i class="{{ s.icono }}"></i>{% else %}-{% endif %}</td>
                 <td>{{ s.nombre }}</td>
+                <td><span class="badge-modern badge-modern-neutral">{{ s.get_categoria_display }}</span></td>
                 <td>{% if s.is_active %}<span class="badge-modern badge-modern-success">Activo</span>{% else %}<span class="badge-modern badge-modern-error">Inactivo</span>{% endif %}</td>
                 <td>
                     <form method="POST" style="display:inline;">
@@ -39,7 +45,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="empty-state-modern">No hay servicios creados.</td></tr>
+            <tr><td colspan="5" class="empty-state-modern">No hay servicios creados.</td></tr>
             {% endfor %}
             </tbody>
         </table>

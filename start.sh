@@ -4,6 +4,8 @@ echo "=== Migrando base de datos ==="
 python manage.py migrate --noinput
 echo "=== Poblando regiones y comunas ==="
 python scripts/poblar_regiones_comunas.py
+echo "=== Poblando servicios/características de propiedades ==="
+python manage.py seed_servicios_propiedad
 echo "=== Colectando estáticos ==="
 python manage.py collectstatic --noinput --clear
 echo "=== Iniciando servidor ==="

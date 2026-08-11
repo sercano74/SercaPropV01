@@ -16,14 +16,25 @@ def _generar_slug_unico(base, modelo, campo="slug"):
 
 class ServiciosProp(models.Model):
     """Servicios o características de la propiedad o de su entorno."""
+    CATEGORIA_CHOICES = [
+        ("entorno", "Entorno y Ubicación"),
+        ("equipamiento", "Equipamiento e Instalaciones (Condominio / Edificio)"),
+        ("interior", "Características de la Propiedad (Interior)"),
+    ]
     nombre = models.CharField(max_length=100, verbose_name="Nombre del servicio")
     icono = models.CharField(max_length=50, blank=True, verbose_name="Icono (clase CSS/emoji)")
+    categoria = models.CharField(
+        max_length=20,
+        choices=CATEGORIA_CHOICES,
+        default="entorno",
+        verbose_name="Categoría",
+    )
     is_active = models.BooleanField(default=True, verbose_name="Activo")
 
     class Meta:
         verbose_name = "Servicio de propiedad"
         verbose_name_plural = "Servicios de propiedades"
-        ordering = ["nombre"]
+        ordering = ["categoria", "nombre"]
 
     def __str__(self):
         return self.nombre

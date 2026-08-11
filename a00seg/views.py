@@ -1233,8 +1233,9 @@ def gestion_servicios(request):
         if accion == "crear":
             nombre = request.POST.get("nombre", "").strip()
             icono = request.POST.get("icono", "").strip()
+            categoria = request.POST.get("categoria", "entorno")
             if nombre:
-                ServiciosProp.objects.create(nombre=nombre, icono=icono)
+                ServiciosProp.objects.create(nombre=nombre, icono=icono, categoria=categoria)
                 messages.success(request, f"Servicio '{nombre}' creado.")
         elif accion == "toggle":
             servicio_id = request.POST.get("servicio_id")
@@ -1242,8 +1243,11 @@ def gestion_servicios(request):
             servicio = get_object_or_404(ServiciosProp, id=servicio_id)
             servicio.is_active = not servicio.is_active
             servicio.save()
-    servicios = ServiciosProp.objects.all().order_by("nombre")
-    return render(request, "gestion_servicios.html", {"servicios": servicios})
+    servicios = ServiciosProp.objects.all().order_by("categoria", "nombre")
+    return render(request, "gestion_servicios.html", {
+        "servicios": servicios,
+        "categorias_disponibles": ServiciosProp.CATEGORIA_CHOICES,
+    })
 
 
 # ============================================================

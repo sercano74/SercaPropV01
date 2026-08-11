@@ -25,17 +25,25 @@
         </div>
 
         <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">🔧 Servicios / Características</h3>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-            {% for s in servicios %}
-            <label class="servicio-checkbox-label" style="display:inline-flex;align-items:center;gap:8px;font-weight:400;font-size:0.85rem;border:2px solid {% if s in propiedad.servicios_prop.all %}var(--ds-primary){% else %}var(--ds-border){% endif %};border-radius:9999px;padding:6px 16px 6px 12px;cursor:pointer;background:{% if s in propiedad.servicios_prop.all %}var(--ds-primary-light){% else %}var(--ds-bg){% endif %};transition:all 0.2s ease;user-select:none;">
-                <input type="checkbox" name="servicios" value="{{ s.id }}"
-                    {% if s in propiedad.servicios_prop.all %}checked{% endif %}
-                    style="width:18px;height:18px;accent-color:var(--ds-primary);cursor:pointer;">
-                {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1.1rem;color:var(--ds-primary);"></i>{% endif %}
-                <span style="white-space:nowrap;">{{ s.nombre }}</span>
-            </label>
-            {% endfor %}
+        {% regroup servicios by get_categoria_display as servicios_por_categoria %}
+        {% for grupo in servicios_por_categoria %}
+        <div style="margin-bottom:14px;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--ds-text);background:var(--ds-bg-secondary);border-left:4px solid var(--ds-primary);padding:6px 12px;border-radius:0 8px 8px 0;margin-bottom:8px;">
+                {{ grupo.grouper }}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                {% for s in grupo.list %}
+                <label class="servicio-checkbox-label" style="display:inline-flex;align-items:center;gap:8px;font-weight:400;font-size:0.85rem;border:2px solid {% if s in propiedad.servicios_prop.all %}var(--ds-primary){% else %}var(--ds-border){% endif %};border-radius:9999px;padding:6px 16px 6px 12px;cursor:pointer;background:{% if s in propiedad.servicios_prop.all %}var(--ds-primary-light){% else %}var(--ds-bg){% endif %};transition:all 0.2s ease;user-select:none;">
+                    <input type="checkbox" name="servicios" value="{{ s.id }}"
+                        {% if s in propiedad.servicios_prop.all %}checked{% endif %}
+                        style="width:18px;height:18px;accent-color:var(--ds-primary);cursor:pointer;">
+                    {% if s.icono %}<i class="{{ s.icono }}" style="font-size:1.1rem;color:var(--ds-primary);"></i>{% endif %}
+                    <span style="white-space:nowrap;">{{ s.nombre }}</span>
+                </label>
+                {% endfor %}
+            </div>
         </div>
+        {% endfor %}
 
         <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">💰 Precio (ajustar si es necesario)</h3>
         <div class="form-row">

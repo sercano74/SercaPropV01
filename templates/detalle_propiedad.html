@@ -141,11 +141,17 @@
         <div class="card-modern mt-2">
             <div class="card-modern-body mb-2">
                 <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:8px;">🔧 Servicios</div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                    {% for s in p.servicios_prop.all %}
-                    <span class="tag-modern">{% if s.icono %}<i class="{{ s.icono }}"></i>{% endif %} {{ s.nombre }}</span>
-                    {% endfor %}
+                {% regroup p.servicios_prop.all by get_categoria_display as servicios_por_categoria %}
+                {% for grupo in servicios_por_categoria %}
+                <div style="margin-bottom:8px;">
+                    <div style="font-weight:700;font-size:0.75rem;color:var(--ds-text-secondary);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">{{ grupo.grouper }}</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                        {% for s in grupo.list %}
+                        <span class="tag-modern">{% if s.icono %}<i class="{{ s.icono }}"></i>{% endif %} {{ s.nombre }}</span>
+                        {% endfor %}
+                    </div>
                 </div>
+                {% endfor %}
             </div>
         </div>
         {% endif %}
