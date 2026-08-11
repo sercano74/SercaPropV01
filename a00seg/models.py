@@ -238,6 +238,85 @@ class SuscripcionVendedor(models.Model):
         return max(delta.days, 0)
 
 
+class DocumentoGestion(models.Model):
+    """
+    Biblioteca documental para la gestión: la gerencia/superadmin publica
+    plantillas e instructivos (PDF, Word, Excel, imágenes, etc.) por producto
+    (Ventas, Arriendos, SRT, Servicios Profesionales) para uso del corredor.
+    """
+    CATEGORIA_CHOICES = [
+        ("ventas", "Ventas"),
+        ("arriendos", "Arriendos"),
+        ("srt", "SRT (Arriendos vacacionales)"),
+        ("servicios", "Servicios Profesionales"),
+    ]
+    TIPO_CHOICES = [
+        ("plantilla", "Plantilla (para rellenar)"),
+        ("referencia", "Documento de referencia / instructivo"),
+    ]
+
+    categoria = models.CharField(
+        max_length=20, choices=CATEGORIA_CHOICES, verbose_name="Categoría / Producto"
+    )
+    nombre = models.CharField(max_length=255, verbose_name="Nombre del documento")
+    descripcion = models.TextField(
+        blank=True,
+        verbose_name="Descripción",
+        help_text="Descripción mejorada: para qué sirve, cómo usarlo, en qué etapa se sube, etc.",
+    )
+    archivo = models.FileField(
+        upload_to="docs_gestion/",
+        verbose_name="Archivo",
+        help_text="PDF, Word, Excel, imágenes u otros formatos",
+    )
+    tipo_documento = models.CharField(
+        max_length=20, choices=TIPO_CHOICES, default="referencia", verbose_name="Tipo de documento"
+    )
+    version = models.CharField(
+        max_length=20, blank=True, verbose_name="Versión",
+        help_text="Ej: v1.0, v2.3",
+    )
+    tags = models.CharField(
+        max_length=255, blank=True, verbose_name="Etiquetas / palabras clave",
+        help_text="Separadas por coma. Ej: orden de gestion, og, plantilla",
+    )
+    activo = models.BooleanField(
+        default=True, verbose_name="Activo",
+        help_text="Los documentos inactivos no se muestran a los corredores",
+    )
+    descargas = models.PositiveIntegerField(default=0, verbose_name="N° de descargas")
+    subido_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="documentos_gestion_subidos",
+        verbose_name="Subido por",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+
+    class Meta:
+        verbose_name = "Documento de gestión"
+        verbose_name_plural = "Documentos de gestión"
+        ordering = ["categoria", "nombre"]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.get_categoria_display()})"
+
+    @property
+    def nombre_archivo_original(self):
+        """Nombre original del archivo subido."""
+        import os
+        return os.path.basename(self.archivo.name) if self.archivo else ""
+
+    @property
+    def extension(self):
+        """Extensión del archivo (pdf, docx, xlsx, jpg, etc.)."""
+        import os
+        name = self.archivo.name if self.archivo else ""
+        return os.path.splitext(name)[1].lower().lstrip(".") if name else ""
+
+
 class SolicitudCorredor(models.Model):
     """Postulación de un usuario para convertirse en corredor."""
     ESTADO_CHOICES = [

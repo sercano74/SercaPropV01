@@ -207,6 +207,7 @@
                         {% if user.rol != 'base' %}
                         <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
                         <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
+                        <a href="{% url 'gestion_documentos' %}" class="dropdown-item">📂 Documentos</a>
                         <a href="{% url 'gestion_ingresos' %}" class="dropdown-item">💰 Ingresos</a>
                         {% endif %}
                         {% if user.rol in 'gerente,superadmin' %}

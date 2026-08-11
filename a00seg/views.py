@@ -1685,3 +1685,169 @@ def eliminar_cierre_economico(request, cierre_id):
     cierre.delete()
     messages.success(request, "Cierre económico eliminado.")
     return redirect("gestion_ingresos")
+
+
+# ============================================================
+# BIBLIOTECA DOCUMENTAL DE GESTIÓN (Documentos por producto)
+# ============================================================
+
+@login_required
+def gestion_documentos(request):
+    """
+    Biblioteca documental de gestión accesible para corredores activos,
+    gerentes y superadmin. Agrupa por producto (Ventas, Arriendos, SRT,
+    Servicios Profesionales) los documentos que la gerencia publica.
+    """
+    if request.user.rol not in ("corredor", "gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para acceder a esta sección.")
+        return redirect("gestion")
+
+    es_admin = request.user.rol in ("gerente", "superadmin")
+
+    # Búsqueda por término libre (nombre, descripción, tags)
+    q = request.GET.get("q", "").strip()
+    qs = DocumentoGestion.objects.all()
+    if not es_admin:
+        qs = qs.filter(activo=True)
+    if q:
+        qs = qs.filter(
+            Q(nombre__icontains=q)
+            | Q(descripcion__icontains=q)
+            | Q(tags__icontains=q)
+        )
+
+    secciones = []
+    for cat_key, cat_label, cat_icon, cat_desc in [
+        ("ventas", "Ventas", "📈",
+         "Documentación para la gestión de compraventa: orden de gestión, promesa, instrucciones notariales, contrato y escritura."),
+        ("arriendos", "Arriendos", "🏠",
+         "Contratos de arriendo, comisiones, notaría y cierre para arriendos tradicionales."),
+        ("srt", "SRT (Arriendos vacacionales)", "🏖️",
+         "Material para arriendos de corta estadía / vacacionales (Short Rental Time)."),
+        ("servicios", "Servicios Profesionales", "🔨",
+         "Plantillas e instructivos para los servicios profesionales de ingeniería y construcción."),
+    ]:
+        docs_cat = qs.filter(categoria=cat_key)
+        secciones.append({
+            "categoria": cat_key,
+            "titulo": cat_label,
+            "icono": cat_icon,
+            "descripcion": cat_desc,
+            "documentos": docs_cat,
+        })
+
+    total_docs = qs.count()
+    return render(request, "gestion_documentos.html", {
+        "secciones": secciones,
+        "es_admin": es_admin,
+        "q": q,
+        "total_docs": total_docs,
+    })
+
+
+@login_required
+def gestion_documentos_subir(request):
+    """Publica un nuevo documento en la biblioteca (solo gerente/superadmin)."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para publicar documentos.")
+        return redirect("gestion_documentos")
+
+    if request.method == "POST":
+        categoria = request.POST.get("categoria", "")
+        nombre = request.POST.get("nombre", "").strip()
+        descripcion = request.POST.get("descripcion", "").strip()
+        tipo_documento = request.POST.get("tipo_documento", "referencia")
+        version = request.POST.get("version", "").strip()
+        tags = request.POST.get("tags", "").strip()
+        activo = request.POST.get("activo") == "on"
+        archivo = request.FILES.get("archivo")
+
+        errores = []
+        if categoria not in dict(DocumentoGestion.CATEGORIA_CHOICES):
+            errores.append("Debes elegir una categoría / producto válido.")
+        if not nombre:
+            errores.append("El nombre del documento es obligatorio.")
+        if not archivo:
+            errores.append("Debes adjuntar el archivo del documento.")
+        if tipo_documento not in dict(DocumentoGestion.TIPO_CHOICES):
+            tipo_documento = "referencia"
+
+        if errores:
+            for e in errores:
+                messages.error(request, e)
+            return render(request, "gestion_documentos_subir.html", {
+                "datos": request.POST,
+            })
+
+        try:
+            DocumentoGestion.objects.create(
+                categoria=categoria,
+                nombre=nombre,
+                descripcion=descripcion,
+                archivo=archivo,
+                tipo_documento=tipo_documento,
+                version=version,
+                tags=tags,
+                activo=activo,
+                subido_por=request.user,
+            )
+        except Exception as e:
+            logger.error(f"Error subiendo documento de gestión «{nombre}»: {e}", exc_info=True)
+            messages.error(
+                request,
+                "❌ No se pudo subir el archivo. Verifica que sea un documento "
+                "(PDF, Word, Excel o imagen) en un formato válido e inténtalo nuevamente."
+            )
+            return render(request, "gestion_documentos_subir.html", {
+                "datos": request.POST,
+            })
+
+        cat_label = dict(DocumentoGestion.CATEGORIA_CHOICES).get(categoria, categoria)
+        messages.success(request, f"✅ Documento «{nombre}» publicado en {cat_label}.")
+        return redirect("gestion_documentos")
+
+    return render(request, "gestion_documentos_subir.html", {
+        "datos": {},
+        "categorias": DocumentoGestion.CATEGORIA_CHOICES,
+        "tipos": DocumentoGestion.TIPO_CHOICES,
+    })
+
+
+@login_required
+def gestion_documentos_eliminar(request, doc_id):
+    """Elimina un documento de la biblioteca (solo gerente/superadmin)."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para eliminar documentos.")
+        return redirect("gestion_documentos")
+
+    documento = get_object_or_404(DocumentoGestion, id=doc_id)
+    nombre = documento.nombre
+    documento.delete()
+    messages.success(request, f"🗑️ Documento «{nombre}» eliminado.")
+    return redirect("gestion_documentos")
+
+
+@login_required
+def gestion_documentos_descargar(request, doc_id):
+    """Descarga un documento y registra el contador de descargas."""
+    if request.user.rol not in ("corredor", "gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para descargar documentos.")
+        return redirect("gestion")
+
+    from django.http import FileResponse, Http404
+    from django.db.models import F
+
+    documento = get_object_or_404(DocumentoGestion, id=doc_id)
+    if not documento.activo and request.user.rol not in ("gerente", "superadmin"):
+        raise Http404("Documento no disponible")
+
+    try:
+        archivo = documento.archivo.open("rb")
+    except Exception:
+        raise Http404("No se pudo abrir el archivo")
+
+    DocumentoGestion.objects.filter(pk=doc_id).update(descargas=F("descargas") + 1)
+
+    nombre_descarga = (documento.nombre.replace(" ", "_") + "." + documento.extension) if documento.extension else "documento"
+    response = FileResponse(archivo, as_attachment=True, filename=nombre_descarga)
+    return response

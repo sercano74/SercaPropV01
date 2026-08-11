@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>📂 Biblioteca de Gestión</h1>
+    <p>{{ user.get_full_name|default:user.username }} · {{ user.get_rol_display|default:user.rol|title }}</p>
+    <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin-top:6px;">
+        Documentación administrativa por producto para tu gestión: ventas, arriendos, SRT y servicios profesionales.
+    </p>
+</div>
+
+<!-- ===== ACCIONES ===== -->
+<div class="card-modern" style="margin-bottom:20px;">
+    <div class="card-modern-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+        <form method="GET" action="{% url 'gestion_documentos' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre, descripción o etiqueta…"
+                   style="padding:8px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;min-width:260px;">
+            <button type="submit" class="btn btn-primary btn-sm">🔍 Buscar</button>
+            {% if q %}
+            <a href="{% url 'gestion_documentos' %}" class="btn btn-ghost btn-sm">Limpiar</a>
+            {% endif %}
+        </form>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <span class="badge-modern badge-modern-neutral">{{ total_docs }} documento{{ total_docs|pluralize:"s" }}</span>
+            {% if es_admin %}
+            <a href="{% url 'gestion_documentos_subir' %}" class="btn btn-primary btn-sm" style="text-decoration:none;">➕ Publicar documento</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ===== SECCIONES POR PRODUCTO ===== -->
+{% for seccion in secciones %}
+<div class="card-modern" style="margin-bottom:24px;{% if not seccion.documentos %}opacity:0.85;{% endif %}">
+    <div class="card-modern-body">
+        <div class="card-modern-title" style="font-size:1.15rem;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:1.4rem;">{{ seccion.icono }}</span>
+            <span>{{ seccion.titulo }}</span>
+            <span class="badge-modern badge-modern-neutral" style="margin-left:4px;">{{ seccion.documentos|length }}</span>
+            {% if es_admin %}
+            <a href="{% url 'gestion_documentos_subir' %}?categoria={{ seccion.categoria }}" class="btn btn-ghost btn-sm" style="margin-left:auto;text-decoration:none;font-size:0.7rem;">➕ Añadir a {{ seccion.titulo|truncatechars:12 }}</a>
+            {% endif %}
+        </div>
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:14px;">{{ seccion.descripcion }}</p>
+
+        {% if seccion.documentos %}
+        <div style="overflow-x:auto;">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>Documento</th>
+                        <th>Tipo</th>
+                        <th>Versión</th>
+                        <th>Formato</th>
+                        <th>Descargas</th>
+                        <th>Actualizado</th>
+                        {% if es_admin %}<th>Estado</th>{% endif %}
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in seccion.documentos %}
+                    <tr>
+                        <td>
+                            <div style="font-weight:600;font-size:0.9rem;color:var(--ds-text);">{{ doc.nombre }}</div>
+                            {% if doc.descripcion %}
+                            <div style="font-size:0.78rem;color:var(--ds-text-secondary);max-width:420px;">{{ doc.descripcion }}</div>
+                            {% endif %}
+                            {% if doc.tags %}
+                            <div style="margin-top:4px;">
+                                <span style="font-size:0.68rem;background:var(--ds-bg-secondary);border:1px solid var(--ds-border);border-radius:6px;padding:1px 8px;color:var(--ds-text-secondary);">{{ doc.tags|truncatechars:60 }}</span>
+                            </div>
+                            {% endif %}
+                            <div style="font-size:0.7rem;color:var(--ds-text-muted);margin-top:3px;">Subido por {{ doc.subido_por.get_full_name|default:doc.subido_por.username|default:"—" }} · {{ doc.created_at|date:"d/m/Y" }}</div>
+                        </td>
+                        <td>
+                            {% if doc.tipo_documento == "plantilla" %}
+                            <span class="badge-modern badge-modern-primary" style="font-size:0.65rem;">📝 Plantilla</span>
+                            {% else %}
+                            <span class="badge-modern badge-modern-neutral" style="font-size:0.65rem;">📄 Referencia</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if doc.version %}
+                            <span class="badge-modern badge-modern-info" style="font-size:0.65rem;">{{ doc.version }}</span>
+                            {% else %}
+                            <span style="color:var(--ds-text-muted);font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge-modern badge-modern-neutral" style="font-size:0.65rem;text-transform:uppercase;">{{ doc.extension|default:"PDF" }}</span>
+                        </td>
+                        <td style="font-size:0.85rem;">⬇️ {{ doc.descargas }}</td>
+                        <td style="font-size:0.8rem;">{{ doc.updated_at|date:"d/m/Y" }}</td>
+                        {% if es_admin %}
+                        <td>
+                            <span class="badge-modern {% if doc.activo %}badge-modern-success{% else %}badge-modern-warning{% endif %}" style="font-size:0.65rem;">
+                                {% if doc.activo %}Activo{% else %}Inactivo{% endif %}
+                            </span>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <a href="{% url 'gestion_documentos_descargar' doc.id %}" class="btn btn-primary btn-sm" style="text-decoration:none;font-size:0.7rem;padding:5px 10px;">⬇️ Descargar</a>
+                                {% if es_admin %}
+                                <a href="{% url 'gestion_documentos_eliminar' doc.id %}" class="btn btn-danger btn-sm" style="text-decoration:none;font-size:0.7rem;padding:5px 10px;" onclick="return confirm('¿Eliminar el documento «{{ doc.nombre }}»?')">🗑️</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state-modern" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;margin-bottom:6px;">📭</div>
+            <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin:0;">
+                {% if q %}
+                Sin resultados para «{{ q }}» en esta sección.
+                {% elif es_admin %}
+                Aún no hay documentos. <a href="{% url 'gestion_documentos_subir' %}?categoria={{ seccion.categoria }}" style="color:var(--ds-primary);text-decoration:underline;">Publica el primero</a>.
+                {% else %}
+                La gerencia aún no ha publicado documentos en esta sección.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<div class="card-modern" style="margin-top:20px;">
+    <div class="card-modern-body" style="padding:16px;">
+        <div style="font-size:0.85rem;color:var(--ds-text-secondary);">
+            <strong style="color:var(--ds-text);">💡 ¿Cómo usar esta biblioteca?</strong><br>
+            Descarga la plantilla más actualizada (por ejemplo, la Orden de Gestión), rellénala con los datos del negocio
+            y súbela en la etapa correspondiente del proceso dentro de la gestión de la propiedad.
+            La gerencia publica aquí las versiones vigentes de cada documento.
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -42,4 +42,10 @@ urlpatterns = [
     path('gestion/ingresos/crear/<int:prop_id>/', views.crear_cierre_economico, name='crear_cierre_economico'),
     path('gestion/ingresos/editar/<int:cierre_id>/', views.editar_cierre_economico, name='editar_cierre_economico'),
     path('gestion/ingresos/eliminar/<int:cierre_id>/', views.eliminar_cierre_economico, name='eliminar_cierre_economico'),
+
+    # Biblioteca documental de gestión (documentos por producto)
+    path('gestion/documentos/', views.gestion_documentos, name='gestion_documentos'),
+    path('gestion/documentos/subir/', views.gestion_documentos_subir, name='gestion_documentos_subir'),
+    path('gestion/documentos/eliminar/<int:doc_id>/', views.gestion_documentos_eliminar, name='gestion_documentos_eliminar'),
+    path('gestion/documentos/descargar/<int:doc_id>/', views.gestion_documentos_descargar, name='gestion_documentos_descargar'),
 ]

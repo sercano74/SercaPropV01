@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-modern">
+    <h1>➕ Publicar Documento de Gestión</h1>
+    <p>{{ user.get_full_name|default:user.username }} · Gerencia</p>
+</div>
+
+<div class="card-modern" style="max-width:820px;margin:0 auto;">
+    <div class="card-modern-body">
+        <form method="POST" enctype="multipart/form-data" action="{% url 'gestion_documentos_subir' %}">
+            {% csrf_token %}
+
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Categoría / Producto *</label>
+                <select name="categoria" required style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+                    <option value="">— Selecciona el producto —</option>
+                    {% for val, label in categorias %}
+                    <option value="{{ val }}" {% if datos.categoria|default:request.GET.categoria == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Nombre del documento *</label>
+                <input type="text" name="nombre" value="{{ datos.nombre }}"
+                       placeholder="Ej: Orden de Gestión — Ventas (v2)" required
+                       style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Descripción</label>
+                <textarea name="descripcion" rows="4" placeholder="¿Para qué sirve este documento? ¿Cómo debe usarlo el corredor? ¿En qué etapa del proceso se sube?"
+                          style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">{{ datos.descripcion }}</textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+                <div>
+                    <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Tipo de documento</label>
+                    <select name="tipo_documento" style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+                        {% for val, label in tipos %}
+                        <option value="{{ val }}" {% if datos.tipo_documento == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Versión</label>
+                    <input type="text" name="version" value="{{ datos.version }}" placeholder="Ej: v1.0" maxlength="20"
+                           style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Etiquetas / palabras clave</label>
+                <input type="text" name="tags" value="{{ datos.tags }}" placeholder="Ej: orden de gestion, og, plantilla, contrato"
+                       style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;">
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:5px;">Archivo * (PDF, Word, Excel, imágenes…)</label>
+                <input type="file" name="archivo" required
+                       style="width:100%;padding:10px 14px;border:1px solid var(--ds-border);border-radius:var(--ds-radius-md);font-size:0.9rem;background:var(--ds-bg-secondary);">
+            </div>
+
+            <div style="margin-bottom:20px;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="activo" id="id_activo" checked style="width:18px;height:18px;">
+                <label for="id_activo" style="font-size:0.85rem;color:var(--ds-text-secondary);cursor:pointer;">
+                    Visible para los corredores (desmarca para ocultarlo temporalmente)
+                </label>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary">📤 Publicar documento</button>
+                <a href="{% url 'gestion_documentos' %}" class="btn btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

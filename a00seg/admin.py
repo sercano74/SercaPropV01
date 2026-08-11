@@ -10,6 +10,7 @@ from .models import (
     SuscripcionCorredor,
     SuscripcionVendedor,
     SolicitudCorredor,
+    DocumentoGestion,
 )
 
 
@@ -116,3 +117,14 @@ class SolicitudCorredorAdmin(admin.ModelAdmin):
     list_filter = ["estado", "plan"]
     search_fields = ["nombres", "apellidos", "email"]
     readonly_fields = ["created_at", "updated_at"]
+
+
+@admin.register(DocumentoGestion)
+class DocumentoGestionAdmin(admin.ModelAdmin):
+    list_display = [
+        "nombre", "categoria", "tipo_documento", "version", "activo",
+        "descargas", "subido_por", "created_at",
+    ]
+    list_filter = ["categoria", "tipo_documento", "activo"]
+    search_fields = ["nombre", "descripcion", "tags"]
+    readonly_fields = ["descargas", "created_at", "updated_at"]
