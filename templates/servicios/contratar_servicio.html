@@ -116,7 +116,9 @@
 
             <div class="form-group">
                 <label>Descripción *</label>
-                <textarea name="descripcion" rows="4" required placeholder="Describe tu servicio, experiencia, cobertura geográfica...">{{ datos.descripcion|default:'' }}</textarea>
+                <div data-descripcion-actual="{{ datos.descripcion|default:'' }}">
+                {% include "includes/editor_rtf.html" with nombre_campo="descripcion" valor=datos.descripcion|default:"" placeholder="Describe tu servicio, experiencia, cobertura geográfica..." filas="6" %}
+                </div>
             </div>
 
             <div class="form-group">

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prop_extras %}
 {% block title %}{{ servicio.titulo }} - Dato Constructor{% endblock %}
 {% block content %}
 
@@ -43,8 +44,34 @@
 
         <!-- DESCRIPCIÓN DEL SERVICIO -->
         <div class="detail-modern-info" style="margin-top:12px;">
-            <h2 style="margin:0 0 8px 0;font-size:1.4rem;">{{ servicio.titulo }}</h2>
-            <p style="font-size:0.95rem;color:var(--ds-text-secondary);line-height:1.6;margin:0;">{{ servicio.descripcion|linebreaksbr }}</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <h2 style="margin:0;font-size:1.4rem;">{{ servicio.titulo }}</h2>
+                {% if puede_editar_imagen %}
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('editor-descripcion').style.display='block';document.getElementById('vista-descripcion').style.display='none';this.style.display='none';" style="font-size:0.75rem;">
+                    ✏️ Editar descripción
+                </button>
+                {% endif %}
+            </div>
+
+            <div id="vista-descripcion">
+                <div class="vista-rtf" style="color:var(--ds-text-secondary);margin:0;">{{ servicio.descripcion|safe_rtf }}</div>
+            </div>
+
+            {% if puede_editar_imagen %}
+            <div id="editor-descripcion" style="display:none;margin-top:8px;">
+                <form method="POST" action="{% url 'editar_descripcion_servicio' servicio.id %}">
+                    {% csrf_token %}
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label>Descripción del servicio</label>
+                        {% include "includes/editor_rtf.html" with nombre_campo="descripcion" valor=servicio.descripcion|default:"" placeholder="Describe tu servicio, experiencia, cobertura geográfica..." filas="8" %}
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button type="submit" class="btn btn-primary btn-sm">💾 Guardar descripción</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('editor-descripcion').style.display='none';document.getElementById('vista-descripcion').style.display='block';document.querySelector('#vista-descripcion').parentElement.querySelector('button.btn-outline').style.display='inline-flex';">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </div>
 

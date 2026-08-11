@@ -1,0 +1,226 @@
+{% comment %}
+    Editor de texto enriquecido (WYSIWYG) para descripciones.
+
+    Uso:
+    {% include "includes/editor_rtf.html" with nombre_campo="descripcion_propiedad" valor=propiedad.descripcion_propiedad|default:"" placeholder="Escribe aquí..." filas="8" %}
+
+    - nombre_campo: name del textarea oculto que recibe el HTML.
+    - valor: contenido HTML inicial (ya guardado en BD).
+    - placeholder: texto de ayuda dentro del editor.
+    - filas: alto aproximado (nº de líneas).
+
+    El editor guarda el HTML en un <textarea hidden> que se envía con el form.
+    El CSS de Quill se carga vía CDN junto con el script de inicialización.
+{% endcomment %}
+{% load static %}
+
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+
+<div class="editor-rtf-wrapper" data-nombre-campo="{{ nombre_campo }}" data-placeholder="{{ placeholder|default:'Escribe aquí...' }}">
+    <div class="editor-rtf-toolbar">
+        <span class="ql-formats">
+            <select class="ql-header">
+                <option value="1"></option>
+                <option value="2"></option>
+                <option value="3"></option>
+                <option selected></option>
+            </select>
+        </span>
+        <span class="ql-formats">
+            <button class="ql-bold" title="Negrita"></button>
+            <button class="ql-italic" title="Cursiva"></button>
+            <button class="ql-underline" title="Subrayado"></button>
+            <button class="ql-strike" title="Tachado"></button>
+        </span>
+        <span class="ql-formats">
+            <button class="ql-list" value="ordered" title="Lista numerada"></button>
+            <button class="ql-list" value="bullet" title="Lista con viñetas"></button>
+            <button class="ql-blockquote" title="Cita"></button>
+        </span>
+        <span class="ql-formats">
+            <button class="ql-link" title="Insertar enlace"></button>
+            <button class="ql-code-block" title="Código"></button>
+        </span>
+        <span class="ql-formats">
+            <button class="ql-clean" title="Limpiar formato"></button>
+        </span>
+        <span class="editor-rtf-emoji-btn" title="Insertar emoji">😊</span>
+    </div>
+    <div class="editor-rtf-contenido" style="min-height:{{ filas|default:6|stringformat:'s' }}rem;"></div>
+    <textarea name="{{ nombre_campo }}" class="editor-rtf-input" hidden>{{ valor|default:"" }}</textarea>
+    <div class="editor-rtf-emojis" style="display:none;">
+        <span>😀</span><span>😄</span><span>😊</span><span>👍</span><span>👏</span><span>🙌</span>
+        <span>🏠</span><span>🏢</span><span>🌳</span><span>🌿</span><span>🌸</span><span>☀️</span>
+        <span>🛏️</span><span>🚿</span><span>🚗</span><span>📦</span><span>🔒</span><span>🔑</span>
+        <span>💰</span><span>📈</span><span>✅</span><span>⭐</span><span>🔥</span><span>🏆</span>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.editor-rtf-wrapper').forEach(function(wrapper) {
+        var nombreCampo = wrapper.getAttribute('data-nombre-campo');
+        var placeholder = wrapper.getAttribute('data-placeholder') || 'Escribe aquí...';
+        var contenedor = wrapper.querySelector('.editor-rtf-contenido');
+        var toolbar = wrapper.querySelector('.editor-rtf-toolbar');
+        var inputOculto = wrapper.querySelector('.editor-rtf-input');
+        var valorInicial = inputOculto.textContent.trim();
+
+        var quill = new Quill(contenedor, {
+            theme: 'snow',
+            placeholder: placeholder,
+            modules: {
+                toolbar: toolbar
+            }
+        });
+
+        // Cargar valor inicial (si viene HTML guardado)
+        if (valorInicial) {
+            try {
+                quill.clipboard.dangerouslyPasteHTML(valorInicial);
+            } catch (e) {
+                quill.root.innerHTML = valorInicial;
+            }
+        }
+
+        // Sincronizar el HTML con el textarea oculto
+        function sync() {
+            inputOculto.value = quill.root.innerHTML;
+        }
+        quill.on('text-change', sync);
+        sync();
+
+        // Botón de emojis: inserta el emoji en la posición del cursor
+        var btnEmoji = wrapper.querySelector('.editor-rtf-emoji-btn');
+        var panelEmojis = wrapper.querySelector('.editor-rtf-emojis');
+        if (btnEmoji && panelEmojis) {
+            btnEmoji.addEventListener('click', function(e) {
+                e.stopPropagation();
+                panelEmojis.style.display = panelEmojis.style.display === 'none' ? 'flex' : 'none';
+            });
+            panelEmojis.querySelectorAll('span').forEach(function(emo) {
+                emo.addEventListener('click', function() {
+                    var seleccion = quill.getSelection(true);
+                    var indice = seleccion ? seleccion.index : quill.getLength();
+                    quill.insertText(indice, emo.textContent);
+                    quill.setSelection(indice + emo.textContent.length, 0);
+                    panelEmojis.style.display = 'none';
+                });
+            });
+            document.addEventListener('click', function(e) {
+                if (!wrapper.contains(e.target)) {
+                    panelEmojis.style.display = 'none';
+                }
+            });
+        }
+    });
+});
+</script>
+
+<style>
+.editor-rtf-wrapper {
+    border: 2px solid var(--ds-border);
+    border-radius: var(--ds-radius-md);
+    background: var(--ds-bg);
+    overflow: hidden;
+}
+.editor-rtf-wrapper:focus-within {
+    border-color: var(--ds-primary);
+    box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.12);
+}
+.editor-rtf-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--ds-border-light);
+    background: var(--ds-bg-secondary);
+}
+.editor-rtf-toolbar .ql-formats {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+}
+.editor-rtf-emoji-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid var(--ds-border);
+    background: var(--ds-bg);
+    user-select: none;
+    margin-left: auto;
+}
+.editor-rtf-emoji-btn:hover {
+    background: var(--ds-bg-hover);
+}
+.editor-rtf-emojis {
+    position: absolute;
+    z-index: 50;
+    background: white;
+    border: 1px solid var(--ds-border);
+    border-radius: 10px;
+    box-shadow: var(--ds-shadow-lg);
+    padding: 8px;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 220px;
+    margin-top: -2px;
+}
+.editor-rtf-emojis span {
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 6px;
+    line-height: 1.2;
+}
+.editor-rtf-emojis span:hover {
+    background: var(--ds-bg-secondary);
+}
+.editor-rtf-contenido {
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.editor-rtf-contenido .ql-editor {
+    min-height: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.vista-rtf {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    word-wrap: break-word;
+}
+.vista-rtf h2,
+.vista-rtf h3,
+.vista-rtf h4 {
+    margin: 0.7em 0 0.3em;
+    line-height: 1.3;
+}
+.vista-rtf ul,
+.vista-rtf ol {
+    margin: 0.4em 0;
+    padding-left: 1.5em;
+}
+.vista-rtf li {
+    margin-bottom: 0.2em;
+}
+.vista-rtf blockquote {
+    border-left: 4px solid var(--ds-primary-light);
+    padding-left: 12px;
+    color: var(--ds-text-secondary);
+    font-style: italic;
+    margin: 0.5em 0;
+}
+.vista-rtf a {
+    color: var(--ds-primary);
+    text-decoration: underline;
+}
+</style>

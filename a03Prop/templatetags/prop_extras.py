@@ -1,6 +1,39 @@
+import bleach
 from django import template
 
 register = template.Library()
+
+# Tags/atributos permitidos por el editor de texto enriquecido (WYSIWYG)
+# para las descripciones de propiedades y servicios.
+_RTF_TAGS = [
+    "p", "br", "strong", "b", "em", "i", "u", "s", "strike",
+    "ol", "ul", "li", "h2", "h3", "h4", "blockquote",
+    "a", "code", "pre", "span",
+]
+_RTF_ATTRS = {
+    "a": ["href", "target", "rel", "title"],
+    "span": ["class"],
+}
+_RTF_PROTOCOLS = ["http", "https", "mailto", "tel", "whatsapp"]
+
+
+@register.filter
+def safe_rtf(value):
+    """Sanitiza HTML generado por el editor WYSIWYG (Quill) antes de renderizarlo.
+
+    Permite solo etiquetas de formato (negritas, listas, enlaces, etc.)
+    y elimina scripts, iframes y estilos peligrosos.
+    """
+    if not value:
+        return ""
+    return bleach.clean(
+        value,
+        tags=_RTF_TAGS,
+        attributes=_RTF_ATTRS,
+        protocols=_RTF_PROTOCOLS,
+        strip=True,
+        strip_comments=True,
+    )
 
 
 @register.filter

@@ -124,7 +124,7 @@
         <div class="card-modern" style="margin-top:16px;">
             <div class="card-modern-body">
                 <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:8px;">📝 Descripción</div>
-                {% if p.descripcion_propiedad %}<div class="card-modern-text">{{ p.descripcion_propiedad }}</div>{% endif %}
+                {% if p.descripcion_propiedad %}<div class="card-modern-text vista-rtf">{{ p.descripcion_propiedad|safe_rtf }}</div>{% endif %}
             </div>
         </div>
 
@@ -132,7 +132,7 @@
         <div class="card-modern mt-2">
             <div class="card-modern-body">
                 <div class="card-modern-title" style="font-size:1.1rem;margin-bottom:8px;">🌳 Entorno</div>
-                <div class="card-modern-text">{{ p.descripcion_entorno }}</div>
+                <div class="card-modern-text vista-rtf">{{ p.descripcion_entorno|safe_rtf }}</div>
             </div>
         </div>
         {% endif %}

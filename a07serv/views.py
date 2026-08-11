@@ -676,6 +676,32 @@ def gestion_mis_servicios(request):
 
 
 @login_required
+def editar_descripcion_servicio(request, servicio_id):
+    """El publicante (o gerente/superadmin) edita la descripción del servicio con el editor WYSIWYG."""
+    servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)
+
+    # Solo el publicante del servicio, gerente o superadmin pueden editar la descripción
+    es_admin = request.user.rol in ("gerente", "superadmin")
+    if not es_admin and servicio.publicante_id != request.user.id:
+        messages.error(request, "No tienes permisos para modificar este servicio.")
+        return redirect("detalle_servicio", servicio_id=servicio.id)
+
+    if request.method != "POST":
+        return redirect("detalle_servicio", servicio_id=servicio.id)
+
+    nueva_descripcion = request.POST.get("descripcion", "").strip()
+    if not nueva_descripcion:
+        messages.error(request, "La descripción no puede quedar vacía.")
+        return redirect("detalle_servicio", servicio_id=servicio.id)
+
+    servicio.descripcion = nueva_descripcion
+    servicio.save(update_fields=["descripcion", "updated_at"])
+
+    messages.success(request, "✅ Descripción actualizada correctamente.")
+    return redirect("detalle_servicio", servicio_id=servicio.id)
+
+
+@login_required
 def subir_imagen_servicio(request, servicio_id):
     """El publicante (o gerente/superadmin) sube o reemplaza la imagen de un servicio."""
     servicio = get_object_or_404(ServicioPublicitario, id=servicio_id)

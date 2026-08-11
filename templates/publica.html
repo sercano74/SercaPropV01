@@ -142,11 +142,11 @@
         <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">📝 Descripción</h3>
         <div class="form-group">
             <label>Descripción de la propiedad</label>
-            <textarea name="descripcion_propiedad" rows="4"></textarea>
+            {% include "includes/editor_rtf.html" with nombre_campo="descripcion_propiedad" valor=datos.descripcion_propiedad|default:"" placeholder="Describe la propiedad en detalle..." filas="6" %}
         </div>
         <div class="form-group">
             <label>Descripción del entorno</label>
-            <textarea name="descripcion_entorno" rows="3"></textarea>
+            {% include "includes/editor_rtf.html" with nombre_campo="descripcion_entorno" valor=datos.descripcion_entorno|default:"" placeholder="Describe el entorno y su ubicación..." filas="4" %}
         </div>
 
         <h3 style="margin:15px 0 10px;border-bottom:2px solid var(--yellow);padding-bottom:4px;">🔧 Servicios / Características</h3>
