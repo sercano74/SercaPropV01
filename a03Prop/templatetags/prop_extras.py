@@ -1,5 +1,6 @@
 import bleach
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -26,7 +27,7 @@ def safe_rtf(value):
     """
     if not value:
         return ""
-    return bleach.clean(
+    limpiado = bleach.clean(
         value,
         tags=_RTF_TAGS,
         attributes=_RTF_ATTRS,
@@ -34,6 +35,8 @@ def safe_rtf(value):
         strip=True,
         strip_comments=True,
     )
+    # mark_safe evita que Django escape el HTML sanitizado en el template.
+    return mark_safe(limpiado)
 
 
 @register.filter
