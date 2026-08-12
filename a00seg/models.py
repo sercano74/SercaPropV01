@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
+from cloudinary_storage.storage import RawMediaCloudinaryStorage
 
 
 class Region(models.Model):
@@ -266,6 +267,7 @@ class DocumentoGestion(models.Model):
     )
     archivo = models.FileField(
         upload_to="docs_gestion/",
+        storage=RawMediaCloudinaryStorage(),
         verbose_name="Archivo",
         help_text="PDF, Word, Excel, imágenes u otros formatos",
     )
