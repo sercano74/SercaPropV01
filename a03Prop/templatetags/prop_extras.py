@@ -1,3 +1,5 @@
+import re
+
 import bleach
 from django import template
 from django.utils.safestring import mark_safe
@@ -82,3 +84,40 @@ def money(value, decimales=-1):
 
     # Invertir separadores: anglosajón (1,234.56) -> chileno (1.234,56)
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+# ------------------------------------------------------------------
+# Cloudinary: URL optimizada para pantallas pequeñas
+# ------------------------------------------------------------------
+# django-cloudinary-storage entrega URLs del tipo:
+#   https://res.cloudinary.com/<cloud>/image/upload/v<timestamp>/<public_id>
+# Sin transformaciones, el navegador descarga la imagen original completa
+# (a veces 4K) y la encoge con CSS — pesada y borrosa en móvil.
+#
+# Este filtro inyecta transformaciones de Cloudinary delante de "image/upload":
+#   w_800  : redimensiona a 800px (suficiente para tarjetas y retina 2x en móvil)
+#   q_auto : calidad automática (webp/avif si el navegador lo soporta)
+#   f_auto : formato automático
+# El public_id puede incluir subcarpetas (p. ej. "propiedades/foto.jpg"),
+# por eso capturamos el resto completo de la URL, no solo el último segmento.
+_CDN_UPLOAD_RE = re.compile(r"(/image/upload/)(v\d+/)?([^?]+)$")
+
+
+@register.filter
+def cloud_thumb(url):
+    """Devuelve una URL de Cloudinary optimizada (800px, q_auto, f_auto).
+
+    Si la URL no es de Cloudinary (p. ej. media/ local, SVG estático o
+    placeholder), devuelve la URL original sin cambios.
+    """
+    if not url:
+        return ""
+    url_str = str(url)
+    if "res.cloudinary.com" not in url_str:
+        return url_str
+    match = _CDN_UPLOAD_RE.search(url_str)
+    if not match:
+        return url_str
+    prefix, _version, public_id = match.groups()
+    transform = "w_800,q_auto,f_auto/"
+    return f"{url_str[:match.start()]}{prefix}{transform}{public_id}"

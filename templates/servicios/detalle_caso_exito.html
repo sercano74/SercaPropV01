@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prop_extras %}
 {% block title %}{{ caso.titulo }} - Caso de Éxito{% endblock %}
 {% block content %}
 
@@ -14,13 +15,13 @@
         <!-- GALERÍA ANTES / DESPUÉS -->
         <div class="detail-modern-gallery">
             {% if caso.imagen_despues %}
-            <img src="{{ caso.imagen_despues.url }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
+            <img src="{{ caso.imagen_despues.url|cloud_thumb }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
             {% elif caso.servicio and caso.servicio.imagen %}
-            <img src="{{ caso.servicio.imagen.url }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
+            <img src="{{ caso.servicio.imagen.url|cloud_thumb }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
             {% elif caso.propiedad %}
                 {% with primera_foto=caso.propiedad.fotos.first %}
                     {% if primera_foto %}
-                    <img src="{{ primera_foto.imagen.url }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
+                    <img src="{{ primera_foto.imagen.url|cloud_thumb }}" alt="{{ caso.titulo }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--ds-radius-lg);">
                     {% else %}
                     <div style="width:100%;height:300px;background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:4rem;border-radius:var(--ds-radius-lg);">🏆</div>
                     {% endif %}
@@ -33,11 +34,11 @@
             <div class="detail-modern-thumbs" style="margin-top:12px;">
                 <div style="flex:1;text-align:center;">
                     <small style="font-size:0.7rem;color:var(--ds-text-muted);">Antes</small>
-                    <img src="{{ caso.imagen_antes.url }}" alt="Antes" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
+                    <img src="{{ caso.imagen_antes.url|cloud_thumb }}" alt="Antes" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
                 </div>
                 <div style="flex:1;text-align:center;">
                     <small style="font-size:0.7rem;color:var(--ds-text-muted);">Después</small>
-                    <img src="{{ caso.imagen_despues.url }}" alt="Después" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
+                    <img src="{{ caso.imagen_despues.url|cloud_thumb }}" alt="Después" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
                 </div>
             </div>
             {% endif %}

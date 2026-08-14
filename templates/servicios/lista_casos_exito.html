@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prop_extras %}
 {% block title %}Casos de Éxito - Serca Propiedades{% endblock %}
 {% block content %}
 
@@ -330,13 +331,13 @@
     {% for caso in todos_casos|default:casos %}
     <div class="caso-card">
         {% if caso.imagen_despues %}
-        <img src="{{ caso.imagen_despues.url }}" alt="{{ caso.titulo }}" class="caso-card-img">
+        <img src="{{ caso.imagen_despues.url|cloud_thumb }}" alt="{{ caso.titulo }}" class="caso-card-img">
         {% elif caso.servicio and caso.servicio.imagen %}
-        <img src="{{ caso.servicio.imagen.url }}" alt="{{ caso.titulo }}" class="caso-card-img">
+        <img src="{{ caso.servicio.imagen.url|cloud_thumb }}" alt="{{ caso.titulo }}" class="caso-card-img">
         {% elif caso.propiedad %}
             {% with primera_foto=caso.propiedad.fotos.first %}
                 {% if primera_foto %}
-                <img src="{{ primera_foto.imagen.url }}" alt="{{ caso.titulo }}" class="caso-card-img">
+                <img src="{{ primera_foto.imagen.url|cloud_thumb }}" alt="{{ caso.titulo }}" class="caso-card-img">
                 {% else %}
                 <div class="caso-card-img" style="background:#f7f7f7;display:flex;align-items:center;justify-content:center;font-size:3rem;">🏆</div>
                 {% endif %}

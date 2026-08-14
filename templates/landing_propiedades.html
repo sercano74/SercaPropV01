@@ -37,7 +37,7 @@
         {% if pub.es_destacada %}<div class="badge-destacada">⭐ Destacada</div>{% endif %}
         {% with primera_foto=pub.propiedad.fotos.first %}
             {% if primera_foto %}
-                <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img" loading="lazy">
+                <img src="{{ primera_foto.imagen.url|cloud_thumb }}" alt="{{ pub.propiedad }}" class="card-img" loading="lazy">
             {% else %}
                 <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
             {% endif %}

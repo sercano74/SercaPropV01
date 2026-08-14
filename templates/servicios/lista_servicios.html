@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prop_extras %}
 {% block title %}Dato Constructor - Servicios{% endblock %}
 {% block content %}
 
@@ -44,7 +45,8 @@
     <div class="property-card-modern" style="position:relative;">
         <a href="{% url 'detalle_servicio' s.id %}" style="text-decoration:none;color:inherit;">
             {% if s.imagen %}
-            <img src="{{ s.imagen.url }}" alt="{{ s.titulo }}" class="card-img">
+            <img src="{{ s.imagen.url|cloud_thumb }}" alt="{{ s.titulo }}" class="card-img">
+
             {% else %}
             <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;">🔧</div>
             {% endif %}
