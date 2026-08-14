@@ -16,7 +16,7 @@
 
 <h2 style="text-align:center;margin-bottom:24px;font-weight:700;font-size:1.5rem;">👥 Nuestro Equipo</h2>
 
-<div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,340px));justify-content:center;max-width:1200px;margin:0 auto;">
+<div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,340px));justify-content:center;align-items:start;max-width:1200px;margin:0 auto;">
     {% for f in funcionarios %}
     <div class="card-modern" style="text-align:center;">
         {% if f.imagen %}
@@ -27,7 +27,19 @@
         <div class="card-modern-body">
             <div class="card-modern-title" style="font-size:1.05rem;">{{ f.nombre_completo }}</div>
             <div class="card-modern-subtitle" style="margin-bottom:8px;">{{ f.cargo }}</div>
-            <div class="card-modern-text" style="font-size:0.85rem;">{{ f.curriculo|truncatewords:30 }}</div>
+
+            {% if f.curriculo|wordcount > 30 %}
+            <button type="button" class="func-resena-btn" aria-expanded="false" title="Ver reseña completa">
+                <span class="card-modern-text func-resena-corta" style="font-size:0.85rem;">{{ f.curriculo|truncatewords:30 }}</span>
+            </button>
+            <div class="card-modern-text func-resena-completa" style="display:none;font-size:0.85rem;">{{ f.curriculo }}</div>
+            <div class="func-resena-acciones" style="display:none;margin-top:10px;">
+                <button type="button" class="func-resena-cerrar" aria-label="Ver menos">−</button>
+            </div>
+            {% else %}
+            <div class="card-modern-text" style="font-size:0.85rem;">{{ f.curriculo }}</div>
+            {% endif %}
+
             <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;font-size:1.3rem;">
                 {% if f.linkedin %}<a href="{{ f.linkedin }}" target="_blank" style="color:var(--ds-text-secondary);">💼</a>{% endif %}
                 {% if f.twitter %}<a href="{{ f.twitter }}" target="_blank" style="color:var(--ds-text-secondary);">🐦</a>{% endif %}
@@ -42,4 +54,80 @@
     </div>
     {% endfor %}
 </div>
+
+<style>
+    .func-resena-btn {
+        display: block;
+        width: 100%;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        line-height: 1.5;
+    }
+    .func-resena-btn:hover .func-resena-corta,
+    .func-resena-btn:focus-visible .func-resena-corta {
+        color: var(--ds-primary);
+    }
+    .func-resena-cerrar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid var(--ds-border);
+        background: var(--ds-bg);
+        color: var(--ds-text);
+        font-size: 1.2rem;
+        line-height: 1;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+    }
+    .func-resena-cerrar:hover,
+    .func-resena-cerrar:focus-visible {
+        border-color: var(--ds-primary);
+        color: var(--ds-primary);
+        box-shadow: var(--ds-shadow-sm);
+    }
+</style>
+
+<script>
+(function () {
+    document.querySelectorAll('.func-resena-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var card = btn.closest('.card-modern');
+            var corta = btn.querySelector('.func-resena-corta');
+            var completa = card.querySelector('.func-resena-completa');
+            var acciones = card.querySelector('.func-resena-acciones');
+            var abierta = btn.getAttribute('aria-expanded') === 'true';
+            if (!abierta) {
+                btn.setAttribute('aria-expanded', 'true');
+                btn.style.display = 'none';
+                corta.style.display = 'none';
+                completa.style.display = '';
+                acciones.style.display = '';
+            }
+        });
+    });
+    document.querySelectorAll('.func-resena-cerrar').forEach(function (cerrar) {
+        cerrar.addEventListener('click', function () {
+            var card = cerrar.closest('.card-modern');
+            var btn = card.querySelector('.func-resena-btn');
+            var corta = btn.querySelector('.func-resena-corta');
+            var completa = card.querySelector('.func-resena-completa');
+            var acciones = card.querySelector('.func-resena-acciones');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.style.display = '';
+            corta.style.display = '';
+            completa.style.display = 'none';
+            acciones.style.display = 'none';
+        });
+    });
+})();
+</script>
 {% endblock %}
