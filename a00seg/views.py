@@ -15,6 +15,58 @@ from a03Prop.models import Propiedad, PublicacionProp, FotosPropiedad, Servicios
 
 
 
+def diagnostico_home(request):
+    """Vista temporal de diagnóstico: replica la lógica del home y devuelve el traceback real."""
+    import traceback
+    from django.http import HttpResponse
+    try:
+        # Replicar las consultas del home
+        treinta_dias_atras = timezone.now() - timezone.timedelta(days=30)
+
+        destacadas = PublicacionProp.objects.filter(
+            estado="publicada", es_destacada=True, expira_at__gte=timezone.now()
+        ).select_related("propiedad")[:5]
+
+        publicadas = PublicacionProp.objects.filter(
+            estado="publicada"
+        ).filter(
+            Q(expira_at__gte=timezone.now()) |
+            Q(propiedad__tipo_cierre__isnull=False, propiedad__fecha_cierre__gte=treinta_dias_atras)
+        ).select_related("propiedad").order_by("-es_destacada", "-created_at")
+
+        # Forzar evaluación de querysets para detectar el error
+        lista_destacadas = list(destacadas)
+        lista_publicadas = list(publicadas)
+
+        # Probar el render de cada card (repr de cada propiedad y su comuna)
+        detalles = []
+        for pub in lista_publicadas:
+            p = pub.propiedad
+            detalles.append(
+                f"P{p.id} accion={p.tipo_accion} tipo={p.tipo_prop} comuna_id={p.comuna_id} "
+                f"moneda={p.tipo_moneda} precio={p.precio} str_comuna={str(p.comuna) if p.comuna_id else 'NULL'}"
+            )
+
+        # Renderizar el template home
+        from django.template.loader import render_to_string
+        html = render_to_string("home.html", {
+            "destacadas": lista_destacadas,
+            "publicadas": publicadas,
+            "comunas": Comuna.objects.all().order_by("nombre"),
+        }, request=request)
+
+        return HttpResponse(
+            "DIAGNOSTICO OK\n" + "\n".join(detalles) + f"\nHTML LEN: {len(html)}",
+            content_type="text/plain",
+        )
+    except Exception as e:
+        return HttpResponse(
+            f"ERROR DIAGNOSTICO:\n{traceback.format_exc()}",
+            content_type="text/plain",
+            status=500,
+        )
+
+
 def home(request):
     """Home del sitio con vitrina de propiedades, aside de destacadas y publicidad."""
     treinta_dias_atras = timezone.now() - timezone.timedelta(days=30)

@@ -3,6 +3,7 @@ from django.views.generic.base import RedirectView
 from . import views
 
 urlpatterns = [
+    path('_diag_home/', views.diagnostico_home, name='diagnostico_home'),
     path('', views.home, name='home'),
     # Redirigir URLs legacy a allauth
     path('login/', RedirectView.as_view(url='/accounts/login/', permanent=True), name='login'),
