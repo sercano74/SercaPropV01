@@ -274,10 +274,17 @@ a { color: inherit; }
     border-color: var(--ds-border);
 }
 .card-modern-img {
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    object-fit: cover;
-    display: block;
+    width: 100% !important;
+    aspect-ratio: 16 / 10 !important;
+    object-fit: cover !important;
+    display: block !important;
+    max-height: 320px !important;
+}
+/* Fallback navegadores sin soporte de aspect-ratio: altura explícita */
+@supports not (aspect-ratio: 16 / 10) {
+    .card-modern-img {
+        height: 220px !important;
+    }
 }
 .card-modern-body { padding: var(--ds-space-4); }
 .card-modern-title {
@@ -351,10 +358,10 @@ a { color: inherit; }
 }
 
 .property-card-modern .card-img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: block;
+    width: 100% !important;
+    height: 200px !important;
+    object-fit: cover !important;
+    display: block !important;
 }
 .property-card-modern .card-body { padding: var(--ds-space-4); }
 .property-card-modern .card-badge {
@@ -1116,10 +1123,10 @@ a { color: inherit; }
     flex-direction: column;
 }
 .carousel-destacadas-slide .card-modern-img {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    flex-shrink: 0;
+    width: 100% !important;
+    height: 100px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
 }
 .carousel-destacadas-slide .card-modern-body {
     padding: 4px 8px;
@@ -1202,6 +1209,54 @@ a { color: inherit; }
 }
 
 /* =========================================================
+   HOME RESPONSIVE FIXES
+   ========================================================= */
+/* Sin esta regla, los hijos del grid usan min-width:auto y el contenido
+   (filtros nowrap, imágenes) empuja el ancho de la cuadrícula fuera
+   del viewport en pantallas estrechas. */
+.layout-3col > * { min-width: 0; }
+
+/* Carrusel de destacadas: nunca debe exceder el ancho del contenedor */
+.carousel-destacadas { max-width: 100%; width: 100%; }
+.carousel-destacadas-track { width: 100%; max-width: 100%; }
+.carousel-destacadas-slide { width: 100%; min-width: 0; max-width: 100%; }
+.carousel-destacadas-slide .card-modern-img { max-width: 100% !important; }
+
+/* Aside (Destacadas / Publicidad): contenido contenido al ancho del padre */
+.aside-modern { max-width: 100%; overflow: hidden; }
+.aside-modern .card-modern { max-width: 100%; }
+
+/* En pantallas pequeñas el contenido interior no debe desbordar */
+.filter-card-modern-row,
+.filter-card-modern-header,
+.filter-card-modern-footer { min-width: 0; }
+
+@media (max-width: 600px) {
+    /* Propiedades: una sola card por fila en móvil */
+    .card-grid.vitrina-grid { grid-template-columns: 1fr !important; }
+    .property-card-modern .card-img { height: 240px !important; }
+
+    /* Filtros: apilados en vertical, ocupando todo el ancho */
+    .filter-card-modern-row { flex-direction: column; align-items: stretch; }
+    .filter-card-modern-row select,
+    .filter-card-modern-row input {
+        width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 100% !important;
+    }
+    .filter-card-modern-row .filter-actions {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .filter-card-modern-row .filter-actions .btn { flex: 1 1 auto; }
+
+    /* Más espacio útil horizontal en móvil */
+    main { padding-left: 10px !important; padding-right: 10px !important; }
+}
+
+/* =========================================================
    RESPONSIVE
    ========================================================= */
 @media (max-width: 1100px) {
@@ -1225,6 +1280,12 @@ a { color: inherit; }
     .navbar-modern .nav-menu.active { display: flex; }
     .navbar-modern .nav-link { width: 100%; padding: var(--ds-space-3) var(--ds-space-4); }
 
+    /* Móvil: compactar navbar — logo solo el ícono, acciones sin espacios extra */
+    .navbar-modern .nav-logo { gap: 4px; font-size: 1.1rem; }
+    .navbar-modern .nav-logo-text { display: none; }
+    .navbar-modern .nav-actions { gap: 8px; }
+    .navbar-modern .nav-toggle { font-size: 1.4rem; padding: 6px; }
+
     .form-modern .form-row,
     .form-modern-container .form-row { grid-template-columns: 1fr; }
 
@@ -1242,4 +1303,7 @@ a { color: inherit; }
     .navbar-modern .nav-container { padding: 0 var(--ds-space-4); }
     .btn { padding: 10px 18px; font-size: 0.9rem; }
     .footer-modern-container { grid-template-columns: 1fr; }
+    /* Botones de login/registro compactos para no desbordar el ancho móvil */
+    .navbar-modern .nav-actions .btn { padding: 7px 10px; font-size: 0.75rem; }
+    .navbar-modern .nav-container { gap: 8px; }
 }

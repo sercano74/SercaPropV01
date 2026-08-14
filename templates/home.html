@@ -36,7 +36,7 @@
                     <a href="{{ pub.propiedad.get_absolute_url }}" class="card-modern" style="text-decoration:none;color:inherit;display:block;">
                         {% with primera_foto=pub.propiedad.fotos.first %}
                             {% if primera_foto %}
-                                <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-modern-img" loading="lazy">
+                                <img src="{{ primera_foto.imagen.url|cloud_thumb }}" alt="{{ pub.propiedad }}" class="card-modern-img" loading="lazy">
                             {% else %}
                                 <div class="card-modern-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:2rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                             {% endif %}
@@ -71,7 +71,7 @@
                 <span>🔍</span> <strong>Filtros de búsqueda</strong>
             </div>
             <hr style="margin: 15px 0;color: red;"></hr>
-            <div class="filter-card-modern-row" style="flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:12px 14px;">
+            <div class="filter-card-modern-row">
                 <select name="tipo_accion" style="flex:1;min-width:100px;">
                     <option value="">Acción</option>
                     <option value="venta" {% if current_filters.tipo_accion == 'venta' %}selected{% endif %}>Venta</option>
@@ -128,7 +128,7 @@
                 {% endif %}
                 {% with primera_foto=pub.propiedad.fotos.first %}
                     {% if primera_foto %}
-                        <img src="{{ primera_foto.imagen.url }}" alt="{{ pub.propiedad }}" class="card-img" loading="lazy">
+                        <img src="{{ primera_foto.imagen.url|cloud_thumb }}" alt="{{ pub.propiedad }}" class="card-img" loading="lazy">
                     {% else %}
                         <div class="card-img" style="background:var(--ds-bg-secondary);display:flex;align-items:center;justify-content:center;font-size:3rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></div>
                     {% endif %}
