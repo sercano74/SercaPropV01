@@ -77,9 +77,10 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Funcionario)
 class FuncionarioAdmin(admin.ModelAdmin):
-    list_display = ["nombre_completo", "cargo", "is_active"]
+    list_display = ["nombre_completo", "cargo", "orden", "is_active"]
     list_filter = ["is_active"]
     search_fields = ["nombre_completo", "cargo"]
+    list_editable = ["orden"]
 
 
 @admin.register(AgendaCorredor)

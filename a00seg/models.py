@@ -102,14 +102,27 @@ class Funcionario(models.Model):
     curriculo = models.TextField(verbose_name="Currículo/Biografía")
     linkedin = models.URLField(blank=True, null=True, verbose_name="LinkedIn")
     twitter = models.URLField(blank=True, null=True, verbose_name="Twitter")
+    orden = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="Orden",
+        help_text="Menor número = aparece primero. Usa 1, 200, 300... para dejar espacio entre funcionarios.",
+    )
     is_active = models.BooleanField(default=True, verbose_name="Activo")
 
     class Meta:
         verbose_name = "Funcionario"
         verbose_name_plural = "Funcionarios"
+        ordering = ["orden", "id"]
 
     def __str__(self):
         return self.nombre_completo
+
+
+
+
+
+
+
 
 
 class AgendaCorredor(models.Model):

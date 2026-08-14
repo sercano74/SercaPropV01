@@ -121,7 +121,7 @@ def home(request):
 
 def nosotros_view(request):
     return render(request, "nosotros.html", {
-        "funcionarios": Funcionario.objects.filter(is_active=True),
+        "funcionarios": Funcionario.objects.filter(is_active=True).order_by("orden", "id"),
     })
 
 
