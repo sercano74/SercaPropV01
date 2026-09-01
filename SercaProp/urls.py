@@ -5,6 +5,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from a03Prop.sitemaps import PropiedadSitemap, StaticViewSitemap, LandingSitemap, _urls_sitemap
 from a01Com.views import robots_txt
+from a03Prop.views import vista_xid
 
 
 def sitemap_xml(request):
@@ -48,6 +49,7 @@ urlpatterns = [
     path('com/', include('a01Com.urls')),
     path('prop/', include('a03Prop.urls')),
     path('servicios/', include('a07serv.urls')),
+    path('xid/', vista_xid, name='vista_xid'),
 
     # ===== SEO =====
     # Vista propia: fuerza el dominio canónico propiedades.serca.online en

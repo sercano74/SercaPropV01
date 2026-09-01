@@ -80,6 +80,64 @@ def detalle_propiedad_redirect(request, prop_id):
     return redirect("detalle_propiedad_slug", prop_id=propiedad.id, prop_slug=slug, permanent=True)
 
 
+def vista_xid(request):
+    """
+    Vista de captación de clientes (letrero comercial).
+
+    El interesado escanea el QR del letrero → llega a /xid/ → ingresa el
+    ID de la propiedad que figura en el letrero → aterriza en el detalle
+    canónico de esa propiedad.
+
+    Solo redirige si la propiedad existe y está publicada; en caso contrario
+    devuelve un mensaje amigable en la misma landing.
+    """
+    sitio = getattr(settings, "SITE_DOMAIN", "propiedades.serca.online")
+    sitio_url = f"https://{sitio}"
+    error = None
+
+    if request.method == "POST":
+        raw = request.POST.get("prop_id", "").strip()
+        prop_id = None
+        try:
+            prop_id = int(raw)
+        except (ValueError, TypeError):
+            error = "El ID debe ser un número válido (ej: 1, 7, 1000)."
+
+        if prop_id is not None:
+            try:
+                propiedad = Propiedad.objects.get(id=prop_id)
+            except Propiedad.DoesNotExist:
+                propiedad = None
+                error = "No encontramos una propiedad con ese ID. Revisa el número en el letrero."
+
+            if propiedad is not None:
+                ahora = timezone.now()
+                es_publica = (
+                    PublicacionProp.objects.filter(
+                        propiedad=propiedad,
+                        estado="publicada",
+                    ).filter(
+                        Q(expira_at__isnull=True) | Q(expira_at__gte=ahora)
+                    ).exists()
+                    or propiedad.estado == "publicada"
+                )
+                if es_publica:
+                    slug = propiedad.slug or f"propiedad-{propiedad.id}"
+                    return redirect(
+                        "detalle_propiedad_slug",
+                        prop_id=propiedad.id,
+                        prop_slug=slug,
+                    )
+                else:
+                    error = "Esta propiedad no está disponible públicamente en este momento."
+                    propiedad = None
+
+    return render(request, "vista_xid.html", {
+        "sitio_url": sitio_url,
+        "error": error,
+    })
+
+
 def detalle_propiedad(request, prop_id, prop_slug=None):
     try:
         propiedad = Propiedad.objects.get(id=prop_id)

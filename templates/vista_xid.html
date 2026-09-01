@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .xid-page {
+        min-height: calc(100vh - 220px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        background: linear-gradient(135deg, #FF385C 0%, #E31C5F 100%);
+        border-radius: 24px;
+        margin: 16px auto;
+        max-width: 580px;
+        box-shadow: 0 18px 40px rgba(227, 28, 95, 0.25);
+    }
+    .xid-card {
+        background: #ffffff;
+        border-radius: 22px;
+        box-shadow: 0 24px 56px rgba(0, 0, 0, 0.22);
+        padding: 38px 30px;
+        width: 100%;
+        text-align: center;
+    }
+    .xid-logo {
+        display: block;
+        font-weight: 800;
+        font-size: 1.6rem;
+        color: #E31C5F;
+        letter-spacing: -0.6px;
+        line-height: 1.1;
+        margin-bottom: 2px;
+    }
+    .xid-logo span { color: #FF385C; }
+    .xid-tagline {
+        font-size: 0.85rem;
+        color: #717171;
+        margin: 0 0 24px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    .xid-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #222222;
+        margin: 0 0 10px;
+        line-height: 1.2;
+    }
+    .xid-sub {
+        font-size: 0.98rem;
+        color: #555555;
+        margin: 0 0 28px;
+        line-height: 1.5;
+    }
+    .xid-form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .xid-input {
+        width: 100%;
+        padding: 17px 18px;
+        font-size: 1.3rem;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: 3px;
+        color: #222222;
+        border: 2px solid #E31C5F;
+        border-radius: 15px;
+        outline: none;
+        background: #ffffff;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .xid-input:focus {
+        border-color: #FF385C;
+        box-shadow: 0 0 0 4px rgba(255, 56, 92, 0.15);
+    }
+    .xid-input::placeholder {
+        color: #bbbbbb;
+        font-weight: 500;
+        letter-spacing: normal;
+        font-size: 1rem;
+    }
+    .xid-btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 1.06rem;
+        font-weight: 700;
+        color: #ffffff;
+        background: linear-gradient(135deg, #FF385C, #E31C5F);
+        border: none;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+        letter-spacing: 0.3px;
+    }
+    .xid-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 26px rgba(227, 28, 95, 0.35);
+    }
+    .xid-btn:active { transform: translateY(0); }
+    .xid-error {
+        color: #B3261E;
+        background: #FDECEA;
+        border: 1px solid #F5C6C1;
+        border-radius: 12px;
+        padding: 11px 14px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin: 0;
+        text-align: left;
+        line-height: 1.4;
+    }
+    .xid-steps {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 26px;
+        flex-wrap: wrap;
+    }
+    .xid-step {
+        font-size: 0.72rem;
+        color: #717171;
+        font-weight: 600;
+        background: #F7F7F7;
+        border-radius: 999px;
+        padding: 7px 13px;
+    }
+    .xid-step b { color: #E31C5F; }
+    .xid-help {
+        margin-top: 20px;
+        font-size: 0.78rem;
+        color: #999999;
+        line-height: 1.5;
+    }
+    .xid-help a {
+        color: #E31C5F;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .xid-help a:hover { text-decoration: underline; }
+</style>
+
+<div class="xid-page">
+    <div class="xid-card">
+        <span class="xid-logo">SERCA<span> PROPIEDADES</span></span>
+        <div class="xid-tagline">Portal inmobiliario</div>
+
+        <h1 class="xid-title">¡Bienvenido a tu<br>próxima propiedad!</h1>
+        <p class="xid-sub">Ingresa el código que aparece en el letrero de la propiedad que te interesa.</p>
+
+        <form method="post" class="xid-form" autocomplete="off">
+            {% csrf_token %}
+            <input class="xid-input" type="text" name="prop_id" inputmode="numeric" autofocus
+                   placeholder="ID de la propiedad" aria-label="ID de la propiedad" required>
+            <button class="xid-btn" type="submit">Ver propiedad →</button>
+        </form>
+
+        {% if error %}
+            <p class="xid-error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        <div class="xid-steps">
+            <span class="xid-step"><b>1</b> Escanea el QR</span>
+            <span class="xid-step"><b>2</b> Ingresa el ID</span>
+            <span class="xid-step"><b>3</b> Conoce la propiedad</span>
+        </div>
+
+        <p class="xid-help">¿Tienes dudas? Escríbenos a
+            <a href="mailto:contacto@serca.online">contacto@serca.online</a></p>
+    </div>
+</div>
+{% endblock %}
