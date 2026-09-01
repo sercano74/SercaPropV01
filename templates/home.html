@@ -93,6 +93,7 @@
                     <option value="{{ c.id }}" {% if current_filters.comuna|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
                     {% endfor %}
                 </select>
+                <input type="number" name="prop_id" placeholder="ID de propiedad" value="{{ current_filters.prop_id|default:'' }}" title="Busca por ID de propiedad (ej: 1, 7, 1000)" style="flex:0.7;min-width:110px;">
                 <select name="precio_moneda" style="flex:0.8;min-width:80px;">
                     <option value="">Moneda</option>
                     <option value="PCL" {% if current_filters.precio_moneda == 'PCL' %}selected{% endif %}>CLP</option>

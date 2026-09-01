@@ -36,6 +36,7 @@ def home(request):
     tipo_prop = request.GET.get("tipo_prop")
     comuna_id = request.GET.get("comuna")
     search = request.GET.get("q")
+    prop_id_raw = request.GET.get("prop_id")
 
     if tipo_accion:
         publicadas = publicadas.filter(propiedad__tipo_accion=tipo_accion)
@@ -47,6 +48,11 @@ def home(request):
         publicadas = publicadas.filter(
             propiedad__calle__icontains=search
         ) | publicadas.filter(propiedad__descripcion_propiedad__icontains=search)
+    if prop_id_raw:
+        try:
+            publicadas = publicadas.filter(propiedad__id=int(prop_id_raw))
+        except (ValueError, TypeError):
+            pass
 
     # --- Filtro por rango de precios por moneda ---
     precio_moneda = request.GET.get("precio_moneda")
@@ -109,6 +115,7 @@ def home(request):
             "tipo_prop": tipo_prop,
             "comuna": comuna_id,
             "q": search,
+            "prop_id": prop_id_raw,
             "precio_moneda": precio_moneda,
             "precio_min": precio_min,
             "precio_max": precio_max,
