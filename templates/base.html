@@ -125,6 +125,44 @@
             background: #e0e0e0;
             margin: 4px 12px;
         }
+        .nav-contact-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: transform 0.15s ease;
+        }
+        .nav-whatsapp { background: #fff; color: #25D366; }
+        .nav-email { background: var(--ds-primary); color: #fff; }
+        .nav-contact-btn:hover { transform: scale(1.08); }
+        .nav-contact-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            z-index: 1100;
+        }
+        .nav-contact-btn:hover .nav-contact-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
         @media (max-width: 768px) {
             .dropdown-content { position: static; box-shadow: none; border-radius: 0; padding: 0 0 0 16px; }
             .nav-dropdown:hover .dropdown-content { display: none; }
@@ -163,11 +201,16 @@
 
     <!-- ===== NAVBAR MODERNO (Airbnb-style) ===== -->
     <nav class="navbar-modern">
-        <div class="nav-container">
-    <a href="{% url 'home' %}" class="nav-logo">
-        <span style="font-size:1.6rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></span>
-        <span class="nav-logo-text">{{ site_name }}</span>
-    </a>
+    <div class="nav-container">
+    <div class="nav-brand-group" style="display:flex;align-items:center;gap:14px;">
+        <a href="{% url 'home' %}" class="nav-logo">
+            <span style="font-size:1.6rem;"><img src="{% static 'images/logo-serca.svg' %}" alt="Serca Propiedades" style="height:1em;vertical-align:-0.2em;"></span>
+            <span class="nav-logo-text">{{ site_name }}</span>
+        </a>
+        <a href="{% url 'lista_servicios' %}" class="nav-link" style="color:var(--ds-primary);font-weight:700;padding:8px 10px;white-space:nowrap;">
+            <i class="bi bi-tools"></i>&nbsp;SuperDato
+        </a>
+    </div>
 
             <div class="nav-menu" id="navMenuModern">
                 <a href="{% url 'home' %}" class="nav-link">Home</a>
@@ -258,10 +301,17 @@
                 </div>
                 {% endif %}
 
-                <a href="{% url 'lista_servicios' %}" class="nav-link" style="color:var(--ds-primary);font-weight:700;"><i class="bi bi-tools"></i>&nbsp;SuperDato</a>
-                <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" rel="noopener noreferrer" class="nav-link" style="display:inline-flex;align-items:center;color:#25D366;" aria-label="WhatsApp" title="WhatsApp">
-                    <img src="{% static 'images/icon-whatsapp.svg' %}" width="20" height="20" alt="WhatsApp" style="display:block;">
+                <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" rel="noopener noreferrer" class="nav-contact-btn nav-whatsapp" aria-label="Contactanos al ws">
+                    <img src="{% static 'images/icon-whatsapp.svg' %}" width="26" height="26" alt="WhatsApp" style="display:block;">
+                    <span class="nav-contact-tooltip">Contactanos al ws</span>
                 </a>
+                <button type="button" class="nav-contact-btn nav-email" aria-label="Contáctanos por email" onclick="abrirModalEmail()">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <span class="nav-contact-tooltip">Contáctanos por email</span>
+                </button>
             </div>
 
             <div class="nav-actions">
@@ -488,6 +538,76 @@
                     d.classList.remove('active');
                 });
             }
+        });
+    </script>
+
+    <!-- ===== MODAL EMAIL DE CONTACTO (navbar) ===== -->
+    <div class="modal fade" id="modalEmailContacto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:18px;border:none;box-shadow:0 20px 50px rgba(0,0,0,0.25);">
+                <div class="modal-header" style="border-bottom:none;">
+                    <h5 class="modal-title" style="font-weight:800;color:var(--ds-primary);">📧 Contáctanos por email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formConsultaEmail">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight:600;">Tu email</label>
+                            <input type="email" name="email" class="form-control" required placeholder="tu@email.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight:600;">Tu celular</label>
+                            <input type="tel" name="telefono" class="form-control" placeholder="+56 9 ...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight:600;">Mensaje de consulta</label>
+                            <textarea name="mensaje" class="form-control" rows="4" required placeholder="Escribe tu consulta..."></textarea>
+                        </div>
+                        <div id="respuestaConsultaEmail"></div>
+                        <button type="submit" class="btn btn-primary w-100" style="border-radius:12px;">Enviar consulta</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalEmail(){
+            var el = document.getElementById('modalEmailContacto');
+            if (window.bootstrap && bootstrap.Modal) { new bootstrap.Modal(el).show(); }
+            else { el.style.display = 'block'; el.classList.add('show'); document.body.classList.add('modal-open'); }
+        }
+        document.getElementById('formConsultaEmail')?.addEventListener('submit', function(e){
+            e.preventDefault();
+            var form = this;
+            var btn = form.querySelector('button[type=submit]');
+            var out = document.getElementById('respuestaConsultaEmail');
+            var csrf = form.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            fetch("{% url 'enviar_consulta_email' %}", {
+                method: 'POST',
+                headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf},
+                body: JSON.stringify({
+                    email: form.email.value,
+                    telefono: form.telefono.value,
+                    mensaje: form.mensaje.value
+                })
+            }).then(function(r){ return r.json(); }).then(function(d){
+                if (d.ok) {
+                    out.innerHTML = '<div class="alert alert-success" style="border-radius:12px;">✅ ' + d.mensaje + '</div>';
+                    form.reset();
+                } else {
+                    out.innerHTML = '<div class="alert alert-danger" style="border-radius:12px;">⚠️ ' + (d.error || 'Ocurrió un error') + '</div>';
+                }
+                btn.disabled = false;
+                btn.textContent = 'Enviar consulta';
+            }).catch(function(){
+                out.innerHTML = '<div class="alert alert-danger" style="border-radius:12px;">⚠️ Error de conexión. Inténtalo nuevamente.</div>';
+                btn.disabled = false;
+                btn.textContent = 'Enviar consulta';
+            });
         });
     </script>
 </body>

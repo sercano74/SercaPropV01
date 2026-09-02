@@ -55,3 +55,58 @@ class Communication(models.Model):
 
     def __str__(self):
         return f"{self.get_source_type_display()}: {self.title} → {self.recipient}"
+
+
+class ConsultaContacto(models.Model):
+    """
+    Log de consultas recibidas desde el botón de email del navbar.
+
+    Permite llevar seguimiento de cada consulta (email, celular, mensaje),
+    su estado (pendiente / respondida / cerrada) y la respuesta enviada.
+    """
+    ESTADO_CHOICES = [
+        ("pendiente", "Pendiente"),
+        ("respondida", "Respondida"),
+        ("cerrada", "Cerrada"),
+    ]
+
+    email = models.EmailField(verbose_name="Email del consultante")
+    telefono = models.CharField(
+        max_length=30,
+        blank=True,
+        verbose_name="Teléfono / Celular",
+    )
+    mensaje = models.TextField(verbose_name="Mensaje de consulta")
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default="pendiente",
+        verbose_name="Estado",
+    )
+    respuesta = models.TextField(
+        blank=True,
+        verbose_name="Respuesta enviada",
+    )
+    respondido_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Respondido el",
+    )
+    creado_por = models.ForeignKey(
+        "a00seg.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="consultas_contacto_enviadas",
+        verbose_name="Creado por",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+
+    class Meta:
+        verbose_name = "Consulta de contacto"
+        verbose_name_plural = "Consultas de contacto"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Consulta #{self.id} - {self.email} ({self.get_estado_display()})"
