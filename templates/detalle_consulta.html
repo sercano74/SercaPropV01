@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Consulta #{{ consulta.id }}{% endblock %}
+{% block content %}
+<style>
+.cq-box { background:#fff; border:1px solid var(--ds-border); border-radius:14px; padding:20px; margin-bottom:16px; }
+.cq-label { font-size:0.72rem; color:var(--ds-text-secondary); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; margin-bottom:4px; }
+.cq-value { font-size:0.95rem; color:var(--ds-text); white-space:pre-wrap; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+    <div style="margin:0;">
+        <h1>📬 Consulta #{{ consulta.id }}</h1>
+        <p>Creada el {{ consulta.created_at|date:"d/m/Y H:i" }}</p>
+    </div>
+    <a href="{% url 'gestion_consultas' %}" class="btn btn-ghost btn-sm">← Volver al log</a>
+</div>
+
+<div class="card-grid" style="grid-template-columns:1fr 1fr;gap:20px;">
+    <!-- ===== Datos de la consulta ===== -->
+    <div>
+        <div class="cq-box">
+            <div class="cq-label">Email</div>
+            <div class="cq-value">{{ consulta.email }}</div>
+            <hr style="margin:12px 0;border:none;border-top:1px solid var(--ds-border-light);">
+            <div class="cq-label">Teléfono</div>
+            <div class="cq-value">{{ consulta.telefono|default:"No indicado" }}</div>
+            <hr style="margin:12px 0;border:none;border-top:1px solid var(--ds-border-light);">
+            <div class="cq-label">Estado</div>
+            <div class="cq-value">{{ consulta.get_estado_display }}</div>
+            <hr style="margin:12px 0;border:none;border-top:1px solid var(--ds-border-light);">
+            <div class="cq-label">Mensaje</div>
+            <div class="cq-value">{{ consulta.mensaje }}</div>
+            {% if consulta.creado_por %}
+            <hr style="margin:12px 0;border:none;border-top:1px solid var(--ds-border-light);">
+            <div class="cq-label">Enviado por</div>
+            <div class="cq-value">{{ consulta.creado_por.get_full_name|default:consulta.creado_por.username }}</div>
+            {% endif %}
+        </div>
+
+        {% if consulta.respuesta %}
+        <div class="cq-box" style="background:#f0fdf4;border-color:#bbf7d0;">
+            <div class="cq-label" style="color:#047857;">Respuesta</div>
+            <div class="cq-value">{{ consulta.respuesta }}</div>
+            {% if consulta.respondido_at %}
+            <div style="font-size:0.75rem;color:var(--ds-text-secondary);margin-top:8px;">Respondida: {{ consulta.respondido_at|date:"d/m/Y H:i" }}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ===== Formulario de respuesta ===== -->
+    <div class="cq-box">
+        <h2 style="font-size:1.1rem;margin:0 0 16px;">✍️ Registrar respuesta</h2>
+        <form method="POST" action="{% url 'responder_consulta' consulta.id %}">
+            {% csrf_token %}
+            <div style="margin-bottom:12px;">
+                <label class="form-label" style="font-weight:600;">Estado</label>
+                <select name="estado" class="form-control" style="width:100%;">
+                    <option value="pendiente" {% if consulta.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="respondida" {% if consulta.estado == 'respondida' %}selected{% endif %}>Respondida</option>
+                    <option value="cerrada" {% if consulta.estado == 'cerrada' %}selected{% endif %}>Cerrada</option>
+                </select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label class="form-label" style="font-weight:600;">Respuesta a enviar</label>
+                <textarea name="respuesta" class="form-control" rows="5" style="width:100%;" placeholder="Escribe la respuesta al consultante...">{{ consulta.respuesta }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" style="border-radius:12px;">Guardar respuesta</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

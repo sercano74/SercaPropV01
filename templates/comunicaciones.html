@@ -143,6 +143,8 @@
                                     {% if com.related_object_id %}
                                         {% if com.related_object_type == 'servicio' %}
                                         <a href="{% url 'detalle_revision_servicio' com.related_object_id %}" class="com-btn-icon" title="Ver servicio en revisión">📋</a>
+                                        {% elif com.related_object_type == 'consulta' %}
+                                        <a href="{% url 'detalle_consulta' com.related_object_id %}" class="com-btn-icon" title="Ver consulta">📬</a>
                                         {% else %}
                                         <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
                                         {% endif %}
@@ -217,6 +219,8 @@
                                     {% if com.related_object_id %}
                                         {% if com.related_object_type == 'servicio' %}
                                         <a href="{% url 'detalle_revision_servicio' com.related_object_id %}" class="com-btn-icon" title="Ver servicio en revisión">📋</a>
+                                        {% elif com.related_object_type == 'consulta' %}
+                                        <a href="{% url 'detalle_consulta' com.related_object_id %}" class="com-btn-icon" title="Ver consulta">📬</a>
                                         {% else %}
                                         <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
                                         {% endif %}

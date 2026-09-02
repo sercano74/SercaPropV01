@@ -260,6 +260,9 @@
                         <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Comunicaciones</div>
                         <div class="dropdown-divider"></div>
                         <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
+                        {% if user.rol in 'gerente,superadmin' %}
+                        <a href="{% url 'gestion_consultas' %}" class="dropdown-item">📬 Consultas</a>
+                        {% endif %}
                         
                         
                         <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Propiedades</div>

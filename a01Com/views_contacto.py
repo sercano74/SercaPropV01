@@ -2,14 +2,43 @@ import json
 import logging
 
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import ConsultaContacto
+from .models import ConsultaContacto, Communication, SourceTypeChoices
 
 logger = logging.getLogger(__name__)
+
+
+def _equipo_consultas():
+    """Usuarios que gestionan consultas (gerente y superadmin)."""
+    from a00seg.models import User
+    return User.objects.filter(is_active=True, rol__in=["gerente", "superadmin"])
+
+
+def _avisar_cdc(consulta, emisor):
+    """Crea una Communication en el CDC del equipo para la nueva consulta."""
+    equipo = _equipo_consultas().exclude(id=emisor.id) if emisor else _equipo_consultas()
+    for user in equipo:
+        Communication.objects.create(
+            recipient=user,
+            emitter_user=emisor,
+            source_type=SourceTypeChoices.SISTEMA,
+            title=f"📧 Nueva consulta: {consulta.email}",
+            message=(
+                f"Teléfono: {consulta.telefono or 'No indicado'}\n\n"
+                f"Consulta #{consulta.id}\n\n{consulta.mensaje}"
+            ),
+            related_object_id=consulta.id,
+            related_object_type="consulta",
+        )
 
 
 @require_POST
@@ -18,8 +47,8 @@ def enviar_consulta_email(request):
     """
     Recibe una consulta desde el botón de email del navbar.
 
-    Crea un registro en ConsultaContacto (log de seguimiento) y envía el
-    mensaje a contacto@serca.online.
+    Crea un registro en ConsultaContacto (log de seguimiento), avisa al CDC
+    del equipo y envía el mensaje a contacto@serca.online.
     """
     try:
         data = json.loads(request.body or "{}")
@@ -56,6 +85,7 @@ def enviar_consulta_email(request):
         f"Registro #{consulta.id} - {sitio}"
     )
 
+    send_ok = True
     try:
         send_mail(
             subject=asunto,
@@ -67,7 +97,86 @@ def enviar_consulta_email(request):
         logger.info(f"Consulta #{consulta.id} enviada a {destino} ({email})")
     except Exception as e:
         logger.error(f"Error enviando consulta #{consulta.id}: {e}", exc_info=True)
-        # No rompemos: el registro queda en el log igualmente
-        return JsonResponse({"ok": False, "error": "No se pudo enviar el correo en este momento. Inténtalo más tarde."}, status=500)
+        send_ok = False
+
+    # Avisar al CDC del equipo, siempre que haya un emisor disponible.
+    emisor = consulta.creado_por
+    if emisor is None:
+        emisor = _equipo_consultas().order_by("id").first()
+    if emisor is not None:
+        try:
+            _avisar_cdc(consulta, emisor)
+        except Exception as e:
+            logger.error(f"No se pudo avisar al CDC de la consulta #{consulta.id}: {e}", exc_info=True)
+
+    if not send_ok:
+        return JsonResponse(
+            {"ok": False, "error": "No se pudo enviar el correo en este momento, pero tu consulta quedó registrada. Te contactaremos a la brevedad."},
+            status=500,
+        )
 
     return JsonResponse({"ok": True, "mensaje": "Gracias, recibimos tu consulta. Te responderemos a la brevedad."})
+
+
+@login_required
+def gestion_consultas(request):
+    """Listado de consultas del log (embudo), solo para gerente/superadmin."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para ver las consultas.")
+        return redirect("home")
+
+    q = request.GET.get("q", "").strip()
+    estado = request.GET.get("estado", "")
+
+    consultas = ConsultaContacto.objects.select_related("creado_por")
+    if q:
+        consultas = consultas.filter(
+            Q(email__icontains=q) | Q(telefono__icontains=q) | Q(mensaje__icontains=q)
+        )
+    if estado:
+        consultas = consultas.filter(estado=estado)
+
+    conteo = {
+        "pendiente": ConsultaContacto.objects.filter(estado="pendiente").count(),
+        "respondida": ConsultaContacto.objects.filter(estado="respondida").count(),
+        "cerrada": ConsultaContacto.objects.filter(estado="cerrada").count(),
+    }
+
+    return render(request, "gestion_consultas.html", {
+        "consultas": consultas,
+        "q": q,
+        "estado": estado,
+        "conteo": conteo,
+    })
+
+
+@login_required
+def detalle_consulta(request, consulta_id):
+    """Detalle de una consulta del log."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para ver las consultas.")
+        return redirect("home")
+    consulta = get_object_or_404(ConsultaContacto, id=consulta_id)
+    return render(request, "detalle_consulta.html", {"consulta": consulta})
+
+
+@login_required
+def responder_consulta(request, consulta_id):
+    """Registra la respuesta y actualiza el estado de la consulta."""
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "No tienes permisos para gestionar consultas.")
+        return redirect("home")
+    consulta = get_object_or_404(ConsultaContacto, id=consulta_id)
+    if request.method == "POST":
+        respuesta = (request.POST.get("respuesta") or "").strip()
+        nuevo_estado = request.POST.get("estado", "")
+        if respuesta:
+            consulta.respuesta = respuesta
+        if nuevo_estado in ("pendiente", "respondida", "cerrada"):
+            consulta.estado = nuevo_estado
+        if consulta.estado != "pendiente":
+            consulta.respondido_at = timezone.now()
+        consulta.save()
+        messages.success(request, "Consulta actualizada correctamente.")
+        return redirect("detalle_consulta", consulta_id=consulta.id)
+    return redirect("detalle_consulta", consulta_id=consulta.id)
