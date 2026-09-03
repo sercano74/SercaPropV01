@@ -163,6 +163,26 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+        /* Grupos colapsables dentro de los dropdowns de Gestión/Admin */
+        .nav-group { border-bottom:1px solid var(--ds-border-light); }
+        .nav-group:last-child { border-bottom:none; }
+        .nav-group-header {
+            padding:9px 18px;
+            font-size:0.75rem;
+            font-weight:700;
+            color:var(--ds-primary);
+            text-transform:uppercase;
+            letter-spacing:0.4px;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            user-select:none;
+        }
+        .nav-group-header::after { content:'▾'; font-size:0.7rem; color:var(--ds-text-secondary); transition:transform .15s; }
+        .nav-group.open .nav-group-header::after { transform:rotate(180deg); }
+        .nav-group-items { display:none; }
+        .nav-group.open .nav-group-items { display:block; }
         @media (max-width: 768px) {
             .dropdown-content { position: static; box-shadow: none; border-radius: 0; padding: 0 0 0 16px; }
             .nav-dropdown:hover .dropdown-content { display: none; }
@@ -252,56 +272,69 @@
                     </div>
                 </div>
 
-                <!-- GESTIONAR -->
+                <!-- GESTIÓN -->
                 {% if user.is_authenticated %}
                 <div class="nav-dropdown">
-                    <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestionar ▾</a>
-                    <div class="dropdown-content">
-                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Comunicaciones</div>
-                        <div class="dropdown-divider"></div>
-                        <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
-                        {% if user.rol in 'gerente,superadmin' %}
-                        <a href="{% url 'gestion_consultas' %}" class="dropdown-item">📬 Consultas</a>
-                        {% endif %}
-                        
-                        
-                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Propiedades</div>
-                        <div class="dropdown-divider"></div>
-                        <a href="{% url 'gestion_favoritas' %}" class="dropdown-item">⭐ Mis favoritas</a>
-                        <a href="{% url 'gestion_mis_publicaciones' %}" class="dropdown-item">📢 Mis publicaciones</a>
-                        {% if user.rol != 'base' %}
-                        <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
-                        <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
-                        <a href="{% url 'gestion_documentos' %}" class="dropdown-item">📂 Documentos</a>
-                        <a href="{% url 'gestion_ingresos' %}" class="dropdown-item">💰 Ingresos</a>
-                        {% endif %}
-                        {% if user.rol in 'gerente,superadmin' %}
-                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Parámetros</div>
-                        <a href="{% url 'gestion_precios_publicacion' %}" class="dropdown-item">💰 Precios publicación</a>
-                        <a href="{% url 'gestion_servicios' %}" class="dropdown-item">🔧 Servicios</a>
-                        <a href="{% url 'validar_corredores' %}" class="dropdown-item">🛡️ Validar corredores</a>
-                        <a href="{% url 'revisar_postulaciones' %}" class="dropdown-item">📋 Postulaciones</a>
-                        {% endif %}
-
-
-                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Servicios Profesionales</div>
-                        <div class="dropdown-divider"></div>
-                        <a href="{% url 'gestion_mis_servicios' %}" class="dropdown-item">🔧 Mis servicios</a>
-                        {% if user.rol in 'gerente,superadmin' %}
-                        <a href="{% url 'gestion_admin_servicios' %}" class="dropdown-item">🔧 Gestión de servicios</a>
-                        {% endif %}
-                        
-                        
-                        <div class="dropdown-item-text" style="font-size:0.75rem;color:#888;padding:6px 18px;">Superadmin</div>
-                        <div class="dropdown-divider"></div>
-                        {% if user.rol == 'superadmin' %}
-                        <div class="dropdown-divider"></div>
-                        <a href="{% url 'crear_gerente' %}" class="dropdown-item">👤 Crear gerente</a>
-                        <a href="/admin/" class="dropdown-item">⚙️ Admin Django</a>
-                        {% endif %}
-
+                    <a href="{% url 'gestion' %}" class="nav-link dropdown-trigger">Gestión ▾</a>
+                    <div class="dropdown-content" style="min-width:240px;">
+                        <div class="nav-group open">
+                            <div class="nav-group-header">📬 Comunicaciones</div>
+                            <div class="nav-group-items">
+                                <a href="{% url 'centro_comunicaciones' %}" class="dropdown-item">📬 CDC</a>
+                                {% if user.rol in 'gerente,superadmin' %}
+                                <a href="{% url 'gestion_consultas' %}" class="dropdown-item">📬 Consultas</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="nav-group">
+                            <div class="nav-group-header">🏠 Propiedades</div>
+                            <div class="nav-group-items">
+                                <a href="{% url 'gestion_favoritas' %}" class="dropdown-item">⭐ Mis favoritas</a>
+                                <a href="{% url 'gestion_mis_publicaciones' %}" class="dropdown-item">📢 Mis publicaciones</a>
+                                {% if user.rol != 'base' %}
+                                <a href="{% url 'gestion_mis_asignadas' %}" class="dropdown-item">📌 Mis asignadas</a>
+                                <a href="{% url 'agenda' %}" class="dropdown-item">📅 Agenda</a>
+                                <a href="{% url 'gestion_documentos' %}" class="dropdown-item">📂 Documentos</a>
+                                <a href="{% url 'gestion_ingresos' %}" class="dropdown-item">💰 Ingresos</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="nav-group">
+                            <div class="nav-group-header">🔧 Servicios</div>
+                            <div class="nav-group-items">
+                                <a href="{% url 'gestion_mis_servicios' %}" class="dropdown-item">🔧 Mis servicios</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- ADMIN (solo gerente/superadmin) -->
+                {% if user.rol in 'gerente,superadmin' %}
+                <div class="nav-dropdown">
+                    <span class="nav-link dropdown-trigger" style="color:var(--ds-primary);font-weight:700;cursor:pointer;">Admin ▾</span>
+                    <div class="dropdown-content" style="min-width:240px;">
+                        <div class="nav-group open">
+                            <div class="nav-group-header">⚙️ Parámetros</div>
+                            <div class="nav-group-items">
+                                <a href="{% url 'gestion_precios_publicacion' %}" class="dropdown-item">💰 Precios publicación</a>
+                                <a href="{% url 'gestion_servicios' %}" class="dropdown-item">🔧 Servicios</a>
+                                <a href="{% url 'gestion_admin_servicios' %}" class="dropdown-item">🔧 Gestión de servicios</a>
+                                <a href="{% url 'validar_corredores' %}" class="dropdown-item">🛡️ Validar corredores</a>
+                                <a href="{% url 'revisar_postulaciones' %}" class="dropdown-item">📋 Postulaciones</a>
+                            </div>
+                        </div>
+                        {% if user.rol == 'superadmin' %}
+                        <div class="nav-group">
+                            <div class="nav-group-header">👑 Superadmin</div>
+                            <div class="nav-group-items">
+                                <a href="{% url 'crear_gerente' %}" class="dropdown-item">👤 Crear gerente</a>
+                                <a href="/admin/" class="dropdown-item">⚙️ Admin Django</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
                 {% endif %}
 
                 <a href="https://wa.me/56936916684?text=Hola!%20Tengo%20una%20consulta%20sobre%20SercaProp" target="_blank" rel="noopener noreferrer" class="nav-contact-btn nav-whatsapp" aria-label="Contactanos al ws">
@@ -541,6 +574,16 @@
                     d.classList.remove('active');
                 });
             }
+        });
+
+        // Acordeón de grupos dentro de los dropdowns de Gestión/Admin
+        document.querySelectorAll('.nav-group-header').forEach(function(h) {
+            h.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var group = h.parentElement;
+                group.classList.toggle('open');
+            });
         });
     </script>
 
