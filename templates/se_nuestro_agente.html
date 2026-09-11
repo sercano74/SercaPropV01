@@ -57,11 +57,11 @@
                     Postular a este plan →
                 </a>
                 {% else %}
-                <a href="{% url 'login' %}?next={% url 'postular_corredor' plan.id %}" class="btn btn-primary btn-block" style="text-decoration:none;">
-                    Inicia sesión para postular →
+                <a href="{% url 'registro' %}?next={% url 'postular_corredor' plan.id %}" class="btn btn-primary btn-block" style="text-decoration:none;">
+                    Quiero ser agente →
                 </a>
-                <a href="{% url 'registro' %}?next={% url 'postular_corredor' plan.id %}" class="btn btn-outline btn-block" style="text-decoration:none;margin-top:8px;">
-                    Crear cuenta gratis →
+                <a href="{% url 'login' %}?next={% url 'postular_corredor' plan.id %}" class="btn btn-outline btn-block" style="text-decoration:none;margin-top:8px;">
+                    Ya tengo cuenta: postular →
                 </a>
                 {% endif %}
             </div>
