@@ -5,9 +5,13 @@ from . import views
 urlpatterns = [
     path('', views.home, name='home'),
     # Redirigir URLs legacy a allauth
-    path('login/', RedirectView.as_view(url='/accounts/login/', permanent=True), name='login'),
+    # query_string=True preserva ?next=... al redirigir a allauth. Sin esto, el
+    # destino de postulacion se perdia y el usuario terminaba en el home.
+    # permanent=False evita que un 301 cacheado en el navegador siga mandando
+    # al destino sin query string despues de este arreglo.
+    path('login/', RedirectView.as_view(url='/accounts/login/', query_string=True, permanent=False), name='login'),
     path('logout/', RedirectView.as_view(url='/accounts/logout/', permanent=True), name='logout'),
-    path('registro/', RedirectView.as_view(url='/accounts/signup/', permanent=True), name='registro'),
+    path('registro/', RedirectView.as_view(url='/accounts/signup/', query_string=True, permanent=False), name='registro'),
     path('nosotros/', views.nosotros_view, name='nosotros'),
     path('publica/', views.publica_view, name='publica'),
     path('planes/', views.planes_view, name='planes'),
