@@ -146,7 +146,7 @@
                                         {% elif com.related_object_type == 'consulta' %}
                                         <a href="{% url 'detalle_consulta' com.related_object_id %}" class="com-btn-icon" title="Ver consulta">📬</a>
                                         {% elif com.related_object_type == 'postulacion' %}
-                                        <a href="{% url 'detalle_postulacion' com.related_object_id %}" class="com-btn-icon" title="Ver postulación a corredor">📋</a>
+                                        <a href="{% url 'revisar_postulaciones' %}" class="com-btn-icon" title="Ver postulaciones por validar">📋</a>
                                         {% else %}
                                         <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
                                         {% endif %}
@@ -224,7 +224,7 @@
                                         {% elif com.related_object_type == 'consulta' %}
                                         <a href="{% url 'detalle_consulta' com.related_object_id %}" class="com-btn-icon" title="Ver consulta">📬</a>
                                         {% elif com.related_object_type == 'postulacion' %}
-                                        <a href="{% url 'detalle_postulacion' com.related_object_id %}" class="com-btn-icon" title="Ver postulación a corredor">📋</a>
+                                        <a href="{% url 'revisar_postulaciones' %}" class="com-btn-icon" title="Ver postulaciones por validar">📋</a>
                                         {% else %}
                                         <a href="{% url 'detalle_solicitud' com.related_object_id %}" class="com-btn-icon" title="Ver solicitud">📋</a>
                                         {% endif %}
