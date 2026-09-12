@@ -39,7 +39,7 @@ class Communication(models.Model):
         blank=True,
         default="",
         verbose_name="Tipo de objeto relacionado",
-        help_text="'servicio' apunta al detalle de revisión de servicio; vacío/solicitud apunta al detalle de solicitud de propiedad.",
+        help_text="'servicio' apunta al detalle de revisión de servicio; 'consulta' al detalle de consulta; 'postulacion' al detalle de postulación a corredor; vacío/solicitud apunta al detalle de solicitud de propiedad.",
     )
 
     is_read = models.BooleanField(default=False, verbose_name="Leído")

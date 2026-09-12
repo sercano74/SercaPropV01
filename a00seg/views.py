@@ -957,6 +957,9 @@ def postular_corredor(request, plan_id):
                     f"al plan {plan.nombre}. Revisa sus antecedentes en el panel de gestión."
                 ),
                 related_object_id=solicitud.id,
+                # Marca el destino del enlace en el CDC: sin esto cae en el
+                # fallback 'detalle_solicitud' y abre /prop/solicitud/<id>/.
+                related_object_type="postulacion",
             )
 
         messages.success(
@@ -969,7 +972,9 @@ def postular_corredor(request, plan_id):
             user_auth = authenticate(request, username=usuario.username, password=password)
             if user_auth:
                 login(request, user_auth)
-        return redirect("home")
+        # Cierra el circuito: el postulante ve su comprobante enviado en el CDC
+        # en lugar de aterrizar en el home y perder el hilo de la postulación.
+        return redirect("centro_comunicaciones")
 
     return render(request, "postular_corredor.html", {
         "plan": plan,
