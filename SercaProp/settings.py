@@ -240,9 +240,15 @@ CLOUDINARY_STORAGE = {
 # DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # ── Configuración moderna de Almacenamiento (Django 4.2+) ──
+# El storage por defecto es propio (a00seg.storage.SercaMediaStorage) porque
+# cloudinary_storage.storage.MediaCloudinaryStorage sube TODO como
+# resource_type='image' y Cloudinary rechaza ahí los documentos que no son
+# imagen ni PDF (subir un Word devolvía "Unsupported ZIP file" y el usuario
+# veía la página 500). El storage propio enruta cada archivo a image, video o
+# raw según su extensión.
 STORAGES = {
     "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        "BACKEND": "a00seg.storage.SercaMediaStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",

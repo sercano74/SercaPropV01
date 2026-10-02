@@ -143,8 +143,14 @@
                     <form method="POST" action="{% url 'subir_orden_gestion' solicitud.id %}" enctype="multipart/form-data">
                         {% csrf_token %}
                         <div class="form-group">
-                            <label>Archivo PDF de la Orden de Gestión</label>
-                            <input type="file" name="orden_gestion" accept=".pdf" required>
+                            <label>Archivo de la Orden de Gestión (PDF o Word)</label>
+                            <input type="file" name="orden_gestion"
+                                   accept=".pdf,.doc,.docx,.odt,.rtf,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.heic,.zip"
+                                   required>
+                            <div class="form-hint">
+                                Formatos aceptados: PDF, Word (.doc/.docx), Excel, PowerPoint,
+                                OpenDocument, RTF, TXT, CSV, imágenes y ZIP. Tamaño máximo: 10 MB.
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Documentos requeridos al usuario</label>

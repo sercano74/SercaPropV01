@@ -29,6 +29,7 @@ from .models import (
 )
 from a01Com.models import Communication, SourceTypeChoices
 from a00seg.models import User, Comuna, Region, AgendaCorredor
+from a00seg.uploads import validar_archivo_documento
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
@@ -1443,7 +1444,12 @@ def subir_orden_gestion(request, solicitud_id):
     if request.method == "POST":
         og = request.FILES.get("orden_gestion")
         if not og:
-            messages.error(request, "Debes seleccionar un archivo PDF.")
+            messages.error(request, "Debes seleccionar el archivo de la Orden de Gestión.")
+            return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+        error_archivo = validar_archivo_documento(og, etiqueta="La Orden de Gestión")
+        if error_archivo:
+            messages.error(request, error_archivo)
             return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
         docs_requeridos = request.POST.get("docs_requeridos", "").strip()
