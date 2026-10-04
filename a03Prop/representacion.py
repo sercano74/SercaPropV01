@@ -207,12 +207,3 @@ def procesar_datos_propietario(post, files, user):
         )
 
     return datos, errores
-
-
-def etiqueta_representacion(solicitud):
-    """Texto corto para listados y detalle."""
-    if solicitud.tipo_publicante != SolicitudPublicacion.TipoPublicante.REPRESENTANTE:
-        return ""
-    propiedad = solicitud.propiedad
-    nombre = propiedad.propietario_nombre if propiedad else ""
-    return f"En representación de {nombre}" if nombre else "En representación"
