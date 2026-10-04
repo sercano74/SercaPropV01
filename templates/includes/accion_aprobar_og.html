@@ -1,0 +1,97 @@
+{% load static %}
+{# Segundo acto de control: la gerencia aprueba las condiciones comerciales.
+   Aquí se muestra la desviación de la tasa declarada respecto del plan, que es
+   la única fiscalización posible cuando no se quiere recortar la libertad
+   comercial del corredor. #}
+<div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
+    <div class="card-modern-body">
+        <div class="card-modern-title">Aprobar Orden de Gestión</div>
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+            Revisa las condiciones que declaró quien subió la OG. Al aprobarla, el
+            solicitante podrá completar los datos de la propiedad.
+        </p>
+
+        {% if solicitud.orden_gestion %}
+        <div class="detail-row">
+            <span class="detail-label">Orden de Gestión</span>
+            <span class="detail-value">
+                <a href="{{ solicitud.orden_gestion.url }}" target="_blank" rel="noopener">Ver documento</a>
+            </span>
+        </div>
+        {% endif %}
+
+        {% if resumen_og %}
+        <div class="card-modern" style="margin:12px 0;background:var(--ds-bg-secondary);">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:0.9rem;">Condiciones declaradas</div>
+                <div class="detail-row">
+                    <span class="detail-label">Precio de referencia</span>
+                    <span class="detail-value">
+                        {% if resumen_og.precio_referencia_clp %}
+                            ${{ resumen_og.precio_referencia_clp|floatformat:0 }}
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Comisión vendedor</span>
+                    <span class="detail-value">
+                        {% if resumen_og.comision_vendedor_clp is not None %}
+                            ${{ resumen_og.comision_vendedor_clp|floatformat:0 }}
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Comisión comprador</span>
+                    <span class="detail-value">
+                        {% if resumen_og.comision_comprador_clp is not None %}
+                            ${{ resumen_og.comision_comprador_clp|floatformat:0 }}
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Ingreso bruto</span>
+                    <span class="detail-value">
+                        {% if resumen_og.ingreso_bruto_clp is not None %}
+                            ${{ resumen_og.ingreso_bruto_clp|floatformat:0 }}
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Tasa SERCA declarada</span>
+                    <span class="detail-value">
+                        {% if solicitud.tasa_serca_og is not None %}
+                            {{ solicitud.tasa_serca_og }}%
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {% if resumen_og.tiene_desviacion %}
+        <div class="alert-modern alert-warning-modern" style="font-size:0.85rem;">
+            La tasa declarada ({{ solicitud.tasa_serca_og }}%) difiere de la del plan
+            ({{ resumen_og.tasa_plan }}%) en {{ resumen_og.desviacion_tasa }} puntos.
+            {% if solicitud.corredor_asignado %}
+                Responsable: {{ solicitud.corredor_asignado.get_full_name|default:solicitud.corredor_asignado.email }}.
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {% if solicitud.corredor_asignado and solicitud.corredor_asignado == request.user %}
+        <div class="alert-modern alert-warning-modern" style="font-size:0.85rem;">
+            Tú subiste esta Orden de Gestión. Si la apruebas, quedará registrado con tu
+            nombre para la auditoría.
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'aceptar_orden_gestion' solicitud.id %}">
+            {% csrf_token %}
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:0.88rem;margin-bottom:12px;">
+                <input type="checkbox" name="acepta" required style="margin-top:3px;">
+                <span>Apruebo las condiciones económicas de esta Orden de Gestión.</span>
+            </label>
+            <button type="submit" class="btn btn-primary btn-block">Aprobar Orden de Gestión</button>
+        </form>
+    </div>
+</div>

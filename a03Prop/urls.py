@@ -65,6 +65,10 @@ urlpatterns = [
     path('solicitud/<int:solicitud_id>/publicar/', views.publicar_solicitud, name='publicar_solicitud'),
     path('solicitud/<int:solicitud_id>/cancelar/', views.cancelar_solicitud, name='cancelar_solicitud'),
 
+    # ===== AVISO AL PROPIETARIO (página pública, sin login) =====
+    # El propietario no tiene cuenta: entra con el token que llegó a su correo.
+    path('representacion/<str:token>/', views.aviso_representacion, name='aviso_representacion'),
+
     # ===== EDICIÓN DE PROPIEDAD (datos, fotos, docs legales) =====
     path('editar/<int:prop_id>/', views.editar_propiedad, name='editar_propiedad'),
     path('editar/<int:prop_id>/subir-foto/', views.subir_foto_propiedad, name='subir_foto_propiedad'),

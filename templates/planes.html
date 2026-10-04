@@ -188,102 +188,10 @@
 <!-- ============================================================ -->
 <!-- SECCIÓN 2: SÉ NUESTRO AGENTE (CORREDORES)                   -->
 <!-- ============================================================ -->
-{% comment %} <section>
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
-        <h2 style="font-size:1.5rem;font-weight:700;margin:0;display:flex;align-items:center;gap:10px;">
-            🤝 Sé nuestro agente
-        </h2>
-        <a href="{% url 'se_nuestro_agente' %}" class="btn btn-outline btn-sm" style="text-decoration:none;">Ver detalles →</a>
-    </div>
-
-    <p style="font-size:1rem;color:var(--ds-text-secondary);margin-bottom:20px;text-align:center;">
-        Únete al equipo de corredores de <strong>{{ site_name }}</strong> y haz crecer tu negocio inmobiliario.
-    </p>
-
-    {% if planes_corredor %}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px;margin:0 auto;">
-        {% for plan in planes_corredor %}
-        <div class="card-modern" style="text-align:center;border:2px solid {% if plan.nombre|lower == 'prime' %}var(--ds-primary){% else %}var(--ds-border-light){% endif %};position:relative;overflow:visible;">
-            {% if plan.nombre|lower == 'prime' %}
-            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ds-primary);color:white;padding:4px 18px;border-radius:9999px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;border:2px solid var(--ds-primary-dark);">
-                ⭐ RECOMENDADO
-            </div>
-            {% endif %}
-            <div class="card-modern-body" style="padding-top:{% if plan.nombre|lower == 'prime' %}28px{% else %}20px{% endif %};">
-                <div style="font-size:2.5rem;margin-bottom:4px;">
-                    {% if plan.nombre|lower == 'prime' %}👑{% else %}🥈{% endif %}
-                </div>
-                <div class="card-modern-title" style="font-size:1.3rem;font-weight:700;">{{ plan.nombre }}</div>
-                <div style="font-size:2.2rem;font-weight:700;color:var(--ds-success);margin:10px 0;">
-                    ${{ plan.precio|floatformat:0|intcomma }}
-                    <span style="font-size:0.9rem;color:var(--ds-text-secondary);font-weight:400;">/{{ plan.duracion_meses }} mes(es)</span>
-                </div>
-
-                <!-- Comisión -->
-                <div style="background:var(--ds-bg-secondary);border-radius:10px;padding:10px;margin:12px 0;">
-                    <div style="font-size:1rem;font-weight:700;color:var(--ds-primary);">
-                        {% if plan.nombre|lower == 'prime' %}70{% else %}60{% endif %}% de comisión
-                    </div>
-                    <div style="font-size:0.8rem;color:var(--ds-text-secondary);">
-                        {% if plan.nombre|lower == 'prime' %}
-                        Tasa preferencial — ganas más por cada operación
-                        {% else %}
-                        Tasa estándar del mercado
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Beneficios comparativos -->
-                <ul style="text-align:left;font-size:0.85rem;color:var(--ds-text-secondary);list-style:none;padding:0;margin:12px 0;">
-                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
-                        <span style="color:var(--ds-success);font-weight:700;">
-                            {% if plan.nombre|lower == 'prime' %}✅{% else %}✅{% endif %}
-                        </span>
-                        <span>
-                            <strong>{% if plan.nombre|lower == 'prime' %}Hasta 10{% else %}Hasta 3{% endif %}</strong> negocios asignados por SERCAPROP en simultáneo
-                        </span>
-                    </li>
-                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
-                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
-                        <span>Comisión del <strong>{% if plan.nombre|lower == 'prime' %}70%{% else %}60%{% endif %}</strong> por operación</span>
-                    </li>
-                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
-                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
-                        <span>Soporte prioritario{% if plan.nombre|lower == 'prime' %} 24/7{% endif %}</span>
-                    </li>
-                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
-                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
-                        <span>Acceso a herramientas de gestión</span>
-                    </li>
-                    {% if plan.nombre|lower == 'prime' %}
-                    <li style="padding:4px 0;display:flex;align-items:center;gap:8px;">
-                        <span style="color:var(--ds-success);font-weight:700;">✅</span>
-                        <span><strong>Mayor exposición</strong> en vitrina para tus propiedades</span>
-                    </li>
-                    {% endif %}
-                </ul>
-
-                {% if user.is_authenticated %}
-                <form method="POST">
-                    {% csrf_token %}
-                    <input type="hidden" name="plan_id" value="{{ plan.id }}">
-                    <button type="submit" class="btn {% if plan.nombre|lower == 'prime' %}btn-primary{% else %}btn-outline{% endif %} btn-block" style="margin-top:8px;">
-                        {% if plan.nombre|lower == 'prime' %}⭐ Contratar Prime{% else %}Contratar {{ plan.nombre }}{% endif %}
-                    </button>
-                </form>
-                {% else %}
-                <a href="{% url 'login' %}" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;">Ingresa para contratar</a>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state-modern">
-        <p>No hay planes disponibles para corredores en este momento.</p>
-    </div>
-    {% endif %}
-</section> {% endcomment %}
+{# La sección "Sé nuestro agente" de esta página se retiró: los planes de
+   corredor se muestran una sola vez, en `se_nuestro_agente.html`, que es a
+   donde apunta el enlace. Mantener dos listados duplicados era el "esquema
+   viejo": al editar un plan había que acordarse de los dos sitios. #}
 
 {% if suscripcion %}
 <div class="card-modern" style="margin-top:32px;">

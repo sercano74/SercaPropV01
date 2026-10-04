@@ -14,6 +14,105 @@
     <form method="POST" enctype="multipart/form-data" class="form-modern" id="solicitar-form">
         {% csrf_token %}
 
+        {# ------------------------------------------------------------------
+           Quién publica. El valor viaja siempre en el POST; el JavaScript sólo
+           oculta y deshabilita campos, nunca es la barrera de seguridad: el
+           servidor vuelve a decidir y no acepta los datos del propietario si
+           el selector dice "propietario".
+           ------------------------------------------------------------------ #}
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">Tipo de publicación</h3>
+        <div class="form-group">
+            <label for="id_tipo_publicante">¿A nombre de quién se publica?</label>
+            <select name="tipo_publicante" id="id_tipo_publicante">
+                <option value="propietario" {% if tipo_publicante != 'representante' %}selected{% endif %}>
+                    A mi nombre (soy el propietario)
+                </option>
+                <option value="representante" {% if tipo_publicante == 'representante' %}selected{% endif %}
+                        {% if not puede_representar %}disabled{% endif %}>
+                    En representación de un propietario sin cuenta
+                </option>
+            </select>
+            {% if puede_representar %}
+            <div class="form-hint">
+                Publicaciones en representación este mes:
+                {{ cupo_usadas }}{% if cupo_limite %} de {{ cupo_limite }}{% endif %}.
+                Requiere mandato del propietario y su plan debe permitirlo.
+            </div>
+            {% else %}
+            <div class="form-hint">
+                Tu cuenta o tu plan actual no permiten publicar en representación de terceros.
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="bloque-propietario" style="display:none;">
+            <div class="alert-modern alert-info-modern" style="font-size:0.85rem;">
+                El propietario no necesita cuenta. Le enviaremos un aviso por correo
+                con copia a la gerencia y tendrá un plazo para objetar la publicación
+                antes de que salga al mercado.
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_propietario_nombre">Nombre completo del propietario *</label>
+                    <input type="text" name="propietario_nombre" id="id_propietario_nombre"
+                           value="{{ propietario_nombre|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label for="id_propietario_dni">RUT del propietario *</label>
+                    <input type="text" name="propietario_dni" id="id_propietario_dni" placeholder="12.345.678-9"
+                           value="{{ propietario_dni|default:'' }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_propietario_email">Correo del propietario *</label>
+                    <input type="email" name="propietario_email" id="id_propietario_email"
+                           value="{{ propietario_email|default:'' }}">
+                    <div class="form-hint">A esta dirección llegará el aviso de la publicación.</div>
+                </div>
+                <div class="form-group">
+                    <label for="id_propietario_celular">Teléfono del propietario *</label>
+                    <input type="text" name="propietario_celular" id="id_propietario_celular"
+                           value="{{ propietario_celular|default:'' }}">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_mandato_tipo">Tipo de mandato *</label>
+                    <select name="mandato_tipo" id="id_mandato_tipo">
+                        <option value="escrito" {% if mandato_tipo == 'escrito' %}selected{% endif %}>Escrito simple firmado</option>
+                        <option value="notarial" {% if mandato_tipo == 'notarial' %}selected{% endif %}>Notarial / poder amplio</option>
+                        {% if puede_mandato_verbal %}
+                        <option value="verbal">Verbal (lo aprueba la gerencia)</option>
+                        {% endif %}
+                    </select>
+                    <div class="form-hint">
+                        El mandato verbal no deja rastro: sólo lo admite la gerencia.
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="id_mandato_archivo">Archivo del mandato</label>
+                    <input type="file" name="mandato_archivo" id="id_mandato_archivo"
+                           accept=".pdf,.doc,.docx,.odt,.rtf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.heic">
+                    <div class="form-hint">
+                        Obligatorio salvo que el mandato sea verbal. Se valida en el servidor.
+                    </div>
+                </div>
+            </div>
+
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:0.85rem;margin:4px 0 8px;">
+                <input type="checkbox" name="declara_mandato" value="1"
+                       id="id_declara_mandato" style="margin-top:3px;">
+                <span>
+                    Declaro que el correo indicado pertenece al propietario y que cuento
+                    con su mandato para publicar su propiedad. Esta declaración queda
+                    registrada con mi usuario.
+                </span>
+            </label>
+        </div>
+
         <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">📍 Ubicación y tipo</h3>
         <div class="form-row">
             <div class="form-group">
@@ -412,6 +511,33 @@
                 tipoAccion.addEventListener('change', actualizarTotal);
                 actualizarTotal();
                 {% endif %}
+            }
+
+            // ===== TIPO DE PUBLICANTE (representación) =====
+            // Deshabilitar los campos es lo que impide que viajen en el POST:
+            // un input disabled no se envía. Es comodidad, no seguridad — el
+            // servidor vuelve a decidir si acepta o no estos datos.
+            var selectorPublicante = document.getElementById('id_tipo_publicante');
+            var bloquePropietario = document.getElementById('bloque-propietario');
+            if (selectorPublicante && bloquePropietario) {
+                var camposPropietario = bloquePropietario.querySelectorAll('input, select, textarea');
+                var idsObligatorios = [
+                    'id_propietario_nombre', 'id_propietario_dni',
+                    'id_propietario_email', 'id_propietario_celular',
+                    'id_declara_mandato'
+                ];
+                var actualizarModoPublicante = function() {
+                    var esRepresentacion = selectorPublicante.value === 'representante';
+                    bloquePropietario.style.display = esRepresentacion ? 'block' : 'none';
+                    Array.prototype.forEach.call(camposPropietario, function(campo) {
+                        campo.disabled = !esRepresentacion;
+                        if (idsObligatorios.indexOf(campo.id) !== -1) {
+                            campo.required = esRepresentacion;
+                        }
+                    });
+                };
+                selectorPublicante.addEventListener('change', actualizarModoPublicante);
+                actualizarModoPublicante();
             }
 
             // ===== FILTRO COMUNA =====

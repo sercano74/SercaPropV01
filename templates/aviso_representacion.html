@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Aviso de publicación{% endblock %}
+{% block content %}
+
+<div class="form-modern-container" style="max-width:640px;">
+
+{% if ya_resuelto %}
+    {# ---- Caso A: ya hay una objeción registrada ---- #}
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;">Objeción registrada</div>
+            <p style="font-size:0.95rem;color:var(--ds-text-secondary);">
+                Ya registramos su objeción a la publicación de esta propiedad. La
+                propiedad no saldrá al mercado y la gerencia revisará el caso.
+            </p>
+
+            {% if objecion_motivo %}
+            <div class="alert-modern alert-info-modern" style="font-size:0.9rem;">
+                <strong>Motivo que nos indicó:</strong>
+                <div style="margin-top:6px;white-space:pre-line;">{{ objecion_motivo }}</div>
+            </div>
+            {% endif %}
+
+            {% if objecion_at %}
+            <p style="font-size:0.85rem;color:var(--ds-text-secondary);">
+                Registrada el {{ objecion_at|date:"d/m/Y H:i" }}.
+            </p>
+            {% endif %}
+
+            <hr style="border:none;border-top:1px solid var(--ds-border-light);margin:18px 0;">
+
+            <p style="font-size:0.9rem;">
+                Si necesita corregir algo o desea publicar de todas formas, escríbanos
+                indicando el número de solicitud <strong>#{{ solicitud.id }}</strong>.
+            </p>
+            <a href="{% url 'home' %}" class="btn btn-primary btn-block" style="text-decoration:none;">Ir al inicio</a>
+        </div>
+    </div>
+
+{% else %}
+    {# ---- Caso B: el propietario todavía puede objetar ---- #}
+    <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1.1rem;">Aviso de publicación de su propiedad</div>
+            <p style="font-size:0.95rem;color:var(--ds-text-secondary);">
+                Nos avisaron que usted es el propietario de esta propiedad, que un
+                representante está publicando en su nombre. Revise los datos: si no
+                autorizó esta publicación, puede oponerse aquí mismo.
+            </p>
+        </div>
+    </div>
+
+    <div class="card-modern" style="margin-bottom:16px;">
+        <div class="card-modern-body" style="font-size:0.92rem;">
+            {# El propietario reconoce su propiedad por su propio nombre: es el
+               primer dato que confirma que el aviso va dirigido a él. Sólo el
+               nombre — el enlace puede reenviarse, así que no se agrega RUT ni
+               teléfono. #}
+            <div class="detail-row">
+                <span class="detail-label">Propietario</span>
+                <span class="detail-value">{{ propiedad.propietario_nombre|default:"—" }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Tipo de propiedad</span>
+                <span class="detail-value">{{ propiedad.get_tipo_prop_display|default:"—" }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Comuna</span>
+                <span class="detail-value">{{ propiedad.comuna|default:"—" }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Dirección</span>
+                <span class="detail-value">{{ propiedad.calle }} {{ propiedad.numero_calle }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Acción</span>
+                <span class="detail-value">{{ propiedad.get_tipo_accion_display|default:"—" }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Publica en su nombre</span>
+                <span class="detail-value">{{ solicitud.usuario.get_full_name|default:solicitud.usuario.email }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Mandato presentado</span>
+                <span class="detail-value">{{ solicitud.get_tipo_mandato_display|default:"—" }}</span>
+            </div>
+            {% if objecion_hasta %}
+            <div class="detail-row">
+                <span class="detail-label">Puede oponerse hasta</span>
+                <span class="detail-value">{{ objecion_hasta|date:"d/m/Y" }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card-modern" style="margin-bottom:16px;">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1rem;">Si no autorizó esta publicación</div>
+            <p style="font-size:0.9rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+                Escríbanos el motivo. Con su objeción la propiedad sale de inmediato de
+                la vitrina y la gerencia revisa el caso.
+            </p>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_motivo">Motivo de la objeción *</label>
+                    <textarea name="motivo" id="id_motivo" rows="5" required
+                              placeholder="Ej: nunca autoricé esta publicación, no conozco a esa persona."
+                              style="width:100%;padding:10px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.92rem;"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block"
+                        style="background:var(--ds-error);border-color:var(--ds-error);">
+                    Oponerme a la publicación
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card-modern">
+        <div class="card-modern-body">
+            <div class="card-modern-title" style="font-size:1rem;">Si está de acuerdo</div>
+            <p style="font-size:0.9rem;color:var(--ds-text-secondary);">
+                No necesita hacer nada.
+                {% if objecion_hasta %}
+                La propiedad saldrá al mercado cuando termine el plazo, el
+                {{ objecion_hasta|date:"d/m/Y" }}.
+                {% else %}
+                La propiedad saldrá al mercado cuando termine el plazo de objeción
+                indicado en el correo que recibió.
+                {% endif %}
+            </p>
+            <a href="{% url 'home' %}" class="btn btn-ghost btn-block" style="text-decoration:none;">Ir al inicio</a>
+        </div>
+    </div>
+{% endif %}
+
+</div>
+{% endblock %}

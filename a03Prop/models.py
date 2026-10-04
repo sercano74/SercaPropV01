@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.text import slugify
 
+from . import comisiones
+
 
 def _generar_slug_unico(base, modelo, campo="slug"):
     """Genera un slug único agregando un sufijo numérico si es necesario."""
@@ -72,11 +74,41 @@ class Propiedad(models.Model):
         ("archivada", "Archivada"),
     ]
 
+    # El propietario puede no tener cuenta (publicación en representación).
+    # SET_NULL: borrar un usuario no debe borrar sus propiedades.
     dueno = models.ForeignKey(
         "a00seg.User",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="propiedades",
-        verbose_name="Dueño",
+        verbose_name="Dueño (si tiene cuenta)",
+    )
+    # Quién operó la publicación cuando el propietario no tiene cuenta.
+    representante = models.ForeignKey(
+        "a00seg.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="propiedades_representadas",
+        verbose_name="Representante",
+    )
+    # Datos declarados del propietario sin cuenta: alimentan los documentos
+    # y el aviso por correo de la publicación en representación.
+    propietario_nombre = models.CharField(
+        max_length=255, blank=True, verbose_name="Nombre del propietario"
+    )
+    propietario_dni = models.CharField(
+        max_length=20, blank=True, verbose_name="RUT del propietario"
+    )
+    propietario_email = models.EmailField(
+        blank=True, verbose_name="Email del propietario"
+    )
+    propietario_celular = models.CharField(
+        max_length=20, blank=True, verbose_name="Teléfono del propietario"
+    )
+    en_representacion = models.BooleanField(
+        default=False, verbose_name="Publicada en representación"
     )
     calle = models.CharField(max_length=255, verbose_name="Calle / Dirección")
     numero_calle = models.CharField(max_length=20, verbose_name="Número")
@@ -191,6 +223,26 @@ class Propiedad(models.Model):
         """Nombre público de la propiedad, sin dirección exacta (solo comuna + tipo)."""
         comuna_str = str(self.comuna) if self.comuna else "Sin comuna"
         return f"{self.get_tipo_prop_display()} - {comuna_str}"
+
+    @property
+    def nombre_propietario_display(self):
+        """Nombre del propietario, tenga cuenta o sea declarado.
+
+        Evita repetir el ``or dueno.email`` en cada plantilla y, sobre todo,
+        evita el error cuando ``dueno`` es ``None`` (propiedad en representación).
+        """
+        if self.dueno:
+            return self.dueno.get_full_name() or self.dueno.email
+        return self.propietario_nombre or "Propietario no informado"
+
+    def clean(self):
+        """Sostiene el invariante: o hay dueño con cuenta, o hay datos declarados."""
+        from django.core.exceptions import ValidationError
+        if not self.dueno and not (self.en_representacion and self.propietario_nombre):
+            raise ValidationError(
+                "Una propiedad debe tener dueño con cuenta o, si se publica en "
+                "representación, el nombre del propietario declarado."
+            )
 
 
 class FotosPropiedad(models.Model):
@@ -481,13 +533,61 @@ class CierreEconomico(models.Model):
     )
 
     # ===== Comisiones presupuestadas (desde CorredorProp / OG) =====
+    TIPO_COMISION_CHOICES = [
+        ("porcentaje", "Porcentaje del precio"),
+        ("fijo", "Monto fijo"),
+    ]
+    ORIGEN_COMISIONES_CHOICES = [
+        ("og", "Orden de Gestión"),
+        ("corredor_prop", "Ficha del corredor"),
+        ("manual", "Carga manual"),
+    ]
+    tipo_comision_vendedor = models.CharField(
+        max_length=20, choices=TIPO_COMISION_CHOICES, blank=True,
+        verbose_name="Tipo comisión vendedor",
+    )
+    tipo_comision_comprador = models.CharField(
+        max_length=20, choices=TIPO_COMISION_CHOICES, blank=True,
+        verbose_name="Tipo comisión comprador",
+    )
+    origen_comisiones = models.CharField(
+        max_length=20, choices=ORIGEN_COMISIONES_CHOICES, blank=True,
+        verbose_name="Origen de las comisiones",
+        help_text="De dónde salieron los valores presupuestados",
+    )
+    moneda_comision_vendedor = models.CharField(
+        max_length=5, choices=Propiedad.TIPO_MONEDA_CHOICES, default="PCL",
+        verbose_name="Moneda de la comisión del vendedor",
+    )
+    moneda_comision_comprador = models.CharField(
+        max_length=5, choices=Propiedad.TIPO_MONEDA_CHOICES, default="PCL",
+        verbose_name="Moneda de la comisión del comprador",
+    )
+    valor_comision_vendedor_origen = models.DecimalField(
+        max_digits=15, decimal_places=2, blank=True, null=True,
+        verbose_name="Comisión vendedor en origen (% o monto)",
+    )
+    valor_comision_comprador_origen = models.DecimalField(
+        max_digits=15, decimal_places=2, blank=True, null=True,
+        verbose_name="Comisión comprador en origen (% o monto)",
+    )
+    factor_uf_og = models.DecimalField(
+        max_digits=12, decimal_places=2, blank=True, null=True,
+        verbose_name="UF → CLP usada para las comisiones",
+    )
+    factor_usd_og = models.DecimalField(
+        max_digits=12, decimal_places=2, blank=True, null=True,
+        verbose_name="USD → CLP usada para las comisiones",
+    )
     pct_comision_vendedor = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0,
+        max_digits=5, decimal_places=2, blank=True, null=True,
         verbose_name="% Comisión vendedor",
+        help_text="Sólo tiene sentido cuando el tipo es porcentaje",
     )
     pct_comision_comprador = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0,
+        max_digits=5, decimal_places=2, blank=True, null=True,
         verbose_name="% Comisión comprador",
+        help_text="Sólo tiene sentido cuando el tipo es porcentaje",
     )
     comision_vendedor_presupuestada_clp = models.DecimalField(
         max_digits=15, decimal_places=2, default=0,
@@ -939,19 +1039,31 @@ class SolicitudPublicacion(models.Model):
         # Paso 1 - Datos básicos + pago
         ("pago_revision", "Pago en revisión"),
         ("pago_objetado", "Pago objetado"),
-        # Paso 2 - Gerente aprueba y asigna corredor
+        # Paso 2 - Gerente aprueba, valida el mandato y asigna responsable
         ("pago_aprobado", "Pago aprobado"),
         ("esperando_corredor", "Esperando asignación de corredor"),
-        # Paso 3 - Corredor sube OG
+        # Paso 3 - Responsable sube la Orden de Gestión con sus condiciones económicas
         ("en_revision_corredor", "En revisión del corredor"),
-        # Paso 4 - Usuario completa + acepta OG
-        ("og_pendiente", "Orden de Gestión pendiente de aceptación"),
+        # Paso 4 - Gerente aprueba la OG y el solicitante completa los datos
+        ("og_pendiente", "Orden de Gestión pendiente de aprobación"),
+        ("og_aceptada", "Orden de Gestión aprobada"),
         # Paso 5 - Corredor valida en bucle
         ("en_validacion", "En validación final"),
         ("publicada", "Publicada"),
         ("rechazada", "Rechazada"),
         ("cancelada", "Cancelada"),
+        # El propietario objetó la publicación hecha en su representación
+        ("objetada", "Objetada por el propietario"),
     ]
+
+    class TipoPublicante(models.TextChoices):
+        PROPIETARIO = "propietario", "El propio propietario"
+        REPRESENTANTE = "representante", "Representante del propietario"
+
+    class TipoMandato(models.TextChoices):
+        VERBAL = "verbal", "Verbal"
+        ESCRITO = "escrito", "Escrito simple firmado"
+        NOTARIAL = "notarial", "Notarial / poder amplio"
 
     usuario = models.ForeignKey(
         "a00seg.User",
@@ -959,6 +1071,74 @@ class SolicitudPublicacion(models.Model):
         related_name="solicitudes_publicacion",
         verbose_name="Solicitante",
     )
+    # ===== Publicación en representación =====
+    # El representante ocupa el casillero de ``usuario``: es quien crea la
+    # solicitud y quien sube el comprobante. El propietario queda fuera de la
+    # plataforma y sólo se le avisa por correo.
+    tipo_publicante = models.CharField(
+        max_length=20, choices=TipoPublicante.choices, default="propietario",
+        verbose_name="Quién publica",
+    )
+    tipo_mandato = models.CharField(
+        max_length=20, choices=TipoMandato.choices, blank=True,
+        verbose_name="Tipo de mandato",
+    )
+    mandato_archivo = models.FileField(
+        upload_to="mandatos/", blank=True, null=True,
+        verbose_name="Mandato firmado por el propietario",
+    )
+    mandato_validado_por = models.ForeignKey(
+        "a00seg.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="mandatos_validados", verbose_name="Mandato validado por",
+    )
+    mandato_validado_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Mandato validado el",
+    )
+    # ===== Auditoría de quién aprobó la Orden de Gestión =====
+    og_aceptada_por = models.ForeignKey(
+        "a00seg.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="ogs_aprobadas", verbose_name="OG aprobada por",
+    )
+    # ===== Aviso al propietario y su objeción =====
+    aviso_enviado_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Aviso enviado al propietario el",
+    )
+    aviso_email_destino = models.EmailField(
+        blank=True, verbose_name="Email al que se envió el aviso",
+        help_text="Queda registrado por si el propietario reclama después",
+    )
+    aviso_token = models.CharField(
+        max_length=64, blank=True, verbose_name="Token del enlace de objeción",
+    )
+    aviso_abierto_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="El propietario abrió el aviso el",
+    )
+    # El plazo se acota aquí y no sólo en el formulario: sin tope, un gerente
+    # podía fijar 999 días y dejar la publicación bloqueada indefinidamente.
+    OBJECION_DIAS_MIN = 1
+    OBJECION_DIAS_MAX = 7
+    objecion_dias = models.PositiveSmallIntegerField(
+        default=1, verbose_name="Días de plazo para objetar",
+        help_text=(
+            f"Mínimo {OBJECION_DIAS_MIN}, máximo {OBJECION_DIAS_MAX}. "
+            "Lo fija el gerente al aprobar el pago"
+        ),
+    )
+    objecion_hasta = models.DateTimeField(
+        blank=True, null=True, verbose_name="Se puede publicar a partir de",
+    )
+    objecion_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Objetada el",
+    )
+    objecion_motivo = models.TextField(blank=True, verbose_name="Motivo de la objeción")
+    objetada = models.BooleanField(default=False, verbose_name="¿Objetada por el propietario?")
+    # Tasa SERCA que indicaba el plan al momento de la OG. Se guarda aparte
+    # porque el plan puede cambiar después y la auditoría se perdería.
+    tasa_serca_plan = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        verbose_name="Tasa SERCA del plan al momento de la OG",
+    )
+
     meses = models.PositiveIntegerField(default=1, verbose_name="Meses de publicación")
     es_destacada = models.BooleanField(default=False, verbose_name="¿Destacada?")
     total_pago = models.DecimalField(
@@ -1020,6 +1200,32 @@ class SolicitudPublicacion(models.Model):
         verbose_name="Tasa SERCA desde OG (%)",
         help_text="Se pre-puebla desde el plan del corredor, editable",
     )
+    # ===== Monedas y tipo de cambio de la OG =====
+    # Cada monto de la OG puede venir en CLP, UF o USD. Con el factor del día
+    # se convierte todo a CLP, así el cierre económico es reproducible.
+    moneda_referencia_og = models.CharField(
+        max_length=5, choices=Propiedad.TIPO_MONEDA_CHOICES, default="PCL",
+        verbose_name="Moneda del precio de referencia",
+    )
+    moneda_comision_vendedor_og = models.CharField(
+        max_length=5, choices=Propiedad.TIPO_MONEDA_CHOICES, default="PCL",
+        verbose_name="Moneda de la comisión del vendedor",
+    )
+    moneda_comision_comprador_og = models.CharField(
+        max_length=5, choices=Propiedad.TIPO_MONEDA_CHOICES, default="PCL",
+        verbose_name="Moneda de la comisión del comprador",
+    )
+    factor_uf_og = models.DecimalField(
+        max_digits=12, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor UF → CLP usado en la OG",
+    )
+    factor_usd_og = models.DecimalField(
+        max_digits=12, decimal_places=2, blank=True, null=True,
+        verbose_name="Valor USD → CLP usado en la OG",
+    )
+    fecha_tipo_cambio_og = models.DateField(
+        blank=True, null=True, verbose_name="Fecha del tipo de cambio de la OG",
+    )
     docs_requeridos = models.TextField(
         blank=True,
         verbose_name="Documentos requeridos",
@@ -1041,20 +1247,162 @@ class SolicitudPublicacion(models.Model):
 
     @property
     def paso_actual(self):
-        """Retorna el número de paso (1-5) según el estado."""
+        """Retorna el número de paso (1-5) según el estado.
+
+        ``og_aceptada`` se escribe al aprobar la Orden de Gestión. Antes no
+        estaba declarado en ``ESTADO_CHOICES`` ni contemplado aquí, así que
+        devolvía 0 y el stepper marcaba el paso 1 como activo.
+        """
         if self.estado in ("pago_revision", "pago_objetado"):
             return 1
         if self.estado in ("pago_aprobado", "esperando_corredor"):
             return 2
         if self.estado == "en_revision_corredor":
             return 3
-        if self.estado in ("og_pendiente",):
+        if self.estado in ("og_pendiente", "og_aceptada"):
             return 4
         if self.estado in ("en_validacion", "publicada"):
             return 5
-        if self.estado in ("rechazada", "cancelada"):
+        if self.estado in ("rechazada", "cancelada", "objetada"):
             return 0
         return 0
+
+    # ------------------------------------------------------------------
+    # Condiciones económicas de la Orden de Gestión
+    #
+    # Todo se resuelve en CLP con las tasas registradas al subir la OG, no con
+    # las del día en que se lee. Si la UF se mueve entre la firma de la OG y el
+    # cierre, el monto pactado no cambia: es un contrato. Las propiedades
+    # devuelven ``None`` —nunca cero— cuando falta un dato, para que el cierre
+    # no invente un valor.
+    # ------------------------------------------------------------------
+
+    @property
+    def precio_referencia_clp(self):
+        """Precio de la OG convertido a CLP con la tasa de la OG."""
+        return comisiones.convertir_a_clp(
+            self.precio_referencia_og,
+            self.moneda_referencia_og,
+            self.factor_uf_og,
+            self.factor_usd_og,
+        )
+
+    def _comision_og_clp(self, tipo, valor, moneda):
+        return comisiones.calcular_comision_clp(
+            base_clp=self.precio_referencia_clp,
+            tipo=tipo,
+            valor=valor,
+            moneda=moneda,
+            factor_uf=self.factor_uf_og,
+            factor_usd=self.factor_usd_og,
+        )
+
+    @property
+    def comision_vendedor_og_clp(self):
+        """Comisión del vendedor de la OG, en CLP."""
+        return self._comision_og_clp(
+            self.tipo_comision_vendedor_og,
+            self.valor_comision_vendedor_og,
+            self.moneda_comision_vendedor_og,
+        )
+
+    @property
+    def comision_comprador_og_clp(self):
+        """Comisión del comprador de la OG, en CLP."""
+        return self._comision_og_clp(
+            self.tipo_comision_comprador_og,
+            self.valor_comision_comprador_og,
+            self.moneda_comision_comprador_og,
+        )
+
+    @property
+    def ingreso_bruto_og_clp(self):
+        """Ingreso bruto del corredor según la OG. ``None`` si no hay OG."""
+        vendedor = self.comision_vendedor_og_clp
+        comprador = self.comision_comprador_og_clp
+        if vendedor is None and comprador is None:
+            return None
+        return (vendedor or 0) + (comprador or 0)
+
+    @property
+    def comision_serca_og_clp(self):
+        """Lo que SERCA cobra según la tasa declarada en la OG."""
+        return comisiones.aplicar_tasa(self.ingreso_bruto_og_clp, self.tasa_serca_og)
+
+    @property
+    def neto_corredor_og_clp(self):
+        """Lo que queda para el corredor según la OG."""
+        bruto = self.ingreso_bruto_og_clp
+        if bruto is None:
+            return None
+        return bruto - (self.comision_serca_og_clp or 0)
+
+    @property
+    def desviacion_tasa_serca(self):
+        """Puntos de diferencia entre la tasa del plan y la de la OG."""
+        return comisiones.desviacion_tasa(self.tasa_serca_plan, self.tasa_serca_og)
+
+    @property
+    def tiene_condiciones_economicas(self):
+        """``True`` si la OG trae alguna condición económica que fiscalizar."""
+        return bool(
+            self.precio_referencia_og
+            or self.valor_comision_vendedor_og
+            or self.valor_comision_comprador_og
+            or self.tasa_serca_og
+        )
+
+    def acciones_de(self, user):
+        """Acciones que ``user`` puede ejecutar en el estado actual.
+
+        Es la única fuente de verdad de la máquina de estados para la interfaz.
+        Cada acción depende de DOS atributos —quién es y en qué etapa está—,
+        que es justo lo que faltaba: la plantilla condicionaba sólo por el rol,
+        así que un usuario con dos roles (el representante que además es el
+        corredor asignado, o el gerente que se asigna a sí mismo) quedaba con
+        los botones de un solo rol y el flujo se atascaba.
+
+        Devuelve un ``set`` para que la plantilla pueda consultar pertenencia
+        con ``{% if 'aprobar_og' in acciones %}`` sin condiciones compuestas.
+        """
+        if not user or not user.is_authenticated:
+            return set()
+
+        acciones = set()
+        es_gerente = user.rol in ("gerente", "superadmin")
+        es_responsable = user == self.corredor_asignado
+        es_solicitante = user == self.usuario
+
+        if es_gerente:
+            if self.estado in ("pago_revision", "pago_objetado"):
+                acciones.add("aprobar_pago")
+            if self.estado in ("pago_aprobado", "esperando_corredor"):
+                acciones.add("asignar_corredor")
+            # La OG la aprueba el gerente, no el solicitante.
+            if self.estado == "og_pendiente":
+                acciones.add("aprobar_og")
+
+        if es_responsable:
+            if self.estado == "en_revision_corredor":
+                acciones.add("subir_og")
+            if self.estado == "en_validacion":
+                acciones.add("validar_publicar")
+
+        if es_solicitante:
+            if self.estado == "og_aceptada":
+                acciones.add("completar_datos")
+            if self.estado == "en_validacion":
+                acciones.add("editar_datos")
+
+        # Enlace a la propiedad publicada: lo ve quien la solicitó, quien la
+        # llevó y la gerencia. No es una acción, pero la plantilla lo resuelve
+        # por el mismo camino para no repetir la lógica de roles.
+        if self.estado == "publicada" and (
+            es_gerente or es_solicitante or es_responsable
+        ):
+            acciones.add("ver_publicada")
+
+        return acciones
 
 
 class ObservacionSolicitud(models.Model):

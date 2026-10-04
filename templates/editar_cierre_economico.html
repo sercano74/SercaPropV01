@@ -72,7 +72,60 @@
         {% if es_admin %}
         <div style="border-top:2px solid var(--ds-border-light);padding-top:16px;margin-top:16px;">
             <h3 style="font-size:1rem;font-weight:600;margin-bottom:12px;">⚙️ Ajustes de administrador</h3>
+
+            <h4 style="font-size:0.9rem;font-weight:600;margin:8px 0 4px;">Comisiones presupuestadas</h4>
+            <p style="font-size:0.8rem;color:var(--ds-text-secondary);margin-bottom:10px;">
+                Origen registrado: {{ cierre.get_origen_comisiones_display|default:"no registrado" }}.
+                Al guardar se recalculan los montos presupuestados en pesos.
+                Con «monto fijo», el porcentaje se guarda vacío: un cero ahí confunde.
+            </p>
             <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo comisión vendedor</label>
+                    <select name="tipo_comision_vendedor">
+                        <option value="porcentaje" {% if cierre.tipo_comision_vendedor != 'fijo' %}selected{% endif %}>Porcentaje del precio</option>
+                        <option value="fijo" {% if cierre.tipo_comision_vendedor == 'fijo' %}selected{% endif %}>Monto fijo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valor comisión vendedor</label>
+                    <input type="number" step="0.01" min="0" name="valor_comision_vendedor"
+                           value="{{ cierre.valor_comision_vendedor_origen|default_if_none:'' }}">
+                </div>
+                <div class="form-group">
+                    <label>Moneda comisión vendedor</label>
+                    <select name="moneda_comision_vendedor">
+                        <option value="PCL" {% if cierre.moneda_comision_vendedor != 'UF' and cierre.moneda_comision_vendedor != 'USD' %}selected{% endif %}>Pesos (CLP)</option>
+                        <option value="UF" {% if cierre.moneda_comision_vendedor == 'UF' %}selected{% endif %}>UF</option>
+                        <option value="USD" {% if cierre.moneda_comision_vendedor == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo comisión comprador</label>
+                    <select name="tipo_comision_comprador">
+                        <option value="porcentaje" {% if cierre.tipo_comision_comprador != 'fijo' %}selected{% endif %}>Porcentaje del precio</option>
+                        <option value="fijo" {% if cierre.tipo_comision_comprador == 'fijo' %}selected{% endif %}>Monto fijo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valor comisión comprador</label>
+                    <input type="number" step="0.01" min="0" name="valor_comision_comprador"
+                           value="{{ cierre.valor_comision_comprador_origen|default_if_none:'' }}">
+                </div>
+                <div class="form-group">
+                    <label>Moneda comisión comprador</label>
+                    <select name="moneda_comision_comprador">
+                        <option value="PCL" {% if cierre.moneda_comision_comprador != 'UF' and cierre.moneda_comision_comprador != 'USD' %}selected{% endif %}>Pesos (CLP)</option>
+                        <option value="UF" {% if cierre.moneda_comision_comprador == 'UF' %}selected{% endif %}>UF</option>
+                        <option value="USD" {% if cierre.moneda_comision_comprador == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                    </select>
+                </div>
+            </div>
+            <input type="hidden" name="origen_comisiones" value="{{ cierre.origen_comisiones|default:'manual' }}">
+
+            <div class="form-row" style="margin-top:12px;">
                 <div class="form-group">
                     <label>Tasa SERCA (%)</label>
                     <input type="number" name="tasa_serca" step="0.01" value="{{ cierre.tasa_serca }}">

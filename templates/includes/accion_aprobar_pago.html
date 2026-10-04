@@ -1,0 +1,152 @@
+{% load static %}
+{# Aprobación del pago. En representación, además: validación del mandato,
+   apertura de la ventana de objeción del propietario y envío del aviso.
+
+   La ventana se abre AQUÍ y no al publicar, para que queden tres etapas por
+   delante (OG, su aprobación y la carga de datos) antes de que la propiedad
+   salga al mercado. El aviso va con copia oculta a gerencia y superadmin. #}
+<div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
+    <div class="card-modern-body">
+        <div class="card-modern-title">Aprobar pago del servicio</div>
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+            Revisa el comprobante antes de aprobar. Al aprobar, la solicitud avanza a
+            la Orden de Gestión.
+        </p>
+
+        <div class="detail-row">
+            <span class="detail-label">Monto declarado</span>
+            <span class="detail-value" style="font-weight:700;">
+                {% if solicitud.total_pago %}${{ solicitud.total_pago|floatformat:0 }}{% else %}—{% endif %}
+            </span>
+        </div>
+        {% if solicitud.comprobante %}
+        <div class="detail-row">
+            <span class="detail-label">Comprobante</span>
+            <span class="detail-value">
+                <a href="{{ solicitud.comprobante.url }}" target="_blank" rel="noopener">Ver comprobante</a>
+            </span>
+        </div>
+        {% endif %}
+
+        {% if solicitud.tipo_publicante == 'representante' %}
+        <div class="card-modern" style="margin:12px 0;background:var(--ds-bg-secondary);">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:0.9rem;">Publicación en representación</div>
+                <p style="font-size:0.82rem;color:var(--ds-text-secondary);">
+                    El propietario no tiene cuenta en la plataforma. Antes de aprobar,
+                    confirma que el mandato autoriza la publicación: sin mandato, la
+                    publicación no puede salir.
+                </p>
+                {% if solicitud.mandato_archivo %}
+                <div class="detail-row">
+                    <span class="detail-label">Mandato</span>
+                    <span class="detail-value">
+                        <a href="{{ solicitud.mandato_archivo.url }}" target="_blank" rel="noopener">Ver mandato</a>
+                    </span>
+                </div>
+                {% else %}
+                <div class="alert-modern alert-warning-modern" style="font-size:0.85rem;">
+                    No se adjuntó archivo de mandato. Sólo es admisible si el mandato es
+                    verbal y lo aprueba la gerencia.
+                </div>
+                {% endif %}
+                <div class="detail-row">
+                    <span class="detail-label">Tipo de mandato</span>
+                    <span class="detail-value">{{ solicitud.get_mandato_tipo_display|default:"—" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Propietario</span>
+                    <span class="detail-value">
+                        {{ solicitud.propiedad.propietario_nombre|default:"—" }}
+                        {% if solicitud.propiedad.propietario_email %}
+                            ({{ solicitud.propiedad.propietario_email }})
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'aprobar_pago_solicitud' solicitud.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="objecion_dias" id="objecion_dias"
+                   value="{{ solicitud.objecion_dias|default_if_none:3 }}">
+            <button type="button" class="btn btn-primary btn-block"
+                    onclick="abrirModalAprobacionPago()">
+                Aprobar pago
+            </button>
+        </form>
+    </div>
+</div>
+
+{# Modal de la ventana de objeción: sólo tiene sentido en representación. #}
+<div id="modalAprobacionPago" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:520px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Confirmar aprobación del pago</h3>
+            <button type="button" class="modal-close" onclick="cerrarModalAprobacionPago()">&times;</button>
+        </div>
+        <div class="modal-body">
+            {% if solicitud.tipo_publicante == 'representante' %}
+                <p style="font-size:0.9rem;">
+                    Se enviará un aviso al propietario
+                    <strong>{{ solicitud.propiedad.propietario_email|default:"(sin correo registrado)" }}</strong>
+                    con copia oculta a la gerencia. Durante la ventana de objeción el
+                    propietario puede objetar la publicación y, si objeta, la propiedad
+                    sale de inmediato de la vitrina.
+                </p>
+                <div class="form-group">
+                    <label for="objecion_dias_input">Días de ventana de objeción</label>
+                    <input type="number"
+                           min="{{ solicitud.OBJECION_DIAS_MIN }}"
+                           max="{{ solicitud.OBJECION_DIAS_MAX }}"
+                           id="objecion_dias_input"
+                           value="{{ solicitud.objecion_dias|default_if_none:3 }}">
+                    <div class="form-hint">
+                        Cuenta desde hoy. La publicación no podrá salir antes de que
+                        termine este plazo. Entre
+                        {{ solicitud.OBJECION_DIAS_MIN }} y
+                        {{ solicitud.OBJECION_DIAS_MAX }} días.
+                    </div>
+                </div>
+            {% else %}
+                <p style="font-size:0.9rem;">
+                    Vas a aprobar el pago de esta publicación. No hay propietario
+                    externo que avisar, así que la solicitud pasa directo a la Orden
+                    de Gestión.
+                </p>
+            {% endif %}
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="cerrarModalAprobacionPago()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmarAprobacionPago()">
+                Aprobar y continuar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalAprobacionPago() {
+    document.getElementById('modalAprobacionPago').style.display = 'flex';
+}
+function cerrarModalAprobacionPago() {
+    document.getElementById('modalAprobacionPago').style.display = 'none';
+}
+function confirmarAprobacionPago() {
+    var input = document.getElementById('objecion_dias_input');
+    if (input) {
+        var minimo = parseInt(input.min, 10);
+        var maximo = parseInt(input.max, 10);
+        var dias = parseInt(input.value, 10);
+        if (!dias || dias < minimo || dias > maximo) {
+            alert('Los días de objeción deben estar entre ' + minimo + ' y ' + maximo + '.');
+            return;
+        }
+        document.getElementById('objecion_dias').value = dias;
+    }
+    cerrarModalAprobacionPago();
+    document.getElementById('objecion_dias')
+        .closest('form').submit();
+}
+</script>

@@ -1,0 +1,92 @@
+{% autoescape on %}<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aviso de publicación</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;">
+
+          <tr>
+            <td style="background:#111827;padding:20px 28px;">
+              <div style="color:#ffffff;font-size:18px;font-weight:bold;">{{ site_name }}</div>
+              <div style="color:#9ca3af;font-size:13px;margin-top:2px;">Aviso de publicación en su representación</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.6;">
+                Estimado(a) <strong>{{ propietario_nombre|default:"propietario" }}</strong>:
+              </p>
+
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.6;">
+                Le informamos que se ha registrado una publicación de su propiedad en
+                {{ site_name }}, gestionada en su representación por
+                <strong>{{ representante }}</strong>.
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin:18px 0;">
+                <tr>
+                  <td style="padding:14px 16px;font-size:14px;line-height:1.7;">
+                    <div><strong>Propiedad:</strong> {{ propiedad.get_tipo_prop_display }} en {{ propiedad.comuna|default:"su comuna" }}</div>
+                    <div><strong>Dirección:</strong> {{ propiedad.calle }} {{ propiedad.numero_calle }}</div>
+                    <div><strong>Acción:</strong> {{ propiedad.get_tipo_accion_display }}</div>
+                    <div><strong>Mandato presentado:</strong> {{ tipo_mandato }}</div>
+                    <div><strong>Plazo para oponerse:</strong> {{ dias }} día{{ dias|pluralize:"s" }}, hasta el {{ objecion_hasta|date:"d/m/Y" }}</div>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.6;">
+                Si usted <strong>no autorizó</strong> esta publicación, puede oponerse
+                ahora mismo desde este enlace:
+              </p>
+
+              <p style="margin:0 0 18px;text-align:center;">
+                <a href="{{ url_aviso }}"
+                   style="display:inline-block;background:#b91c1c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;padding:13px 26px;border-radius:8px;">
+                  Revisar y oponerme
+                </a>
+              </p>
+
+              <p style="margin:0 0 14px;font-size:13px;line-height:1.6;color:#4b5563;">
+                Si el enlace no abre, copie y pegue esta dirección en su navegador:<br>
+                <span style="word-break:break-all;color:#1d4ed8;">{{ url_aviso }}</span>
+              </p>
+
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.6;">
+                Si está de acuerdo con la publicación, no necesita hacer nada. La
+                propiedad saldrá al mercado cuando termine el plazo indicado.
+              </p>
+
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:22px 0;">
+
+              <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">
+                Este aviso se envía con copia a la gerencia de {{ site_name }}. Si tiene
+                dudas, responda a este correo indicando el número de solicitud
+                <strong>#{{ solicitud.id }}</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#f9fafb;padding:16px 28px;border-top:1px solid #e5e7eb;">
+              <div style="font-size:12px;color:#6b7280;">
+                {{ site_name }} · Aviso automático, por favor no responda a esta dirección
+                si no desea oponerse.
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+{% endautoescape %}

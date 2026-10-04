@@ -329,6 +329,8 @@ def perfil_view(request):
     suscripcion = None
     props_usadas = 0
     props_max = 0
+    publicaciones_mes = None
+    publicaciones_mes_max = None
     if request.user.rol == "corredor":
         suscripcion = getattr(request.user, "suscripcion", None)
         if suscripcion:
@@ -338,15 +340,22 @@ def perfil_view(request):
                 corredor=request.user,
                 estado__in=["pendiente", "activa"]
             ).count()
+        # Cupo del mes calendario: cuántas publicaciones creó este mes.
+        from a03Prop import representacion
+        publicaciones_mes, publicaciones_mes_max = representacion.cupo_del_mes(request.user)
 
     return render(request, "perfil.html", {
         "regiones": regiones,
         "comunas": comunas,
-        "mis_propiedades": Propiedad.objects.filter(dueno=request.user),
+        "mis_propiedades": Propiedad.objects.filter(
+            Q(dueno=request.user) | Q(representante=request.user)
+        ).distinct(),
         "comunicaciones": Communication.objects.filter(recipient=request.user, is_deleted=False)[:10],
         "suscripcion": suscripcion,
         "props_usadas": props_usadas,
         "props_max": props_max,
+        "publicaciones_mes": publicaciones_mes,
+        "publicaciones_mes_max": publicaciones_mes_max,
     })
 
 
@@ -372,7 +381,7 @@ def gestion_view(request):
         corredores_pendientes = User.objects.filter(rol="corredor", valido_por__isnull=True)
         publicaciones_pendientes = PublicacionProp.objects.filter(estado="en_revision")
         solicitudes_pendientes = SolicitudPublicacion.objects.filter(
-            estado__in=["pago_revision", "pago_objetado", "datos_listos", "esperando_corredor"]
+            estado__in=["pago_revision", "pago_objetado", "esperando_corredor"]
         )
 
         solicitudes_por_prop = {s.propiedad_id: s for s in solicitudes if s.propiedad_id}
@@ -1503,6 +1512,7 @@ def crear_cierre_economico(request, prop_id):
     Disponible para gerente/superadmin y corredor asignado.
     """
     from a03Prop.models import Propiedad, CorredorProp, CierreEconomico, PublicacionProp
+    from a03Prop import comisiones, orden_gestion
 
     propiedad = get_object_or_404(Propiedad, id=prop_id)
 
@@ -1524,35 +1534,74 @@ def crear_cierre_economico(request, prop_id):
     corredor = cp.corredor
     fecha_cierre = propiedad.fecha_cierre or timezone.now()
 
+    # Valores por defecto en cascada: primero la OG firmada, después la ficha
+    # del corredor. Así el cierre refleja **el contrato**, no el plan.
+    defaults = orden_gestion.valores_iniciales_para_cierre(propiedad)
+
     if request.method == "POST":
         precio_venta = request.POST.get("precio_venta")
         moneda = request.POST.get("moneda_original", propiedad.tipo_moneda)
-        pct_vendedor = request.POST.get("pct_comision_vendedor", cp.monto_comision_dueno or 0)
-        pct_comprador = request.POST.get("pct_comision_comprador", cp.monto_comision_usu or 0)
         factor_uf = request.POST.get("factor_uf_clp") or None
         factor_usd = request.POST.get("factor_usd_clp") or None
         costo_pub = request.POST.get("costo_publicacion_clp") or None
-        factor_uf_val = float(factor_uf) if factor_uf else None
-        factor_usd_val = float(factor_usd) if factor_usd else None
+        factor_uf_val = comisiones._a_decimal(factor_uf)
+        factor_usd_val = comisiones._a_decimal(factor_usd)
 
         if not precio_venta:
             messages.error(request, "Debes indicar el precio de venta/arriendo.")
             return redirect("detalle_propiedad", prop_id=prop_id)
 
-        precio_venta = float(precio_venta)
-        pct_vendedor = float(pct_vendedor) if pct_vendedor else 0
-        pct_comprador = float(pct_comprador) if pct_comprador else 0
+        precio_venta_dec = comisiones._a_decimal(precio_venta)
+        if precio_venta_dec is None:
+            messages.error(request, "El precio indicado no es un número válido.")
+            return redirect("detalle_propiedad", prop_id=prop_id)
 
-        # Calcular precio en CLP
-        precio_clp = precio_venta
-        if moneda == "UF" and factor_uf_val:
-            precio_clp = precio_venta * factor_uf_val
-        elif moneda == "USD" and factor_usd_val:
-            precio_clp = precio_venta * factor_usd_val
+        # El precio se convierte con la tasa del **día del cierre**: es el valor
+        # efectivo del negocio, el que realmente se cerró.
+        precio_clp = comisiones.convertir_a_clp(
+            precio_venta_dec, moneda, factor_uf_val, factor_usd_val
+        )
+        if precio_clp is None:
+            messages.error(
+                request,
+                "Falta el tipo de cambio para convertir el precio a pesos.",
+            )
+            return redirect("detalle_propiedad", prop_id=prop_id)
 
-        # Calcular comisiones presupuestadas
-        com_vendedor = precio_clp * pct_vendedor / 100
-        com_comprador = precio_clp * pct_comprador / 100
+        # Cada comisión trae tipo, valor y moneda. Un formulario o un POST
+        # antiguo que sólo mande ``pct_comision_*`` se lee como porcentaje.
+        tipo_v = request.POST.get("tipo_comision_vendedor") or "porcentaje"
+        tipo_c = request.POST.get("tipo_comision_comprador") or "porcentaje"
+        valor_v = request.POST.get("valor_comision_vendedor")
+        valor_c = request.POST.get("valor_comision_comprador")
+        if valor_v in (None, ""):
+            valor_v = (
+                request.POST.get("pct_comision_vendedor")
+                or defaults["valor_comision_vendedor_origen"]
+            )
+        if valor_c in (None, ""):
+            valor_c = (
+                request.POST.get("pct_comision_comprador")
+                or defaults["valor_comision_comprador_origen"]
+            )
+        moneda_v = request.POST.get(
+            "moneda_comision_vendedor", defaults["moneda_comision_vendedor"]
+        )
+        moneda_c = request.POST.get(
+            "moneda_comision_comprador", defaults["moneda_comision_comprador"]
+        )
+
+        com_vendedor, com_comprador = orden_gestion.calcular_comisiones_cierre(
+            precio_clp=precio_clp,
+            tipo_vendedor=tipo_v,
+            valor_vendedor=valor_v,
+            moneda_vendedor=moneda_v,
+            tipo_comprador=tipo_c,
+            valor_comprador=valor_c,
+            moneda_comprador=moneda_c,
+            factor_uf=factor_uf_val,
+            factor_usd=factor_usd_val,
+        )
 
         # Obtener datos del plan del corredor
         plan_nombre = ""
@@ -1560,23 +1609,45 @@ def crear_cierre_economico(request, prop_id):
         suscripcion = getattr(corredor, "suscripcion", None)
         if suscripcion and suscripcion.plan:
             plan_nombre = suscripcion.plan.nombre
-            # comision_porcentaje es lo que RECIBE el corredor (ej: 70%). SERCA cobra 100 - ese valor.
+            # comision_porcentaje es lo que RECIBE el corredor. SERCA cobra el complemento.
             tasa_serca = 100.0 - float(suscripcion.plan.comision_porcentaje)
+
+        tipo_v = comisiones.normalizar_tipo(tipo_v)
+        tipo_c = comisiones.normalizar_tipo(tipo_c)
 
         CierreEconomico.objects.create(
             propiedad=propiedad,
             corredor=corredor,
-            precio_venta=precio_venta,
+            precio_venta=precio_venta_dec,
             moneda_original=moneda,
             factor_uf_clp=factor_uf_val,
             factor_usd_clp=factor_usd_val,
-            pct_comision_vendedor=pct_vendedor,
-            pct_comision_comprador=pct_comprador,
-            comision_vendedor_presupuestada_clp=com_vendedor,
-            comision_comprador_presupuestada_clp=com_comprador,
+            tipo_comision_vendedor=tipo_v,
+            tipo_comision_comprador=tipo_c,
+            valor_comision_vendedor_origen=comisiones._a_decimal(valor_v),
+            valor_comision_comprador_origen=comisiones._a_decimal(valor_c),
+            moneda_comision_vendedor=comisiones.normalizar_moneda(moneda_v),
+            moneda_comision_comprador=comisiones.normalizar_moneda(moneda_c),
+            factor_uf_og=factor_uf_val,
+            factor_usd_og=factor_usd_val,
+            origen_comisiones=(
+                comisiones.ORIGEN_OG
+                if defaults["origen_comisiones"] == comisiones.ORIGEN_OG
+                else comisiones.ORIGEN_MANUAL
+            ),
+            pct_comision_vendedor=(
+                comisiones._a_decimal(valor_v)
+                if tipo_v == comisiones.TIPO_PORCENTAJE else None
+            ),
+            pct_comision_comprador=(
+                comisiones._a_decimal(valor_c)
+                if tipo_c == comisiones.TIPO_PORCENTAJE else None
+            ),
+            comision_vendedor_presupuestada_clp=com_vendedor or 0,
+            comision_comprador_presupuestada_clp=com_comprador or 0,
             plan_nombre=plan_nombre,
             tasa_serca=tasa_serca,
-            costo_publicacion_clp=float(costo_pub) if costo_pub else None,
+            costo_publicacion_clp=comisiones._a_decimal(costo_pub),
             mes=fecha_cierre.month,
             anio=fecha_cierre.year,
             fecha_cierre=fecha_cierre,
@@ -1628,6 +1699,8 @@ def crear_cierre_economico(request, prop_id):
         "publicacion": publicacion,
         "contratos_arriendo": contratos_arriendo,
         "procesos_compra": procesos_compra,
+        "defaults": defaults,
+        "monedas": comisiones.MONEDAS_VALIDAS,
     })
 
 
@@ -1665,6 +1738,8 @@ def editar_cierre_economico(request, cierre_id):
             cierre.perfeccionado = True
 
         if es_admin:
+            from a03Prop import comisiones as comisiones_mod, orden_gestion as og_mod
+
             if request.POST.get("costo_publicacion_clp", "").strip():
                 cierre.costo_publicacion_clp = float(request.POST.get("costo_publicacion_clp"))
             if request.POST.get("tasa_serca", "").strip():
@@ -1674,14 +1749,71 @@ def editar_cierre_economico(request, cierre_id):
             if request.POST.get("factor_usd_clp", "").strip():
                 cierre.factor_usd_clp = float(request.POST.get("factor_usd_clp"))
 
+            # El gerente puede corregir tipo, valor y moneda de cada comisión.
+            # Con un monto fijo, ``pct_comision_*`` deja de significar algo y
+            # por eso se anula en vez de quedar con un cero engañoso.
+            if request.POST.get("tipo_comision_vendedor"):
+                cierre.tipo_comision_vendedor = comisiones_mod.normalizar_tipo(
+                    request.POST["tipo_comision_vendedor"]
+                )
+            if request.POST.get("tipo_comision_comprador"):
+                cierre.tipo_comision_comprador = comisiones_mod.normalizar_tipo(
+                    request.POST["tipo_comision_comprador"]
+                )
+            if request.POST.get("moneda_comision_vendedor"):
+                cierre.moneda_comision_vendedor = comisiones_mod.normalizar_moneda(
+                    request.POST["moneda_comision_vendedor"]
+                )
+            if request.POST.get("moneda_comision_comprador"):
+                cierre.moneda_comision_comprador = comisiones_mod.normalizar_moneda(
+                    request.POST["moneda_comision_comprador"]
+                )
+            if request.POST.get("valor_comision_vendedor", "").strip():
+                cierre.valor_comision_vendedor_origen = comisiones_mod._a_decimal(
+                    request.POST["valor_comision_vendedor"]
+                )
+            if request.POST.get("valor_comision_comprador", "").strip():
+                cierre.valor_comision_comprador_origen = comisiones_mod._a_decimal(
+                    request.POST["valor_comision_comprador"]
+                )
+            if request.POST.get("origen_comisiones"):
+                cierre.origen_comisiones = request.POST["origen_comisiones"]
+
+            com_v, com_c = og_mod.calcular_comisiones_cierre(
+                precio_clp=cierre.precio_clp,
+                tipo_vendedor=cierre.tipo_comision_vendedor or "porcentaje",
+                valor_vendedor=cierre.valor_comision_vendedor_origen,
+                moneda_vendedor=cierre.moneda_comision_vendedor,
+                tipo_comprador=cierre.tipo_comision_comprador or "porcentaje",
+                valor_comprador=cierre.valor_comision_comprador_origen,
+                moneda_comprador=cierre.moneda_comision_comprador,
+                factor_uf=cierre.factor_uf_og or cierre.factor_uf_clp,
+                factor_usd=cierre.factor_usd_og or cierre.factor_usd_clp,
+            )
+            if com_v is not None:
+                cierre.comision_vendedor_presupuestada_clp = com_v
+            if com_c is not None:
+                cierre.comision_comprador_presupuestada_clp = com_c
+
+            cierre.pct_comision_vendedor = (
+                cierre.valor_comision_vendedor_origen
+                if cierre.tipo_comision_vendedor == "porcentaje" else None
+            )
+            cierre.pct_comision_comprador = (
+                cierre.valor_comision_comprador_origen
+                if cierre.tipo_comision_comprador == "porcentaje" else None
+            )
+
         cierre.save()
         messages.success(request, "✅ Cierre económico actualizado.")
         return redirect("gestion_ingresos")
 
     # GET: renderizar formulario de edición
+    from a03Prop import comisiones as comisiones_mod
     return render(request, "editar_cierre_economico.html", {
         "cierre": cierre,
         "es_admin": es_admin,
+        "monedas": comisiones_mod.MONEDAS_VALIDAS,
     })
 
 

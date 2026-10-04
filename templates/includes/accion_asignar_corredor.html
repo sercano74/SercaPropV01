@@ -1,0 +1,30 @@
+{% load static %}
+{# Tras aprobar el pago, la solicitud queda esperando que la gerencia le asigne
+   un corredor. Sin corredor no hay quién suba la Orden de Gestión. #}
+<div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
+    <div class="card-modern-body">
+        <div class="card-modern-title">Asignar corredor responsable</div>
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+            El corredor asignado será quien suba la Orden de Gestión y, más adelante,
+            valide y publique la propiedad.
+        </p>
+
+        <form method="POST" action="{% url 'asignar_corredor_solicitud' solicitud.id %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="corredor_id">Corredor</label>
+                <select name="corredor_id" id="corredor_id" required>
+                    <option value="">Selecciona un corredor…</option>
+                    {% for c in corredores_disponibles %}
+                        <option value="{{ c.id }}"
+                                {% if solicitud.corredor_asignado_id == c.id %}selected{% endif %}>
+                            {{ c.get_full_name|default:c.email }}
+                            {% if c.rol != 'corredor' %}({{ c.get_rol_display }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Asignar corredor</button>
+        </form>
+    </div>
+</div>

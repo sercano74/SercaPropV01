@@ -55,18 +55,80 @@
             </div>
 
             <div style="border-top:2px solid var(--ds-border-light);padding-top:16px;margin-top:8px;">
-                <h3 style="font-size:1rem;font-weight:600;margin-bottom:12px;">📊 Comisiones presupuestadas</h3>
+                <h3 style="font-size:1rem;font-weight:600;margin-bottom:8px;">Comisiones presupuestadas</h3>
+
+                {# De dónde salieron los valores precargados. El cierre parte del
+                   contrato (la OG) y no del plan, que era el hueco anterior. #}
+                {% if defaults.origen_comisiones == 'og' %}
+                <div class="alert-modern alert-info-modern" style="font-size:0.85rem;margin-bottom:12px;">
+                    Precargado desde la <strong>Orden de Gestión aprobada</strong>.
+                    {% if defaults.comision_vendedor_clp is not None %}
+                        Comisión vendedor calculada: ${{ defaults.comision_vendedor_clp|floatformat:0 }} CLP.
+                    {% endif %}
+                </div>
+                {% elif defaults.origen_comisiones == 'corredor_prop' %}
+                <div class="alert-modern alert-info-modern" style="font-size:0.85rem;margin-bottom:12px;">
+                    No hay condiciones en la Orden de Gestión: se precargó desde la
+                    ficha del corredor asignado.
+                </div>
+                {% else %}
+                <div class="alert-modern alert-warning-modern" style="font-size:0.85rem;margin-bottom:12px;">
+                    No hay Orden de Gestión ni ficha de corredor con comisiones. Los
+                    valores que ingreses quedarán marcados como carga manual.
+                </div>
+                {% endif %}
+
                 <div class="form-row">
                     <div class="form-group">
-                        <label>% Comisión vendedor</label>
-                        <input type="number" name="pct_comision_vendedor" step="0.01" value="{{ cp.monto_comision_dueno|default:'2' }}" placeholder="Ej: 2">
-                        <div class="form-hint">Porcentaje que cobra el corredor al vendedor</div>
+                        <label>Tipo comisión vendedor</label>
+                        <select name="tipo_comision_vendedor">
+                            <option value="porcentaje" {% if defaults.tipo_comision_vendedor != 'fijo' %}selected{% endif %}>Porcentaje del precio</option>
+                            <option value="fijo" {% if defaults.tipo_comision_vendedor == 'fijo' %}selected{% endif %}>Monto fijo</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label>% Comisión comprador</label>
-                        <input type="number" name="pct_comision_comprador" step="0.01" value="{{ cp.monto_comision_usu|default:'2' }}" placeholder="Ej: 2">
-                        <div class="form-hint">Porcentaje que cobra el corredor al comprador</div>
+                        <label>Valor comisión vendedor</label>
+                        <input type="number" name="valor_comision_vendedor" step="0.01" min="0"
+                               value="{{ defaults.valor_comision_vendedor_origen|default_if_none:'' }}"
+                               placeholder="Ej: 2 o 1500000">
                     </div>
+                    <div class="form-group">
+                        <label>Moneda comisión vendedor</label>
+                        <select name="moneda_comision_vendedor">
+                            <option value="PCL" {% if defaults.moneda_comision_vendedor != 'UF' and defaults.moneda_comision_vendedor != 'USD' %}selected{% endif %}>Pesos (CLP)</option>
+                            <option value="UF" {% if defaults.moneda_comision_vendedor == 'UF' %}selected{% endif %}>UF</option>
+                            <option value="USD" {% if defaults.moneda_comision_vendedor == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo comisión comprador</label>
+                        <select name="tipo_comision_comprador">
+                            <option value="porcentaje" {% if defaults.tipo_comision_comprador != 'fijo' %}selected{% endif %}>Porcentaje del precio</option>
+                            <option value="fijo" {% if defaults.tipo_comision_comprador == 'fijo' %}selected{% endif %}>Monto fijo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor comisión comprador</label>
+                        <input type="number" name="valor_comision_comprador" step="0.01" min="0"
+                               value="{{ defaults.valor_comision_comprador_origen|default_if_none:'' }}"
+                               placeholder="Ej: 2 o 1500000">
+                    </div>
+                    <div class="form-group">
+                        <label>Moneda comisión comprador</label>
+                        <select name="moneda_comision_comprador">
+                            <option value="PCL" {% if defaults.moneda_comision_comprador != 'UF' and defaults.moneda_comision_comprador != 'USD' %}selected{% endif %}>Pesos (CLP)</option>
+                            <option value="UF" {% if defaults.moneda_comision_comprador == 'UF' %}selected{% endif %}>UF</option>
+                            <option value="USD" {% if defaults.moneda_comision_comprador == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-hint" style="margin-top:6px;">
+                    Con «monto fijo», el porcentaje deja de tener sentido y se guarda vacío:
+                    un cero ahí sólo confunde.
                 </div>
             </div>
 

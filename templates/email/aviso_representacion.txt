@@ -1,0 +1,32 @@
+{% autoescape off %}{{ site_name }}
+Aviso de publicación en su representación
+============================================================
+
+Estimado(a) {{ propietario_nombre|default:"propietario" }}:
+
+Le informamos que se ha registrado una publicación de su propiedad en
+{{ site_name }}, gestionada en su representación por {{ representante }}.
+
+Datos de la publicación
+------------------------------------------------------------
+Propiedad:            {{ propiedad.get_tipo_prop_display }} en {{ propiedad.comuna|default:"su comuna" }}
+Dirección:            {{ propiedad.calle }} {{ propiedad.numero_calle }}
+Acción:               {{ propiedad.get_tipo_accion_display }}
+Mandato presentado:   {{ tipo_mandato }}
+Plazo para oponerse:  {{ dias }} día{{ dias|pluralize:"s" }}, hasta el {{ objecion_hasta|date:"d/m/Y" }}
+
+Si usted NO autorizó esta publicación, puede oponerse desde este enlace:
+
+    {{ url_aviso }}
+
+Si el enlace no abre, copie y pegue esa dirección en su navegador.
+
+Si está de acuerdo con la publicación, no necesita hacer nada: la
+propiedad saldrá al mercado cuando termine el plazo indicado.
+
+------------------------------------------------------------
+Este aviso se envía con copia a la gerencia de {{ site_name }}.
+Si tiene dudas, indique el número de solicitud #{{ solicitud.id }}.
+
+{{ site_name }} · Aviso automático.
+{% endautoescape %}

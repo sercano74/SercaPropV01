@@ -4,10 +4,15 @@ Cubre el bug reportado: subir la OG en Word devolvía la página 500 porque el
 archivo entraba al pipeline de imágenes de Cloudinary ("Unsupported ZIP file").
 Los archivos se guardan en un almacenamiento local temporal para que las pruebas
 no dependan de la red.
+
+Desde que la OG alimenta el cierre económico, subirla exige declarar las
+condiciones económicas: precio de referencia, tasa SERCA y comisiones. Los POST
+de estas pruebas las incluyen con ``condiciones_og()``.
 """
 import atexit
 import shutil
 import tempfile
+from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -30,6 +35,23 @@ CONTENT_TYPE_WORD = "application/vnd.openxmlformats-officedocument.wordprocessin
 
 def archivo_word(nombre="Orden de Gestion.docx"):
     return SimpleUploadedFile(nombre, b"contenido de la orden de gestion", content_type=CONTENT_TYPE_WORD)
+
+
+def condiciones_og(**extra):
+    """Condiciones económicas mínimas que la OG exige al subirse."""
+    datos = {
+        "precio_referencia_og": "100000000",
+        "moneda_referencia_og": "PCL",
+        "tasa_serca_og": "30",
+        "tipo_comision_vendedor_og": "porcentaje",
+        "valor_comision_vendedor_og": "2",
+        "moneda_comision_vendedor_og": "PCL",
+        "tipo_comision_comprador_og": "porcentaje",
+        "valor_comision_comprador_og": "1",
+        "moneda_comision_comprador_og": "PCL",
+    }
+    datos.update(extra)
+    return datos
 
 
 @override_settings(STORAGES=ALMACENAMIENTO_LOCAL, MEDIA_ROOT=MEDIA_TEMPORAL)
@@ -59,11 +81,13 @@ class SubirOrdenGestionTests(TestCase):
     def test_subir_la_og_en_word_guarda_el_archivo(self):
         self.client.force_login(self.corredor)
 
-        respuesta = self.client.post(
-            self.url,
-            {"orden_gestion": archivo_word(), "docs_requeridos": "Dominio vigente"},
-            follow=True,
-        )
+        datos = {
+            "orden_gestion": archivo_word(),
+            "docs_requeridos": "Dominio vigente",
+        }
+        datos.update(condiciones_og())
+
+        respuesta = self.client.post(self.url, datos, follow=True)
 
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "Orden de Gestión subida")
@@ -79,18 +103,27 @@ class SubirOrdenGestionTests(TestCase):
             Communication.objects.filter(recipient=self.usuario, title__icontains="Orden").exists()
         )
 
+        # Las condiciones declaradas quedan guardadas: son el contrato del que
+        # parte el cierre económico.
+        self.assertEqual(self.solicitud.tasa_serca_og, Decimal("30.00"))
+        self.assertEqual(
+            self.solicitud.valor_comision_vendedor_og, Decimal("2.00")
+        )
+        self.assertEqual(
+            self.solicitud.precio_referencia_og, Decimal("100000000.00")
+        )
+
     def test_subir_la_og_en_pdf_sigue_funcionando(self):
         self.client.force_login(self.corredor)
 
-        respuesta = self.client.post(
-            self.url,
-            {
-                "orden_gestion": SimpleUploadedFile(
-                    "OG.pdf", b"%PDF-1.4 contenido", content_type="application/pdf"
-                )
-            },
-            follow=True,
-        )
+        datos = {
+            "orden_gestion": SimpleUploadedFile(
+                "OG.pdf", b"%PDF-1.4 contenido", content_type="application/pdf"
+            )
+        }
+        datos.update(condiciones_og())
+
+        respuesta = self.client.post(self.url, datos, follow=True)
 
         self.assertEqual(respuesta.status_code, 200)
 

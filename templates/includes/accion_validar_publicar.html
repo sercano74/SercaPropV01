@@ -1,0 +1,84 @@
+{% load static %}
+{# Etapa del corredor asignado: valida los datos que cargó el solicitante y
+   publica. La validación es una decisión de dos vías: o avanza a publicar, o
+   devuelve la solicitud pidiendo correcciones.
+
+   Antes de dejar publicar, la plantilla avisa si la ventana de objeción del
+   propietario sigue abierta: la vista lo bloquea igual, pero el corredor debe
+   enterarse aquí y no al recibir el error. #}
+<div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
+    <div class="card-modern-body">
+        <div class="card-modern-title">Validar y publicar</div>
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+            Revisa la descripción, las fotos y los documentos legales. Si todo está
+            en orden, avanza y publica; si falta algo, devuélvela pidiendo correcciones.
+        </p>
+
+        {% if solicitud.docs_requeridos %}
+        <div class="card-modern" style="margin:12px 0;background:var(--ds-bg-secondary);">
+            <div class="card-modern-body">
+                <div class="card-modern-title" style="font-size:0.9rem;">Documentos requeridos</div>
+                <p style="font-size:0.82rem;color:var(--ds-text-secondary);white-space:pre-line;margin:0;">{{ solicitud.docs_requeridos }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if solicitud.propiedad %}
+        <div class="detail-row">
+            <span class="detail-label">Propiedad</span>
+            <span class="detail-value">{{ solicitud.propiedad.display_name_public }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Documentos legales cargados</span>
+            <span class="detail-value">{{ solicitud.propiedad.docs_legales.count }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Fotos cargadas</span>
+            <span class="detail-value">{{ solicitud.propiedad.fotos.count }}</span>
+        </div>
+        {% endif %}
+
+        {% if solicitud.objecion_hasta and not solicitud.objetada and solicitud.tipo_publicante == 'representante' %}
+        <div class="alert-modern alert-info-modern" style="font-size:0.85rem;">
+            Ventana de objeción del propietario abierta hasta el
+            {{ solicitud.objecion_hasta|date:"d/m/Y" }}.
+            {% if solicitud.aviso_abierto_at %}
+                El propietario ya abrió el aviso.
+            {% else %}
+                Todavía no ha abierto el aviso.
+            {% endif %}
+            Si objeta, la publicación no se podrá sacar.
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'validar_solicitud' solicitud.id %}" style="margin-bottom:14px;">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="texto_validacion">Correcciones a solicitar (sólo si devuelves)</label>
+                <textarea name="texto" id="texto_validacion" rows="3"
+                          placeholder="Ej: falta la foto de la fachada y el certificado de dominio."
+                          style="width:100%;padding:10px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.88rem;"></textarea>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button type="submit" name="accion" value="aprobar" class="btn btn-primary" style="flex:1;">
+                    Validar y avanzar a publicar
+                </button>
+                <button type="submit" name="accion" value="rechazar" class="btn btn-ghost" style="flex:1;">
+                    Devolver pidiendo correcciones
+                </button>
+            </div>
+        </form>
+
+        <hr style="border:none;border-top:1px solid var(--ds-border-light);margin:14px 0;">
+
+        <form method="POST" action="{% url 'publicar_solicitud' solicitud.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-block">
+                Publicar propiedad
+            </button>
+            <div class="form-hint" style="text-align:center;margin-top:6px;">
+                Al publicar, la propiedad queda visible en la vitrina por el plazo contratado.
+            </div>
+        </form>
+    </div>
+</div>

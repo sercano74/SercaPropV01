@@ -58,18 +58,20 @@ class ResendAPIBackend(BaseEmailBackend):
         return enviados
 
     def _enviar_uno(self, message):
-        destinatarios = (
-            list(message.to or [])
-            + list(message.cc or [])
-            + list(message.bcc or [])
-        )
+        # ``cc`` y ``bcc`` viajan en sus propios campos de la API. Meterlos en
+        # ``to`` —como se hacía antes— convertía la copia oculta en copia
+        # visible: el propietario veía en los destinatarios a la gerencia.
         email_from = message.from_email or self.from_email
 
         payload = {
             "from": email_from,
-            "to": destinatarios,
+            "to": list(message.to or []),
             "subject": message.subject,
         }
+        if message.cc:
+            payload["cc"] = list(message.cc)
+        if message.bcc:
+            payload["bcc"] = list(message.bcc)
         if message.body:
             payload["text"] = message.body
         html = None

@@ -1,0 +1,167 @@
+{% load static %}
+{# Formulario de la Orden de Gestión: archivo, documentos requeridos y las
+   condiciones económicas que después alimentan el cierre económico.
+
+   La fiscalización es diferenciada por rol: la gerencia firma lo que quiera
+   —es su negocio—; los demás roles ven la tasa de su plan y la declarada, y
+   la desviación queda registrada para que la gerencia la vea al aprobar. #}
+<div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary-light);">
+    <div class="card-modern-body">
+        <div class="card-modern-title">Subir Orden de Gestión</div>
+        <p style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+            Define el costo de tu gestión, en qué moneda cobras y los documentos que
+            el solicitante debe presentar. La gerencia aprobará la OG antes de que
+            se completen los datos.
+        </p>
+
+        {% if tasa_serca_plan %}
+        <div class="alert-modern alert-info-modern" style="margin-bottom:12px;font-size:0.85rem;">
+            Tasa SERCA de tu plan{% if plan_corredor_nombre %} ({{ plan_corredor_nombre }}){% endif %}:
+            <strong>{{ tasa_serca_plan }}%</strong>. Puedes pactar otra, pero quedará
+            registrada y la verá la gerencia al aprobar.
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'subir_orden_gestion' solicitud.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="orden_gestion">Archivo de la Orden de Gestión (PDF o Word) *</label>
+                <input type="file" name="orden_gestion" id="orden_gestion"
+                       accept=".pdf,.doc,.docx,.odt,.rtf,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.heic,.zip"
+                       required>
+                <div class="form-hint">
+                    Formatos: PDF, Word, Excel, PowerPoint, OpenDocument, RTF, TXT, CSV,
+                    imágenes y ZIP. Tamaño máximo: 10 MB.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="docs_requeridos">Documentos requeridos al solicitante</label>
+                <textarea name="docs_requeridos" id="docs_requeridos" rows="10"
+                          style="width:100%;padding:10px;border:1px solid var(--ds-border);border-radius:6px;font-size:0.85rem;font-family:monospace;">{{ docs_orientacion_texto }}</textarea>
+                <div class="form-hint">
+                    Vienen precargados según el tipo de acción. Sepáralos por comas si los editas.
+                </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--ds-border-light);margin:18px 0;">
+
+            <div class="card-modern-title" style="font-size:0.95rem;">Condiciones económicas</div>
+            <p style="font-size:0.82rem;color:var(--ds-text-secondary);margin-bottom:12px;">
+                Lo que declares aquí es el contrato: el cierre económico partirá de estos
+                valores y no del plan.
+            </p>
+
+            <div class="form-group">
+                <label for="precio_referencia_og">
+                    Precio de referencia *{% if solicitud.propiedad %} (en {{ solicitud.propiedad.get_tipo_moneda_display }}){% endif %}
+                </label>
+                <input type="number" step="0.01" min="0" required
+                       name="precio_referencia_og" id="precio_referencia_og"
+                       value="{{ solicitud.precio_referencia_og|default_if_none:'' }}">
+                <div class="form-hint">
+                    El precio de venta o canon de arriendo escrito en la Orden de Gestión.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="moneda_referencia_og">Moneda del precio de referencia</label>
+                <select name="moneda_referencia_og" id="moneda_referencia_og">
+                    <option value="PCL" {% if solicitud.moneda_referencia_og == 'PCL' %}selected{% endif %}>Pesos (CLP)</option>
+                    <option value="UF" {% if solicitud.moneda_referencia_og == 'UF' %}selected{% endif %}>UF</option>
+                    <option value="USD" {% if solicitud.moneda_referencia_og == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="tasa_serca_og">Tasa SERCA (%) *</label>
+                <input type="number" step="0.01" min="0" max="100" required
+                       name="tasa_serca_og" id="tasa_serca_og"
+                       value="{{ solicitud.tasa_serca_og|default_if_none:'' }}{% if not solicitud.tasa_serca_og and tasa_serca_plan %}{{ tasa_serca_plan }}{% endif %}">
+            </div>
+
+            <div class="card-modern" style="margin:12px 0;background:var(--ds-bg-secondary);">
+                <div class="card-modern-body">
+                    <div class="card-modern-title" style="font-size:0.9rem;">Comisión del vendedor</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label for="tipo_comision_vendedor_og">Tipo</label>
+                            <select name="tipo_comision_vendedor_og" id="tipo_comision_vendedor_og">
+                                <option value="porcentaje" {% if solicitud.tipo_comision_vendedor_og != 'fijo' %}selected{% endif %}>Porcentaje</option>
+                                <option value="fijo" {% if solicitud.tipo_comision_vendedor_og == 'fijo' %}selected{% endif %}>Monto fijo</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label for="valor_comision_vendedor_og">Valor</label>
+                            <input type="number" step="0.01" min="0"
+                                   name="valor_comision_vendedor_og" id="valor_comision_vendedor_og"
+                                   value="{{ solicitud.valor_comision_vendedor_og|default_if_none:'' }}">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label for="moneda_comision_vendedor_og">Moneda</label>
+                            <select name="moneda_comision_vendedor_og" id="moneda_comision_vendedor_og">
+                                <option value="PCL" {% if solicitud.moneda_comision_vendedor_og == 'PCL' %}selected{% endif %}>Pesos (CLP)</option>
+                                <option value="UF" {% if solicitud.moneda_comision_vendedor_og == 'UF' %}selected{% endif %}>UF</option>
+                                <option value="USD" {% if solicitud.moneda_comision_vendedor_og == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-modern" style="margin:12px 0;background:var(--ds-bg-secondary);">
+                <div class="card-modern-body">
+                    <div class="card-modern-title" style="font-size:0.9rem;">Comisión del comprador</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label for="tipo_comision_comprador_og">Tipo</label>
+                            <select name="tipo_comision_comprador_og" id="tipo_comision_comprador_og">
+                                <option value="porcentaje" {% if solicitud.tipo_comision_comprador_og != 'fijo' %}selected{% endif %}>Porcentaje</option>
+                                <option value="fijo" {% if solicitud.tipo_comision_comprador_og == 'fijo' %}selected{% endif %}>Monto fijo</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label for="valor_comision_comprador_og">Valor</label>
+                            <input type="number" step="0.01" min="0"
+                                   name="valor_comision_comprador_og" id="valor_comision_comprador_og"
+                                   value="{{ solicitud.valor_comision_comprador_og|default_if_none:'' }}">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label for="moneda_comision_comprador_og">Moneda</label>
+                            <select name="moneda_comision_comprador_og" id="moneda_comision_comprador_og">
+                                <option value="PCL" {% if solicitud.moneda_comision_comprador_og == 'PCL' %}selected{% endif %}>Pesos (CLP)</option>
+                                <option value="UF" {% if solicitud.moneda_comision_comprador_og == 'UF' %}selected{% endif %}>UF</option>
+                                <option value="USD" {% if solicitud.moneda_comision_comprador_og == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <div class="form-group" style="flex:1;min-width:150px;">
+                    <label for="factor_uf_og">Valor UF en pesos</label>
+                    <input type="number" step="0.01" min="0" name="factor_uf_og" id="factor_uf_og"
+                           value="{{ solicitud.factor_uf_og|default_if_none:'' }}">
+                    <div class="form-hint">Sólo si algún monto va en UF.</div>
+                </div>
+                <div class="form-group" style="flex:1;min-width:150px;">
+                    <label for="factor_usd_og">Valor USD en pesos</label>
+                    <input type="number" step="0.01" min="0" name="factor_usd_og" id="factor_usd_og"
+                           value="{{ solicitud.factor_usd_og|default_if_none:'' }}">
+                    <div class="form-hint">Sólo si algún monto va en dólares.</div>
+                </div>
+                <div class="form-group" style="flex:1;min-width:150px;">
+                    <label for="fecha_tipo_cambio_og">Fecha del tipo de cambio</label>
+                    <input type="date" name="fecha_tipo_cambio_og" id="fecha_tipo_cambio_og"
+                           value="{{ solicitud.fecha_tipo_cambio_og|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">
+                Subir Orden de Gestión
+            </button>
+        </form>
+    </div>
+</div>

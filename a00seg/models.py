@@ -187,9 +187,27 @@ class PlanSuscripcion(models.Model):
         default=5, verbose_name="Máx. propiedades simultáneas"
     )
     comision_porcentaje = models.DecimalField(
-        max_digits=5, decimal_places=2, default=60.00,
-        verbose_name="Comisión (%)",
-        help_text="Porcentaje de comisión que recibe el corredor"
+        max_digits=5, decimal_places=2, default=50.00,
+        verbose_name="Comisión que recibe el corredor (%)",
+        help_text=(
+            "Porcentaje de la comisión que recibe el corredor. SERCA cobra el "
+            "complemento (100 - este valor). El valor por defecto es solo un "
+            "punto de partida: ajústalo al crear cada plan."
+        )
+    )
+    # ===== Publicación en representación =====
+    permite_representacion = models.BooleanField(
+        default=False,
+        verbose_name="Permite publicar en representación",
+        help_text="Habilita que un corredor publique propiedades de terceros.",
+    )
+    max_publicaciones_mensual = models.PositiveSmallIntegerField(
+        default=5,
+        verbose_name="Máx. publicaciones por mes calendario",
+        help_text=(
+            "Cuántas publicaciones puede crear el corredor en un mes calendario, "
+            "sean propias o en representación."
+        ),
     )
 
     class Meta:

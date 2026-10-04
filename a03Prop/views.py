@@ -30,7 +30,10 @@ from .models import (
 from a01Com.models import Communication, SourceTypeChoices
 from a00seg.models import User, Comuna, Region, AgendaCorredor
 from a00seg.uploads import validar_archivo_documento
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+
+from . import comisiones, orden_gestion, representacion
+from .notificaciones import enviar_aviso_propietario
 
 logger = logging.getLogger(__name__)
 
@@ -935,16 +938,20 @@ def _puede_ver_proceso(request, proceso):
 # ================================================================
 
 def _get_plan_corredor(corredor):
-    """Obtiene plan y tasa SERCA del corredor."""
-    plan_nombre = ""
-    tasa_serca = Decimal('0')
-    try:
-        if hasattr(corredor, 'plan') and corredor.plan:
-            plan_nombre = corredor.plan.nombre if hasattr(corredor.plan, 'nombre') else str(corredor.plan)
-            tasa_serca = corredor.plan.tasa_serca if hasattr(corredor.plan, 'tasa_serca') else Decimal('0')
-    except Exception:
-        pass
-    return plan_nombre, tasa_serca
+    """Devuelve el nombre del plan y la tasa SERCA del corredor.
+
+    La suscripción cuelga de ``User.suscripcion`` (``SuscripcionCorredor``), no
+    de un atributo ``plan`` en el usuario. Y ``PlanSuscripcion.comision_porcentaje``
+    es lo que RECIBE el corredor, así que la tasa que cobra SERCA es su
+    complemento: ``100 - comision_porcentaje``.
+    """
+    suscripcion = getattr(corredor, "suscripcion", None)
+    plan = getattr(suscripcion, "plan", None)
+    if not plan:
+        return "", Decimal("0")
+
+    tasa_serca = Decimal("100") - Decimal(str(plan.comision_porcentaje or 0))
+    return plan.nombre, tasa_serca
 
 
 def _calcular_comision_clp(precio, tipo, valor):
@@ -988,9 +995,18 @@ def _crear_cierre_automatico(propiedad, corredor, tipo_cierre, precio=None, mone
     comision_vendedor = _calcular_comision_clp(precio, tipo_comision_vendedor, valor_comision_vendedor)
     comision_comprador = _calcular_comision_clp(precio, tipo_comision_comprador, valor_comision_comprador)
 
-    # % reference
-    pct_v = Decimal(str(valor_comision_vendedor)) if tipo_comision_vendedor == "porcentaje" and valor_comision_vendedor else Decimal('0')
-    pct_c = Decimal(str(valor_comision_comprador)) if tipo_comision_comprador == "porcentaje" and valor_comision_comprador else Decimal('0')
+    # El porcentaje sólo tiene sentido cuando el tipo es porcentaje: con un
+    # monto fijo se guarda ``None`` en vez de un cero que confunde.
+    pct_v = (
+        Decimal(str(valor_comision_vendedor))
+        if tipo_comision_vendedor == "porcentaje" and valor_comision_vendedor
+        else None
+    )
+    pct_c = (
+        Decimal(str(valor_comision_comprador))
+        if tipo_comision_comprador == "porcentaje" and valor_comision_comprador
+        else None
+    )
 
     mes = fecha_cierre.month
     anio = fecha_cierre.year
@@ -1003,6 +1019,13 @@ def _crear_cierre_automatico(propiedad, corredor, tipo_cierre, precio=None, mone
         defaults={
             'precio_venta': precio,
             'moneda_original': moneda,
+            'tipo_comision_vendedor': comisiones.normalizar_tipo(tipo_comision_vendedor),
+            'tipo_comision_comprador': comisiones.normalizar_tipo(tipo_comision_comprador),
+            'valor_comision_vendedor_origen': valor_comision_vendedor,
+            'valor_comision_comprador_origen': valor_comision_comprador,
+            'origen_comisiones': (
+                comisiones.ORIGEN_CORREDOR_PROP if cp else comisiones.ORIGEN_MANUAL
+            ),
             'pct_comision_vendedor': pct_v,
             'pct_comision_comprador': pct_c,
             'comision_vendedor_presupuestada_clp': comision_vendedor,
@@ -1038,14 +1061,69 @@ def _crear_cierre_automatico(propiedad, corredor, tipo_cierre, precio=None, mone
 # FLUJO DE SOLICITUD DE PUBLICACIÓN (5 PASOS)
 # ================================================================
 
+def _render_solicitar_publicacion(request, config_pago, comunas, regiones, datos=None):
+    """Render único del paso 1.
+
+    ``datos`` devuelve a la pantalla lo que el usuario ya había escrito cuando
+    el POST falla, para no obligarlo a reescribir el formulario completo.
+    """
+    usadas, limite = representacion.cupo_del_mes(request.user)
+    origen = datos if datos is not None else request.POST
+    return render(request, "solicitar_publicacion.html", {
+        "config_pago": config_pago,
+        "comunas": comunas,
+        "regiones": regiones,
+        "puede_representar": representacion.puede_representar(request.user)[0],
+        # El mandato verbal no deja rastro: sólo lo admite la gerencia.
+        "puede_mandato_verbal": representacion.es_gerencia(request.user),
+        "cupo_usadas": usadas,
+        "cupo_limite": limite,
+        "tipo_publicante": origen.get("tipo_publicante", "propietario"),
+        "propietario_nombre": origen.get("propietario_nombre", ""),
+        "propietario_dni": origen.get("propietario_dni", ""),
+        "propietario_email": origen.get("propietario_email", ""),
+        "propietario_celular": origen.get("propietario_celular", ""),
+        "mandato_tipo": origen.get("mandato_tipo", ""),
+    })
+
+
 @login_required
 def solicitar_publicacion(request):
-    """Paso 1: usuario sube datos básicos, fotos, pago"""
+    """Paso 1: datos básicos, fotos y comprobante.
+
+    Aquí se decide si la propiedad se publica a nombre del propio usuario o en
+    representación de un tercero. Los campos del propietario sólo se aceptan
+    cuando el selector dice "representante": un POST cruzado no los hace pasar.
+    """
     config_pago = ConfiguracionPagoPubli.objects.filter(activo=True).first()
     comunas = Comuna.objects.all().order_by("nombre")
     regiones = Region.objects.all()
 
     if request.method == "POST":
+        tipo_publicante = request.POST.get("tipo_publicante", "propietario")
+        if tipo_publicante not in ("propietario", "representante"):
+            tipo_publicante = "propietario"
+
+        datos_propietario = {}
+        if tipo_publicante == "representante":
+            permitido, mensaje = representacion.puede_representar(request.user)
+            if not permitido:
+                messages.error(request, mensaje)
+                return _render_solicitar_publicacion(request, config_pago, comunas, regiones)
+
+            datos_propietario, errores_representacion = representacion.procesar_datos_propietario(
+                request.POST, request.FILES, request.user
+            )
+            if errores_representacion:
+                for error in errores_representacion:
+                    messages.error(request, error)
+                return _render_solicitar_publicacion(request, config_pago, comunas, regiones)
+
+        permitido, mensaje = representacion.puede_crear_publicacion(request.user)
+        if not permitido:
+            messages.error(request, mensaje)
+            return _render_solicitar_publicacion(request, config_pago, comunas, regiones)
+
         calle = request.POST.get("calle", "").strip()
         numero_calle = request.POST.get("numero_calle", "").strip()
         tipo_prop = request.POST.get("tipo_prop", "")
@@ -1065,25 +1143,27 @@ def solicitar_publicacion(request):
         fotos = request.FILES.getlist("fotos")
         if len(fotos) < 1:
             messages.error(request, "Debes subir al menos 1 foto de la propiedad.")
-            return render(request, "solicitar_publicacion.html", {
-                "config_pago": config_pago,
-                "comunas": comunas,
-                "regiones": regiones,
-            })
+            return _render_solicitar_publicacion(request, config_pago, comunas, regiones)
 
         comprobante = request.FILES.get("comprobante")
         if not comprobante:
             messages.error(request, "Debes subir el comprobante de pago.")
-            return render(request, "solicitar_publicacion.html", {
-                "config_pago": config_pago,
-                "comunas": comunas,
-                "regiones": regiones,
-            })
+            return _render_solicitar_publicacion(request, config_pago, comunas, regiones)
 
         total = _calcular_total(request.POST.get("tipo_accion", "venta"), meses, es_destacada)
 
+        en_representacion = tipo_publicante == "representante"
+
         propiedad = Propiedad.objects.create(
-            dueno=request.user,
+            # Si el propietario no tiene cuenta, el dueño queda vacío y el
+            # usuario que opera la publicación se guarda como representante.
+            dueno=None if en_representacion else request.user,
+            representante=request.user if en_representacion else None,
+            en_representacion=en_representacion,
+            propietario_nombre=datos_propietario.get("propietario_nombre", ""),
+            propietario_dni=datos_propietario.get("propietario_dni", ""),
+            propietario_email=datos_propietario.get("propietario_email", ""),
+            propietario_celular=datos_propietario.get("propietario_celular", ""),
             calle=calle,
             numero_calle=numero_calle,
             tipo_prop=tipo_prop,
@@ -1107,6 +1187,9 @@ def solicitar_publicacion(request):
 
         solicitud = SolicitudPublicacion.objects.create(
             usuario=request.user,
+            tipo_publicante=tipo_publicante,
+            tipo_mandato=datos_propietario.get("tipo_mandato", ""),
+            mandato_archivo=datos_propietario.get("mandato_archivo"),
             meses=meses,
             es_destacada=es_destacada,
             total_pago=total,
@@ -1114,6 +1197,14 @@ def solicitar_publicacion(request):
             propiedad=propiedad,
             estado="pago_revision",
         )
+
+        if en_representacion:
+            aviso = (
+                f" en representación de {propiedad.propietario_nombre} "
+                f"(mandato {solicitud.get_tipo_mandato_display().lower()})"
+            )
+        else:
+            aviso = ""
 
         gerentes = User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True)
         for g in gerentes:
@@ -1124,21 +1215,24 @@ def solicitar_publicacion(request):
                 title="Nueva solicitud de publicación",
                 message=(
                     f"El usuario {request.user.get_full_name() or request.user.email} "
-                    f"ha solicitado publicar {propiedad.display_name_public()}. "
+                    f"ha solicitado publicar {propiedad.display_name_public()}{aviso}. "
                     f"{'⭐ Destacada' if es_destacada else 'Normal'} · {meses} meses. "
                     f"Total: ${total:,.0f}."
                 ),
                 related_object_id=solicitud.id,
             )
 
-        messages.success(request, "¡Solicitud enviada! Un gerente revisará tu pago.")
+        if en_representacion:
+            messages.success(
+                request,
+                "Solicitud enviada. La gerencia validará el mandato del propietario "
+                "antes de asignar un responsable.",
+            )
+        else:
+            messages.success(request, "¡Solicitud enviada! Un gerente revisará tu pago.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
-    return render(request, "solicitar_publicacion.html", {
-        "config_pago": config_pago,
-        "comunas": comunas,
-        "regiones": regiones,
-    })
+    return _render_solicitar_publicacion(request, config_pago, comunas, regiones)
 
 
 @login_required
@@ -1171,6 +1265,21 @@ def detalle_solicitud(request, solicitud_id):
         tipo_accion = "venta"
     docs_orientacion_texto = _get_docs_orientacion_texto(tipo_accion)
 
+    # ------------------------------------------------------------------
+    # Acciones del usuario actual: es la única fuente de verdad para la
+    # interfaz. Se calcula en Python —y no en la plantilla— porque cada
+    # bloque depende de DOS atributos (quién es y en qué etapa está), y eso
+    # permite probarlo con tests. Un usuario con dos roles obtiene la unión
+    # de sus acciones, no la primera que coincida: ahí nacían los tres
+    # atascos de la versión anterior de esta pantalla.
+    # ------------------------------------------------------------------
+    acciones = solicitud.acciones_de(request.user)
+
+    plan_nombre, tasa_plan = _get_plan_corredor(solicitud.corredor_asignado)
+    resumen_og = None
+    if solicitud.tiene_condiciones_economicas:
+        resumen_og = orden_gestion.resumen_fiscalizacion(solicitud, tasa_plan or None)
+
     return render(request, "detalle_solicitud.html", {
         "solicitud": solicitud,
         "observaciones": observaciones,
@@ -1180,6 +1289,12 @@ def detalle_solicitud(request, solicitud_id):
         "config_pago": config_pago,
         "corredores_disponibles": corredores_disponibles,
         "docs_orientacion_texto": docs_orientacion_texto,
+        "acciones": acciones,
+        "tasa_serca_plan": tasa_plan or None,
+        "plan_corredor_nombre": plan_nombre,
+        "resumen_og": resumen_og,
+        "es_corredor_asignado": request.user == solicitud.corredor_asignado,
+        "es_solicitante": request.user == solicitud.usuario,
     })
 
 
@@ -1245,6 +1360,66 @@ def agregar_observacion(request, solicitud_id):
     return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
 
+def _registrar_ventana_y_aviso(request, solicitud, objecion_dias):
+    """Fija la ventana de objeción, deja constancia del mandato y avisa.
+
+    El aviso se envía al aprobar el pago —no al publicar— para que queden tres
+    etapas por delante (la OG, su aprobación y la carga de datos) antes de que
+    la propiedad salga al mercado. Sólo aplica a las publicaciones en
+    representación: al propietario con cuenta no se le avisa de sí mismo.
+    """
+    es_representacion = (
+        solicitud.tipo_publicante == SolicitudPublicacion.TipoPublicante.REPRESENTANTE
+    )
+
+    # El plazo se acota aquí, que es donde se escribe: el formulario puede
+    # mandar cualquier cosa y sin tope una publicación queda bloqueada para
+    # siempre.
+    minimo = SolicitudPublicacion.OBJECION_DIAS_MIN
+    maximo = SolicitudPublicacion.OBJECION_DIAS_MAX
+    try:
+        objecion_dias = int(objecion_dias)
+    except (TypeError, ValueError):
+        objecion_dias = minimo
+    if objecion_dias < minimo or objecion_dias > maximo:
+        messages.warning(
+            request,
+            "El plazo de objeción se ajustó al rango permitido "
+            f"({minimo} a {maximo} días).",
+        )
+        objecion_dias = min(max(objecion_dias, minimo), maximo)
+
+    if es_representacion:
+        solicitud.objecion_dias = objecion_dias
+        solicitud.objecion_hasta = timezone.now() + timezone.timedelta(days=objecion_dias)
+        solicitud.mandato_validado_por = request.user
+        solicitud.mandato_validado_at = timezone.now()
+
+    solicitud.save()
+
+    if not es_representacion or solicitud.aviso_enviado_at:
+        return
+
+    enviado, detalle = enviar_aviso_propietario(solicitud)
+    if enviado:
+        solicitud.aviso_enviado_at = timezone.now()
+        solicitud.aviso_email_destino = solicitud.propiedad.propietario_email
+        solicitud.save(update_fields=[
+            "aviso_enviado_at", "aviso_email_destino", "aviso_token",
+        ])
+        messages.info(
+            request,
+            "Se envió el aviso al propietario, con copia a la gerencia. "
+            f"La publicación no podrá salir antes de {solicitud.objecion_hasta:%d/%m/%Y}.",
+        )
+    else:
+        messages.warning(
+            request,
+            "No se pudo enviar el aviso al propietario "
+            f"({detalle}). La ventana de objeción igual quedó registrada.",
+        )
+
+
 @login_required
 def aprobar_pago_solicitud(request, solicitud_id):
     if request.user.rol not in ("gerente", "superadmin"):
@@ -1255,6 +1430,34 @@ def aprobar_pago_solicitud(request, solicitud_id):
     if solicitud.estado not in ("pago_revision", "pago_objetado"):
         messages.error(request, "Esta solicitud no está en revisión de pago.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    es_representacion = (
+        solicitud.tipo_publicante == SolicitudPublicacion.TipoPublicante.REPRESENTANTE
+    )
+
+    # El mandato es la autorización del propietario. Sin él no hay
+    # representación válida, así que no se aprueba el pago.
+    if es_representacion and not solicitud.mandato_archivo:
+        messages.error(
+            request,
+            "Esta publicación es en representación y no tiene mandato adjunto. "
+            "No se puede aprobar sin la autorización del propietario.",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    # Refuerzo del cupo: entre el paso 1 y el 2 puede cambiar el plan.
+    if es_representacion:
+        permitido, mensaje = representacion.puede_representar(solicitud.usuario)
+        if not permitido:
+            messages.error(request, mensaje)
+            return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    # La ventana de objeción la fija el gerente aquí, entre 1 y 7 días.
+    try:
+        objecion_dias = int(request.POST.get("objecion_dias") or 1)
+    except (TypeError, ValueError):
+        objecion_dias = 1
+    objecion_dias = min(max(objecion_dias, 1), 7)
 
     corredor_id = request.POST.get("corredor_id", "").strip()
 
@@ -1275,7 +1478,7 @@ def aprobar_pago_solicitud(request, solicitud_id):
 
         solicitud.corredor_asignado = corredor
         solicitud.estado = "en_revision_corredor"
-        solicitud.save()
+        _registrar_ventana_y_aviso(request, solicitud, objecion_dias)
 
         if solicitud.propiedad:
             CorredorProp.objects.get_or_create(
@@ -1315,9 +1518,9 @@ def aprobar_pago_solicitud(request, solicitud_id):
         )
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
-    # Sin corredor seleccionado: solo aprobar pago
+    # Sin corredor seleccionado: sólo se aprueba el pago.
     solicitud.estado = "pago_aprobado"
-    solicitud.save()
+    _registrar_ventana_y_aviso(request, solicitud, objecion_dias)
 
     _notificar(
         recipient=solicitud.usuario,
@@ -1454,8 +1657,25 @@ def subir_orden_gestion(request, solicitud_id):
 
         docs_requeridos = request.POST.get("docs_requeridos", "").strip()
 
+        # Condiciones económicas de la OG. Aquí vive la fiscalización por rol:
+        # la gerencia firma lo que quiera —es su negocio—; los demás quedan con
+        # la tasa del plan registrada junto a la declarada, para que el gerente
+        # vea la desviación al aprobar.
+        _, tasa_plan = _get_plan_corredor(solicitud.corredor_asignado)
+        condiciones, errores_condiciones, advertencias = orden_gestion.parsear_condiciones(
+            request.POST, user=request.user, tasa_plan=tasa_plan or None
+        )
+        if errores_condiciones:
+            for error in errores_condiciones:
+                messages.error(request, error)
+            return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+        for advertencia in advertencias:
+            messages.warning(request, advertencia)
+
         solicitud.orden_gestion = og
         solicitud.docs_requeridos = docs_requeridos
+        for campo, valor in condiciones.items():
+            setattr(solicitud, campo, valor)
         solicitud.estado = "og_pendiente"
         solicitud.save()
 
@@ -1464,11 +1684,32 @@ def subir_orden_gestion(request, solicitud_id):
             emitter=request.user,
             source_type=SourceTypeChoices.CORREDOR,
             title="Orden de Gestión lista para revisar",
-            message="El corredor ha subido la Orden de Gestión. Revísala, acéptala y completa los datos faltantes.",
+            message=(
+                "Se ha subido la Orden de Gestión. La gerencia la revisará y "
+                "aprobará antes de que completes los datos de la propiedad."
+            ),
             related_object_id=solicitud.id,
         )
 
-        messages.success(request, "Orden de Gestión subida. El usuario debe aceptarla y completar datos.")
+        for g in User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True):
+            _notificar(
+                recipient=g,
+                emitter=request.user,
+                source_type=SourceTypeChoices.CORREDOR,
+                title=f"Orden de Gestión pendiente de aprobación (#{solicitud.id})",
+                message=(
+                    f"El responsable {request.user.get_full_name() or request.user.email} "
+                    f"subió la OG de {solicitud.propiedad.display_name_public()}. "
+                    + orden_gestion.mensaje_condiciones_guardadas(solicitud)
+                ),
+                related_object_id=solicitud.id,
+            )
+
+        resumen = orden_gestion.mensaje_condiciones_guardadas(solicitud)
+        messages.success(
+            request,
+            "Orden de Gestión subida. La gerencia debe aprobarla. " + resumen,
+        )
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
     return redirect("detalle_solicitud", solicitud_id=solicitud.id)
@@ -1476,42 +1717,76 @@ def subir_orden_gestion(request, solicitud_id):
 
 @login_required
 def aceptar_orden_gestion(request, solicitud_id):
+    """Aprueba la Orden de Gestión. **La aprueba la gerencia, no el solicitante.**
+
+    Es el segundo acto de control: en el paso 2 el gerente validó la
+    autorización del propietario; aquí valida las condiciones comerciales. La
+    aprobación de quien subió la OG queda registrada y marcada.
+    """
     solicitud = get_object_or_404(SolicitudPublicacion, id=solicitud_id)
 
-    if request.user != solicitud.usuario:
-        messages.error(request, "Solo el solicitante puede aceptar la Orden de Gestión.")
+    if request.user.rol not in ("gerente", "superadmin"):
+        messages.error(request, "Sólo la gerencia puede aprobar la Orden de Gestión.")
         return redirect("gestion")
 
     if solicitud.estado != "og_pendiente":
-        messages.error(request, "No hay Orden de Gestión pendiente.")
+        messages.error(request, "No hay Orden de Gestión pendiente de aprobación.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
     if not solicitud.orden_gestion:
-        messages.error(request, "El corredor aún no ha subido la Orden de Gestión.")
+        messages.error(request, "El responsable aún no ha subido la Orden de Gestión.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
     if request.method == "POST":
-        acepta = request.POST.get("acepta") == "on"
-        if not acepta:
-            messages.error(request, "Debes marcar que aceptas las condiciones.")
+        if request.POST.get("acepta") != "on":
+            messages.error(request, "Debes marcar que apruebas la Orden de Gestión.")
             return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
         solicitud.og_aceptada = True
         solicitud.og_aceptada_at = timezone.now()
+        solicitud.og_aceptada_por = request.user
         solicitud.estado = "og_aceptada"
         solicitud.save()
 
-        _notificar(
-            recipient=solicitud.corredor_asignado,
-            emitter=request.user,
-            source_type=SourceTypeChoices.USUARIO_BASE,
-            title="Orden de Gestión aceptada",
-            message="El usuario aceptó la OG. Ahora debe completar los datos de la propiedad.",
-            related_object_id=solicitud.id,
-        )
+        # Decisión L: la autoaprobación está permitida, pero queda a la vista.
+        if solicitud.corredor_asignado and solicitud.corredor_asignado == request.user:
+            messages.warning(
+                request,
+                "Aprobaste tu propia Orden de Gestión. Queda registrado con tu "
+                "nombre para la auditoría.",
+            )
 
-        messages.success(request, "¡OG aceptada! Ahora completa los datos de tu propiedad.")
-        return redirect("completar_datos_propiedad", solicitud_id=solicitud.id)
+        if solicitud.usuario != request.user:
+            _notificar(
+                recipient=solicitud.usuario,
+                emitter=request.user,
+                source_type=SourceTypeChoices.GERENTE,
+                title="Orden de Gestión aprobada",
+                message=(
+                    "La gerencia aprobó la Orden de Gestión. Ahora completa los "
+                    "datos de la propiedad y sube los documentos solicitados."
+                ),
+                related_object_id=solicitud.id,
+            )
+
+        if solicitud.corredor_asignado and solicitud.corredor_asignado != request.user:
+            _notificar(
+                recipient=solicitud.corredor_asignado,
+                emitter=request.user,
+                source_type=SourceTypeChoices.GERENTE,
+                title="Orden de Gestión aprobada",
+                message=(
+                    f"La gerencia aprobó la OG de la solicitud #{solicitud.id}. "
+                    "El solicitante completará los datos y luego deberás validar."
+                ),
+                related_object_id=solicitud.id,
+            )
+
+        messages.success(
+            request,
+            "OG aprobada. El solicitante ya puede completar los datos de la propiedad.",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
     return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
@@ -1661,6 +1936,22 @@ def publicar_solicitud(request, solicitud_id):
         messages.error(request, "Debes aprobar la validación antes de publicar.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
+    if solicitud.objetada:
+        messages.error(
+            request,
+            "El propietario objetó esta publicación. No se puede publicar.",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    if solicitud.objecion_hasta and timezone.now() < solicitud.objecion_hasta:
+        messages.error(
+            request,
+            "Esta publicación puede salir a partir del "
+            f"{solicitud.objecion_hasta:%d/%m/%Y}, una vez vencido el plazo de "
+            "objeción del propietario.",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
     propiedad = solicitud.propiedad
     if not propiedad:
         messages.error(request, "La propiedad no está registrada.")
@@ -1727,6 +2018,94 @@ def subir_fotos_propiedad(request, solicitud_id):
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
     return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+
+def _retirar_publicacion(solicitud):
+    """Saca la propiedad de la vitrina cuando el propietario objeta."""
+    propiedad = solicitud.propiedad
+    if not propiedad:
+        return
+    PublicacionProp.objects.filter(propiedad=propiedad, estado="publicada").update(
+        estado="archivada"
+    )
+    if propiedad.estado == "publicada":
+        propiedad.estado = "archivada"
+        propiedad.save(update_fields=["estado", "updated_at"])
+
+
+def _notificar_objecion(solicitud):
+    """La gerencia y el responsable se enteran de la objeción."""
+    titulo = f"Objeción del propietario (solicitud #{solicitud.id})"
+    mensaje = (
+        "El propietario objetó la publicación. "
+        f"Motivo: {solicitud.objecion_motivo[:300]}"
+    )
+    destinatarios = list(
+        User.objects.filter(rol__in=["gerente", "superadmin"], is_active=True)
+    )
+    if solicitud.corredor_asignado and solicitud.corredor_asignado not in destinatarios:
+        destinatarios.append(solicitud.corredor_asignado)
+
+    for destinatario in destinatarios:
+        _notificar(
+            recipient=destinatario,
+            emitter=solicitud.usuario,
+            source_type=SourceTypeChoices.USUARIO_BASE,
+            title=titulo,
+            message=mensaje,
+            related_object_id=solicitud.id,
+        )
+
+
+def aviso_representacion(request, token):
+    """Página pública de objeción. La abre el propietario, sin cuenta.
+
+    El token es de un solo propósito. Al abrirse queda registrado
+    ``aviso_abierto_at``, que sirve incluso si el propietario decide no
+    objetar: prueba que vio el aviso.
+
+    Es la superficie de mayor riesgo del flujo —pública y sin login—, así que
+    todo lo que muestra va con el autoescaping de Django activo y sin
+    excepciones.
+    """
+    solicitud = get_object_or_404(SolicitudPublicacion, aviso_token=token)
+
+    if not solicitud.aviso_abierto_at:
+        solicitud.aviso_abierto_at = timezone.now()
+        solicitud.save(update_fields=["aviso_abierto_at"])
+
+    ya_resuelto = solicitud.objetada or solicitud.estado in (
+        "cancelada", "rechazada", "objetada",
+    )
+
+    if request.method == "POST" and not ya_resuelto:
+        motivo = request.POST.get("motivo", "").strip()
+        if not motivo:
+            messages.error(request, "Escribe el motivo de tu objeción.")
+        else:
+            solicitud.objetada = True
+            solicitud.objecion_at = timezone.now()
+            solicitud.objecion_motivo = motivo
+            solicitud.estado = "objetada"
+            solicitud.save()
+            _retirar_publicacion(solicitud)
+            _notificar_objecion(solicitud)
+            ya_resuelto = True
+            messages.success(
+                request,
+                "Registramos tu objeción. La publicación no saldrá al mercado "
+                "y la gerencia revisará el caso.",
+            )
+
+    return render(request, "aviso_representacion.html", {
+        "solicitud": solicitud,
+        "propiedad": solicitud.propiedad,
+        "ya_resuelto": ya_resuelto,
+        "objetada": solicitud.objetada,
+        "objecion_motivo": solicitud.objecion_motivo,
+        "objecion_at": solicitud.objecion_at,
+        "objecion_hasta": solicitud.objecion_hasta,
+    })
 
 
 @login_required
