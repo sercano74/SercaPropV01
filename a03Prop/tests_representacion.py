@@ -801,3 +801,16 @@ class FormularioSolicitarPublicacionTests(TestCase):
         )
         # El nombre del propietario vuelve a la pantalla: no se pierde el POST.
         self.assertContains(respuesta, "Ana Pérez Soto")
+
+    def test_la_declaracion_jurada_lleva_la_clase_del_check_redondo(self):
+        """Sin esa clase, el diseño global convierte el check en una barra.
+
+        ``.form-modern input`` le quita la apariencia nativa y estira todo
+        input al ancho del contenedor: la casilla se marcaba sin que se notara
+        el cambio. La clase ``check-declaracion`` es la que le devuelve la
+        forma redonda y el relleno coral al marcarla.
+        """
+        respuesta = self._pagina_gerencia()
+
+        self.assertContains(respuesta, 'class="check-declaracion"')
+        self.assertContains(respuesta, 'id="id_declara_mandato"')

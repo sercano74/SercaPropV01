@@ -126,9 +126,9 @@
                 </div>
             </div>
 
-            <label style="display:flex;gap:8px;align-items:flex-start;font-size:0.85rem;margin:4px 0 8px;">
+            <label style="display:flex;gap:10px;align-items:flex-start;font-size:0.85rem;margin:4px 0 8px;">
                 <input type="checkbox" name="declara_mandato" value="1"
-                       id="id_declara_mandato" style="margin-top:3px;">
+                       id="id_declara_mandato" class="check-declaracion">
                 <span>
                     Declaro que el correo indicado pertenece al propietario y que cuento
                     con su mandato para publicar su propiedad. Esta declaración queda
@@ -428,6 +428,29 @@
     opacity: 0.6;
     cursor: not-allowed;
     background: var(--ds-bg-secondary);
+}
+
+/* La declaración jurada lleva un check redondo. El diseño global quita la
+   apariencia nativa y estira todo input a lo ancho, así que sin esto se veía
+   como una barra que sólo cambiaba de contorno: no se distinguía si estaba
+   marcada o no. */
+.form-modern .check-declaracion {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin: 2px 0 0;
+    padding: 0;
+    border: 2px solid var(--ds-border);
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.form-modern .check-declaracion:hover { border-color: var(--ds-primary); }
+.form-modern .check-declaracion:checked {
+    border-color: var(--ds-primary);
+    background: var(--ds-primary);
+    box-shadow: inset 0 0 0 4px #fff;
 }
 
 /* Foto preview cards */
