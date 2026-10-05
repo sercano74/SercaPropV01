@@ -188,10 +188,12 @@
 <!-- ============================================================ -->
 <!-- SECCIÓN 2: SÉ NUESTRO AGENTE (CORREDORES)                   -->
 <!-- ============================================================ -->
-{# La sección "Sé nuestro agente" de esta página se retiró: los planes de
-   corredor se muestran una sola vez, en `se_nuestro_agente.html`, que es a
-   donde apunta el enlace. Mantener dos listados duplicados era el "esquema
-   viejo": al editar un plan había que acordarse de los dos sitios. #}
+{% comment %}
+La sección "Sé nuestro agente" de esta página se retiró: los planes de
+corredor se muestran una sola vez, en `se_nuestro_agente.html`, que es a
+donde apunta el enlace. Mantener dos listados duplicados era el "esquema
+viejo": al editar un plan había que acordarse de los dos sitios.
+{% endcomment %}
 
 {% if suscripcion %}
 <div class="card-modern" style="margin-top:32px;">

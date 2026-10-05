@@ -14,29 +14,53 @@
     <form method="POST" enctype="multipart/form-data" class="form-modern" id="solicitar-form">
         {% csrf_token %}
 
-        {# ------------------------------------------------------------------
-           Quién publica. El valor viaja siempre en el POST; el JavaScript sólo
-           oculta y deshabilita campos, nunca es la barrera de seguridad: el
-           servidor vuelve a decidir y no acepta los datos del propietario si
-           el selector dice "propietario".
-           ------------------------------------------------------------------ #}
-        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">Tipo de publicación</h3>
+        {% comment %}
+        Quién publica. El valor viaja siempre en el POST; el JavaScript sólo
+        oculta y deshabilita campos, nunca es la barrera de seguridad: el
+        servidor vuelve a decidir y no acepta los datos del propietario si
+        el selector dice "propietario".
+
+        Son dos radios y no un desplegable porque cada opción cambia el
+        formulario entero: un desplegable obligaba a adivinar qué se estaba
+        eligiendo antes de ver el efecto.
+        {% endcomment %}
+        <h3 style="margin:16px 0 10px;border-bottom:2px solid var(--ds-primary-light);padding-bottom:4px;">¿Quién publica?</h3>
         <div class="form-group">
-            <label for="id_tipo_publicante">¿A nombre de quién se publica?</label>
-            <select name="tipo_publicante" id="id_tipo_publicante">
-                <option value="propietario" {% if tipo_publicante != 'representante' %}selected{% endif %}>
-                    A mi nombre (soy el propietario)
-                </option>
-                <option value="representante" {% if tipo_publicante == 'representante' %}selected{% endif %}
-                        {% if not puede_representar %}disabled{% endif %}>
-                    En representación de un propietario sin cuenta
-                </option>
-            </select>
+            <div style="display:grid;gap:10px;">
+
+                <label for="id_tipo_publicante_propietario" class="opcion-publicante">
+                    <input type="radio" name="tipo_publicante" value="propietario"
+                           id="id_tipo_publicante_propietario"
+                           {% if tipo_publicante != 'representante' %}checked{% endif %}>
+                    <span>
+                        <span class="opcion-publicante-titulo">Soy el propietario</span>
+                        <span class="opcion-publicante-texto">
+                            Publico mi propia propiedad. No necesito datos de nadie más.
+                        </span>
+                    </span>
+                </label>
+
+                <label for="id_tipo_publicante_representante"
+                       class="opcion-publicante{% if not puede_representar %} opcion-publicante--bloqueada{% endif %}">
+                    <input type="radio" name="tipo_publicante" value="representante"
+                           id="id_tipo_publicante_representante"
+                           {% if tipo_publicante == 'representante' %}checked{% endif %}
+                           {% if not puede_representar %}disabled{% endif %}>
+                    <span>
+                        <span class="opcion-publicante-titulo">Represento al propietario</span>
+                        <span class="opcion-publicante-texto">
+                            Publico a nombre de otra persona. Necesito su mandato y sus
+                            datos de contacto, y el propietario recibirá un aviso por correo.
+                        </span>
+                    </span>
+                </label>
+
+            </div>
             {% if puede_representar %}
             <div class="form-hint">
-                Publicaciones en representación este mes:
+                Representaciones este mes:
                 {{ cupo_usadas }}{% if cupo_limite %} de {{ cupo_limite }}{% endif %}.
-                Requiere mandato del propietario y su plan debe permitirlo.
+                Requiere mandato del propietario y un plan que lo permita.
             </div>
             {% else %}
             <div class="form-hint">
@@ -45,7 +69,7 @@
             {% endif %}
         </div>
 
-        <div id="bloque-propietario" style="display:none;">
+        <div id="bloque-propietario"{% if tipo_publicante != 'representante' %} style="display:none;"{% endif %}>
             <div class="alert-modern alert-info-modern" style="font-size:0.85rem;">
                 El propietario no necesita cuenta. Le enviaremos un aviso por correo
                 con copia a la gerencia y tendrá un plazo para objetar la publicación
@@ -80,10 +104,10 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="id_mandato_tipo">Tipo de mandato *</label>
-                    <select name="mandato_tipo" id="id_mandato_tipo">
-                        <option value="escrito" {% if mandato_tipo == 'escrito' %}selected{% endif %}>Escrito simple firmado</option>
-                        <option value="notarial" {% if mandato_tipo == 'notarial' %}selected{% endif %}>Notarial / poder amplio</option>
+                    <label for="id_tipo_mandato">Tipo de mandato *</label>
+                    <select name="tipo_mandato" id="id_tipo_mandato">
+                        <option value="escrito" {% if tipo_mandato == 'escrito' %}selected{% endif %}>Escrito simple firmado</option>
+                        <option value="notarial" {% if tipo_mandato == 'notarial' %}selected{% endif %}>Notarial / poder amplio</option>
                         {% if puede_mandato_verbal %}
                         <option value="verbal">Verbal (lo aprueba la gerencia)</option>
                         {% endif %}
@@ -354,6 +378,58 @@
     color: #2563eb !important;
 }
 
+/* ===== OPCIONES "¿QUIÉN PUBLICA?" ===== */
+/* Doble clase a propósito: `.form-modern label` tiene más especificidad y
+   impone display:block, que apilaría el radio encima de su texto. Y
+   `.form-modern input` estira todo input al 100%: un radio debe seguir siendo
+   un círculo, no una barra. */
+.form-modern .opcion-publicante {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border: 2px solid var(--ds-border);
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.form-modern .opcion-publicante input[type="radio"] {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    padding: 0;
+    accent-color: var(--ds-primary);
+}
+/* El diseño global quita la apariencia nativa del radio, así que el punto de
+   "marcado" se dibuja aquí: fondo coral con un anillo blanco dentro. */
+.form-modern .opcion-publicante input[type="radio"]:checked {
+    border-color: var(--ds-primary);
+    background: var(--ds-primary);
+    box-shadow: inset 0 0 0 3px #fff;
+}
+.form-modern .opcion-publicante .opcion-publicante-titulo {
+    display: block;
+    font-weight: 700;
+    color: var(--ds-text);
+}
+.form-modern .opcion-publicante .opcion-publicante-texto {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--ds-text-secondary);
+}
+.form-modern .opcion-publicante--bloqueada {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--ds-bg-secondary);
+}
+
 /* Foto preview cards */
 .foto-preview-card {
     position: relative;
@@ -517,17 +593,21 @@
             // Deshabilitar los campos es lo que impide que viajen en el POST:
             // un input disabled no se envía. Es comodidad, no seguridad — el
             // servidor vuelve a decidir si acepta o no estos datos.
-            var selectorPublicante = document.getElementById('id_tipo_publicante');
+            var radiosPublicante = document.querySelectorAll('input[name="tipo_publicante"]');
             var bloquePropietario = document.getElementById('bloque-propietario');
-            if (selectorPublicante && bloquePropietario) {
+            if (radiosPublicante.length && bloquePropietario) {
                 var camposPropietario = bloquePropietario.querySelectorAll('input, select, textarea');
                 var idsObligatorios = [
                     'id_propietario_nombre', 'id_propietario_dni',
                     'id_propietario_email', 'id_propietario_celular',
                     'id_declara_mandato'
                 ];
+                var publicanteElegido = function() {
+                    var marcado = document.querySelector('input[name="tipo_publicante"]:checked');
+                    return marcado ? marcado.value : 'propietario';
+                };
                 var actualizarModoPublicante = function() {
-                    var esRepresentacion = selectorPublicante.value === 'representante';
+                    var esRepresentacion = publicanteElegido() === 'representante';
                     bloquePropietario.style.display = esRepresentacion ? 'block' : 'none';
                     Array.prototype.forEach.call(camposPropietario, function(campo) {
                         campo.disabled = !esRepresentacion;
@@ -535,8 +615,22 @@
                             campo.required = esRepresentacion;
                         }
                     });
+                    // Resalta la tarjeta elegida. El estado para lectores de
+                    // pantalla ya lo lleva el propio radio.
+                    Array.prototype.forEach.call(radiosPublicante, function(radio) {
+                        // La opción bloqueada conserva su aspecto de bloqueada.
+                        if (radio.disabled) return;
+                        var etiqueta = radio.closest('label');
+                        if (!etiqueta) return;
+                        etiqueta.style.borderColor = radio.checked
+                            ? 'var(--ds-primary)' : '';
+                        etiqueta.style.background = radio.checked
+                            ? 'var(--ds-primary-light)' : '';
+                    });
                 };
-                selectorPublicante.addEventListener('change', actualizarModoPublicante);
+                Array.prototype.forEach.call(radiosPublicante, function(radio) {
+                    radio.addEventListener('change', actualizarModoPublicante);
+                });
                 actualizarModoPublicante();
             }
 

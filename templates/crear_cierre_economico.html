@@ -57,8 +57,10 @@
             <div style="border-top:2px solid var(--ds-border-light);padding-top:16px;margin-top:8px;">
                 <h3 style="font-size:1rem;font-weight:600;margin-bottom:8px;">Comisiones presupuestadas</h3>
 
-                {# De dónde salieron los valores precargados. El cierre parte del
-                   contrato (la OG) y no del plan, que era el hueco anterior. #}
+                {% comment %}
+                De dónde salieron los valores precargados. El cierre parte del
+                contrato (la OG) y no del plan, que era el hueco anterior.
+                {% endcomment %}
                 {% if defaults.origen_comisiones == 'og' %}
                 <div class="alert-modern alert-info-modern" style="font-size:0.85rem;margin-bottom:12px;">
                     Precargado desde la <strong>Orden de Gestión aprobada</strong>.

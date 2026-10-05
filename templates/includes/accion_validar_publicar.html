@@ -1,11 +1,13 @@
 {% load static %}
-{# Etapa del corredor asignado: valida los datos que cargó el solicitante y
-   publica. La validación es una decisión de dos vías: o avanza a publicar, o
-   devuelve la solicitud pidiendo correcciones.
+{% comment %}
+Etapa del corredor asignado: valida los datos que cargó el solicitante y
+publica. La validación es una decisión de dos vías: o avanza a publicar, o
+devuelve la solicitud pidiendo correcciones.
 
-   Antes de dejar publicar, la plantilla avisa si la ventana de objeción del
-   propietario sigue abierta: la vista lo bloquea igual, pero el corredor debe
-   enterarse aquí y no al recibir el error. #}
+Antes de dejar publicar, la plantilla avisa si la ventana de objeción del
+propietario sigue abierta: la vista lo bloquea igual, pero el corredor debe
+enterarse aquí y no al recibir el error.
+{% endcomment %}
 <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
     <div class="card-modern-body">
         <div class="card-modern-title">Validar y publicar</div>

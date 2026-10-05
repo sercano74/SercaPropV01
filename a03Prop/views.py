@@ -1083,7 +1083,7 @@ def _render_solicitar_publicacion(request, config_pago, comunas, regiones, datos
         "propietario_dni": origen.get("propietario_dni", ""),
         "propietario_email": origen.get("propietario_email", ""),
         "propietario_celular": origen.get("propietario_celular", ""),
-        "mandato_tipo": origen.get("mandato_tipo", ""),
+        "tipo_mandato": origen.get("tipo_mandato", ""),
     })
 
 

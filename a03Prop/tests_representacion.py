@@ -708,3 +708,96 @@ class AvisoRepresentacionTests(TestCase):
 
         self.assertEqual(respuesta.status_code, 200)
         self.assertNotContains(respuesta, "<script>alert(1)</script>")
+# ======================================================================
+# paso 1: el formulario donde se elige quién publica
+# ======================================================================
+
+class FormularioSolicitarPublicacionTests(TestCase):
+    """La pantalla donde se decide si se publica propio o en representación.
+
+    Se revisó en producción y mostraba tres cosas: el comentario de plantilla
+    impreso como texto —Django sólo reconoce ``{# #}`` cuando abre y cierra en
+    la misma línea—, un desplegable que no dejaba claro qué se elegía y el
+    bloque del propietario oculto sin ninguna pista de que existiera.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = User.objects.create_user(
+            username="form_usr", email="form_usr@x.cl", password="x", rol="base"
+        )
+        # La gerencia siempre puede representar: sirve para llegar al parser.
+        cls.gerente = User.objects.create_user(
+            username="form_ger", email="form_ger@x.cl", password="x", rol="gerente"
+        )
+
+    def _pagina(self):
+        self.client.force_login(self.usuario)
+        return self.client.get(reverse("solicitar_publicacion"))
+
+    def _pagina_gerencia(self):
+        self.client.force_login(self.gerente)
+        return self.client.get(reverse("solicitar_publicacion"))
+
+    def test_ningun_comentario_de_plantilla_se_imprime(self):
+        respuesta = self._pagina()
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertNotContains(respuesta, "{#")
+
+    def test_ofrece_publicar_como_propietario_o_como_representante(self):
+        respuesta = self._pagina()
+        # Dos opciones excluyentes y visibles a la vez: radios, no desplegable.
+        self.assertContains(respuesta, 'name="tipo_publicante"')
+        self.assertContains(respuesta, 'value="propietario"')
+        self.assertContains(respuesta, 'value="representante"')
+        self.assertContains(respuesta, 'type="radio"')
+
+    def test_los_datos_de_a_quien_se_representa_estan_en_la_pagina(self):
+        respuesta = self._pagina()
+        self.assertContains(respuesta, 'id="bloque-propietario"')
+        self.assertContains(respuesta, 'name="propietario_nombre"')
+        self.assertContains(respuesta, 'name="propietario_email"')
+        self.assertContains(respuesta, 'name="tipo_mandato"')
+        self.assertContains(respuesta, 'name="declara_mandato"')
+
+    def test_el_tipo_de_mandato_llega_con_el_nombre_que_lee_el_servidor(self):
+        """El formulario y ``representacion`` deben usar el mismo nombre.
+
+        Estaban desalineados —el formulario mandaba ``mandato_tipo`` y el
+        parser leía ``tipo_mandato``—, así que TODA publicación en
+        representación rebotaba con "Selecciona el tipo de mandato del
+        propietario" aunque el usuario lo hubiera elegido.
+        """
+        respuesta = self._pagina_gerencia()
+
+        self.assertContains(respuesta, 'name="tipo_mandato"')
+        self.assertNotContains(respuesta, 'name="mandato_tipo"')
+
+    def test_publicar_en_representacion_no_rebota_por_el_tipo_de_mandato(self):
+        """Un POST con el nombre del formulario no debe fallar por el mandato.
+
+        Queda sin archivo de mandato, así que el rechazo esperado es el del
+        archivo. Cualquier queja sobre el tipo de mandato sería el desajuste.
+        """
+        self.client.force_login(self.gerente)
+        respuesta = self.client.post(reverse("solicitar_publicacion"), {
+            "tipo_publicante": "representante",
+            "propietario_nombre": "Ana Pérez Soto",
+            "propietario_dni": "12.345.678-9",
+            "propietario_email": "ana@example.com",
+            "propietario_celular": "+56912345678",
+            "tipo_mandato": "notarial",
+            "declara_mandato": "1",
+            "calle": "Calle de Prueba",
+            "numero_calle": "123",
+            "tipo_prop": "casa",
+            "tipo_accion": "venta",
+            "comuna": "",
+        })
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertNotContains(
+            respuesta, "Selecciona el tipo de mandato del propietario"
+        )
+        # El nombre del propietario vuelve a la pantalla: no se pierde el POST.
+        self.assertContains(respuesta, "Ana Pérez Soto")

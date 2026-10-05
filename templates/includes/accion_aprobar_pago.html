@@ -1,10 +1,12 @@
 {% load static %}
-{# Aprobación del pago. En representación, además: validación del mandato,
-   apertura de la ventana de objeción del propietario y envío del aviso.
+{% comment %}
+Aprobación del pago. En representación, además: validación del mandato,
+apertura de la ventana de objeción del propietario y envío del aviso.
 
-   La ventana se abre AQUÍ y no al publicar, para que queden tres etapas por
-   delante (OG, su aprobación y la carga de datos) antes de que la propiedad
-   salga al mercado. El aviso va con copia oculta a gerencia y superadmin. #}
+La ventana se abre AQUÍ y no al publicar, para que queden tres etapas por
+delante (OG, su aprobación y la carga de datos) antes de que la propiedad
+salga al mercado. El aviso va con copia oculta a gerencia y superadmin.
+{% endcomment %}
 <div class="card-modern" style="margin-bottom:16px;border:2px solid var(--ds-primary);">
     <div class="card-modern-body">
         <div class="card-modern-title">Aprobar pago del servicio</div>

@@ -53,10 +53,12 @@
 
     <div class="card-modern" style="margin-bottom:16px;">
         <div class="card-modern-body" style="font-size:0.92rem;">
-            {# El propietario reconoce su propiedad por su propio nombre: es el
-               primer dato que confirma que el aviso va dirigido a él. Sólo el
-               nombre — el enlace puede reenviarse, así que no se agrega RUT ni
-               teléfono. #}
+            {% comment %}
+            El propietario reconoce su propiedad por su propio nombre: es el
+            primer dato que confirma que el aviso va dirigido a él. Sólo el
+            nombre — el enlace puede reenviarse, así que no se agrega RUT ni
+            teléfono.
+            {% endcomment %}
             <div class="detail-row">
                 <span class="detail-label">Propietario</span>
                 <span class="detail-value">{{ propiedad.propietario_nombre|default:"—" }}</span>
