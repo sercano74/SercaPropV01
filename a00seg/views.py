@@ -8,6 +8,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.http import HttpResponse
+from decimal import Decimal, InvalidOperation
 from a01Com.models import Communication, SourceTypeChoices
 from .models import *
 from .email_utils import send_confirmation_email, email_token_generator
@@ -1259,20 +1260,48 @@ def _validar_limites_plan(post):
     return []
 
 
+def _validar_comision_plan(crudo):
+    """Valida el porcentaje del tramo corredor → SercaProp.
+
+    Es la parte que **retiene el corredor**: ``_get_plan_corredor`` calcula la
+    tasa de SercaProp como su complemento, así que un 120% daría una tasa
+    negativa y el cierre económico cobraría al revés.
+
+    Devuelve ``None`` cuando el POST no trae el campo, que significa "no lo
+    cambies" y no "ponlo en cero": un envío parcial no debe borrar un valor.
+    """
+    if not (crudo or "").strip():
+        return None, []
+    try:
+        valor = Decimal(crudo.strip())
+    except (InvalidOperation, ValueError):
+        return None, ["La comisión del corredor debe ser un número entre 0 y 100."]
+    if valor < 0 or valor > 100:
+        return None, ["La comisión del corredor debe estar entre 0% y 100%."]
+    return valor, []
+
+
 @login_required
 def gestion_planes_corredor(request):
     """Habilita y ajusta los planes de corredor desde el producto.
 
     ``permite_representacion`` decide si un corredor puede publicar propiedades
-    de terceros, y ``max_publicaciones_mensual`` acota cuántas representaciones
-    lleva al mes. Los dos se leían en el flujo de publicación, pero sólo se
-    podían cambiar desde el admin de Django: un plan quedaba con
+    de terceros, y ``max_publicaciones_mensual`` acota cuántas publicaciones
+    lleva al mes, propias o en representación.
+
+    ``comision_porcentaje`` es el reparto del **segundo tramo** del negocio. La
+    comisión que el corredor cobra al cliente se pacta por operación en la
+    Orden de Gestión; de ese monto, el corredor retiene este porcentaje y
+    SercaProp cobra el complemento.
+
+    Los tres se leían en el flujo de publicación, pero sólo se podían cambiar
+    desde el admin de Django: un plan quedaba con
     ``permite_representacion=False`` —el valor por defecto del campo— y ni la
     gerencia ni el corredor tenían forma de habilitarlo desde la aplicación.
     El resultado era una publicación en representación bloqueada sin salida.
 
-    El precio y la comisión no se editan aquí a propósito: mover dinero merece
-    su propia decisión, no un campo más en una pantalla de límites.
+    El precio de la suscripción sí queda fuera: no participa del reparto, así
+    que no tiene por qué vivir en una pantalla que reparte comisiones.
     """
     if request.user.rol not in ("superadmin", "gerente"):
         messages.error(request, "No tienes acceso a esta sección.")
@@ -1282,7 +1311,10 @@ def gestion_planes_corredor(request):
         plan = get_object_or_404(
             PlanSuscripcion, id=request.POST.get("plan_id"), tipo="corredor"
         )
-        errores = _validar_limites_plan(request.POST)
+        comision, errores_comision = _validar_comision_plan(
+            request.POST.get("comision_porcentaje")
+        )
+        errores = _validar_limites_plan(request.POST) + errores_comision
         if errores:
             for error in errores:
                 messages.error(request, error)
@@ -1292,14 +1324,19 @@ def gestion_planes_corredor(request):
             request.POST.get("permite_representacion") == "1"
         )
         plan.max_publicaciones_mensual = int(request.POST["max_publicaciones_mensual"])
-        plan.save(
-            update_fields=["permite_representacion", "max_publicaciones_mensual"]
-        )
+        campos = ["permite_representacion", "max_publicaciones_mensual"]
+        if comision is not None:
+            plan.comision_porcentaje = comision
+            campos.append("comision_porcentaje")
+        plan.save(update_fields=campos)
+
         messages.success(
             request,
             f"Plan {plan.nombre}: representación "
-            f"{'habilitada' if plan.permite_representacion else 'deshabilitada'} "
-            f"y tope de {plan.max_publicaciones_mensual} publicaciones al mes.",
+            f"{'habilitada' if plan.permite_representacion else 'deshabilitada'}, "
+            f"tope de {plan.max_publicaciones_mensual} publicaciones al mes y "
+            f"comisión del corredor {plan.comision_porcentaje}% "
+            f"(SercaProp {100 - plan.comision_porcentaje}%).",
         )
         return redirect("gestion_planes_corredor")
 
@@ -1310,6 +1347,10 @@ def gestion_planes_corredor(request):
         plan.corredores_activos = SuscripcionCorredor.objects.filter(
             plan=plan, activa=True
         ).count()
+        # El complemento que cobra SercaProp. Se calcula acá porque las
+        # plantillas de Django no hacen aritmética, y mostrar sólo la mitad del
+        # reparto dejaría la otra mitad a interpretación de quien lee.
+        plan.tasa_serca = Decimal("100") - plan.comision_porcentaje
 
     return render(request, "gestion_planes_corredor.html", {"planes": planes})
 

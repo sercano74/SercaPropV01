@@ -256,3 +256,115 @@ class GestionPlanesCorredorTests(TestCase):
         self.assertEqual(respuesta.status_code, 404)
         self.plan_vendedor.refresh_from_db()
         self.assertFalse(self.plan_vendedor.permite_representacion)
+
+    # ===== Comisión que retiene el corredor (tramo corredor -> SercaProp) =====
+    # Es distinta de la comisión que se le cobra al cliente, que se pacta por
+    # operación en la Orden de Gestión. Aquí se reparte lo que el corredor cobró.
+
+    def test_se_puede_fijar_la_comision_que_retiene_el_corredor(self):
+        self._entrar_como_gerente()
+
+        self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "5",
+            "comision_porcentaje": "35",
+        })
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.comision_porcentaje, Decimal("35"))
+
+    def test_la_comision_admite_decimales(self):
+        self._entrar_como_gerente()
+
+        self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "5",
+            "comision_porcentaje": "37.5",
+        })
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.comision_porcentaje, Decimal("37.50"))
+
+    def test_una_comision_sobre_cien_no_se_guarda(self):
+        """Sobre 100% la tasa de SercaProp sería negativa: cobraría al revés."""
+        self._entrar_como_gerente()
+
+        respuesta = self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "permite_representacion": "1",
+            "max_publicaciones_mensual": "5",
+            "comision_porcentaje": "120",
+        }, follow=True)
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.plan.refresh_from_db()
+        # Nada del POST se guardó, tampoco los otros campos.
+        self.assertEqual(self.plan.comision_porcentaje, Decimal("50.00"))
+        self.assertFalse(self.plan.permite_representacion)
+        self.assertContains(respuesta, "entre 0% y 100%")
+
+    def test_una_comision_negativa_no_se_guarda(self):
+        self._entrar_como_gerente()
+
+        self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "5",
+            "comision_porcentaje": "-5",
+        })
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.comision_porcentaje, Decimal("50.00"))
+
+    def test_una_comision_no_numerica_no_se_guarda(self):
+        self._entrar_como_gerente()
+
+        respuesta = self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "5",
+            "comision_porcentaje": "mucho",
+        }, follow=True)
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.comision_porcentaje, Decimal("50.00"))
+        self.assertContains(respuesta, "debe ser un número entre 0 y 100")
+
+    def test_sin_el_campo_la_comision_no_cambia(self):
+        """Un envío parcial no debe borrar el valor ya fijado."""
+        self._entrar_como_gerente()
+
+        self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "7",
+        })
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.comision_porcentaje, Decimal("50.00"))
+        self.assertEqual(self.plan.max_publicaciones_mensual, 7)
+
+    def test_el_panel_muestra_los_dos_tramos_del_reparto(self):
+        """Enseñar sólo la mitad del reparto deja la otra a interpretación."""
+        self.plan.comision_porcentaje = Decimal("35")
+        self.plan.save(update_fields=["comision_porcentaje"])
+        self._entrar_como_gerente()
+
+        respuesta = self.client.get(self._url())
+
+        # En prosa va localizado, que es como lo lee un chileno.
+        self.assertContains(respuesta, "35,00")  # lo que retiene el corredor
+        self.assertContains(respuesta, "65,00")  # lo que cobra SercaProp
+
+    def test_el_input_de_la_comision_no_lleva_coma(self):
+        """Un input ``number`` sólo acepta punto como separador decimal.
+
+        La localización es-CL escribiría ``value="35,00"``; el navegador descarta
+        ese valor, deja el campo vacío y la comisión se vuelve ineditable aunque
+        la pantalla parezca correcta.
+        """
+        self.plan.comision_porcentaje = Decimal("35")
+        self.plan.save(update_fields=["comision_porcentaje"])
+        self._entrar_como_gerente()
+
+        respuesta = self.client.get(self._url())
+
+        self.assertContains(respuesta, 'value="35.00"')
+        self.assertNotContains(respuesta, 'value="35,00"')

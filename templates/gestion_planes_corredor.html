@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 {% load humanize %}
+{% load l10n %}
 {% block content %}
 <div class="hero-modern">
     <h1>Planes de corredor</h1>
-    <p>Habilita la publicación en representación y ajusta el tope mensual de cada plan</p>
+    <p>Representación, tope mensual y comisión que retiene el corredor, por plan</p>
 </div>
 
 <div class="alert-modern alert-info-modern" style="max-width:800px;margin:0 auto 16px;">
@@ -15,7 +16,14 @@
         al mercado.
         <br>
         El <strong>tope mensual</strong> es cuántas publicaciones puede crear ese corredor
-        en un mes calendario, en total. El precio y la comisión no se editan aquí.
+        en un mes calendario, en total.
+        <br>
+        La <strong>comisión que retiene el corredor</strong> es el reparto del segundo
+        tramo del negocio: de la comisión que el corredor cobra al cliente, este
+        porcentaje es lo que se queda y el resto lo cobra SercaProp. No confundir con
+        la comisión que se le cobra al cliente, que se pacta en cada Orden de Gestión.
+        <br>
+        El precio de la suscripción no se edita aquí.
     </div>
 </div>
 
@@ -28,7 +36,8 @@
                 <div class="card-modern-title" style="font-size:1.15rem;">{{ plan.nombre }}</div>
                 <div style="font-size:0.85rem;color:var(--ds-text-secondary);">
                     ${{ plan.precio|floatformat:0|intcomma }} · {{ plan.duracion_meses }} meses
-                    · comisión del corredor: {{ plan.comision_porcentaje }}%
+                    · comisión que retiene el corredor: {{ plan.comision_porcentaje }}%
+                    (SercaProp {{ plan.tasa_serca }}%)
                     · máximo {{ plan.max_propiedades_simultaneas }} propiedades simultáneas
                 </div>
             </div>
@@ -63,10 +72,21 @@
                 <label for="id_tope_{{ plan.id }}">Publicaciones por mes calendario</label>
                 <input type="number" min="1" step="1"
                        name="max_publicaciones_mensual" id="id_tope_{{ plan.id }}"
-                       value="{{ plan.max_publicaciones_mensual }}">
+                       value="{{ plan.max_publicaciones_mensual|unlocalize }}">
                 <div class="form-hint">
                     Cuenta todas las publicaciones del corredor en el mes, no sólo las
                     que hace en representación.
+                </div>
+            </div>
+
+            <div class="form-group" style="max-width:320px;">
+                <label for="id_comision_{{ plan.id }}">Comisión que retiene el corredor (%)</label>
+                <input type="number" min="0" max="100" step="0.01"
+                       name="comision_porcentaje" id="id_comision_{{ plan.id }}"
+                       value="{{ plan.comision_porcentaje|unlocalize }}">
+                <div class="form-hint">
+                    De la comisión que el corredor cobra al cliente, este porcentaje es lo
+                    que retiene; SercaProp cobra el {{ plan.tasa_serca }}%.
                 </div>
             </div>
 
