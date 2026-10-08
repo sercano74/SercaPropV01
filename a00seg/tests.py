@@ -100,3 +100,159 @@ class ValidarArchivoDocumentoTests(SimpleTestCase):
 
     def test_rechaza_cuando_no_llega_archivo(self):
         self.assertIn("no fue recibido", validar_archivo_documento(None))
+
+
+# ======================================================================
+# Panel que habilita los planes de corredor
+# ======================================================================
+#
+# El caso que lo origina: un corredor con plan Metrópoli no podía publicar en
+# representación y no había forma de habilitarlo desde la aplicación.
+# ``permite_representacion`` y ``max_publicaciones_mensual`` se leían en el
+# flujo de publicación pero sólo se podían cambiar desde el admin de Django.
+
+from decimal import Decimal  # noqa: E402
+
+from django.contrib.auth import get_user_model  # noqa: E402
+from django.test import TestCase  # noqa: E402
+from django.urls import reverse  # noqa: E402
+from django.utils import timezone  # noqa: E402
+
+from a00seg.models import PlanSuscripcion, SuscripcionCorredor  # noqa: E402
+from a03Prop import representacion  # noqa: E402
+
+
+class GestionPlanesCorredorTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Usuario = get_user_model()
+        cls.gerente = Usuario.objects.create_user(
+            username="plan_ger", email="plan_ger@x.cl", password="x", rol="gerente"
+        )
+        cls.corredor = Usuario.objects.create_user(
+            username="plan_cor", email="plan_cor@x.cl", password="x", rol="corredor"
+        )
+        cls.plan = PlanSuscripcion.objects.create(
+            nombre="Metropoli",
+            tipo="corredor",
+            precio=Decimal("120000"),
+            duracion_meses=12,
+            permite_representacion=False,
+            max_publicaciones_mensual=5,
+        )
+        cls.plan_vendedor = PlanSuscripcion.objects.create(
+            nombre="Vendedor Base",
+            tipo="vendedor",
+            precio=Decimal("50000"),
+            duracion_meses=6,
+        )
+        SuscripcionCorredor.objects.create(
+            corredor=cls.corredor,
+            plan=cls.plan,
+            fecha_fin=timezone.now() + timezone.timedelta(days=200),
+            activa=True,
+        )
+
+    def _url(self):
+        return reverse("gestion_planes_corredor")
+
+    def _entrar_como_gerente(self):
+        self.client.force_login(self.gerente)
+
+    def test_el_panel_lista_los_planes_de_corredor(self):
+        self._entrar_como_gerente()
+
+        respuesta = self.client.get(self._url())
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Metropoli")
+        # Los planes de vendedor no se gestionan aquí.
+        self.assertNotContains(respuesta, "Vendedor Base")
+
+    def test_habilitar_la_representacion_desbloquea_al_corredor(self):
+        """El caso real: sin esto, el corredor quedaba bloqueado sin salida."""
+        self._entrar_como_gerente()
+        permitido, _ = representacion.puede_representar(self.corredor)
+        self.assertFalse(permitido)
+
+        respuesta = self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "permite_representacion": "1",
+            "max_publicaciones_mensual": "10",
+        })
+
+        self.assertRedirects(respuesta, self._url())
+        self.plan.refresh_from_db()
+        self.assertTrue(self.plan.permite_representacion)
+        self.assertEqual(self.plan.max_publicaciones_mensual, 10)
+        # Y el corredor del plan queda efectivamente habilitado.
+        permitido, mensaje = representacion.puede_representar(self.corredor)
+        self.assertTrue(permitido, mensaje)
+
+    def test_tambien_se_puede_deshabilitar(self):
+        self.plan.permite_representacion = True
+        self.plan.save(update_fields=["permite_representacion"])
+        self._entrar_como_gerente()
+
+        # Sin el campo en el POST, la casilla queda desmarcada.
+        self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "5",
+        })
+
+        self.plan.refresh_from_db()
+        self.assertFalse(self.plan.permite_representacion)
+
+    def test_un_tope_invalido_no_se_guarda(self):
+        self._entrar_como_gerente()
+
+        respuesta = self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "permite_representacion": "1",
+            "max_publicaciones_mensual": "0",
+        }, follow=True)
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.plan.refresh_from_db()
+        # Nada cambió: ni el tope ni la habilitación del mismo POST.
+        self.assertEqual(self.plan.max_publicaciones_mensual, 5)
+        self.assertFalse(self.plan.permite_representacion)
+        self.assertContains(respuesta, "número entero de 1 o más")
+
+    def test_un_tope_no_numerico_no_se_guarda(self):
+        self._entrar_como_gerente()
+
+        self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "max_publicaciones_mensual": "muchas",
+        })
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.max_publicaciones_mensual, 5)
+
+    def test_un_corredor_no_entra_al_panel(self):
+        self.client.force_login(self.corredor)
+
+        respuesta = self.client.post(self._url(), {
+            "plan_id": self.plan.id,
+            "permite_representacion": "1",
+            "max_publicaciones_mensual": "99",
+        })
+
+        self.assertRedirects(respuesta, reverse("gestion"))
+        self.plan.refresh_from_db()
+        self.assertFalse(self.plan.permite_representacion)
+        self.assertEqual(self.plan.max_publicaciones_mensual, 5)
+
+    def test_no_se_puede_tocar_un_plan_de_vendedor(self):
+        self._entrar_como_gerente()
+
+        respuesta = self.client.post(self._url(), {
+            "plan_id": self.plan_vendedor.id,
+            "permite_representacion": "1",
+            "max_publicaciones_mensual": "99",
+        })
+
+        self.assertEqual(respuesta.status_code, 404)
+        self.plan_vendedor.refresh_from_db()
+        self.assertFalse(self.plan_vendedor.permite_representacion)

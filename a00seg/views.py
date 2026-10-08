@@ -1243,6 +1243,77 @@ def gestion_precios_publicacion(request):
 
     return render(request, "gestion_precios.html", {"config": config})
 
+
+def _validar_limites_plan(post):
+    """Valida los límites operativos de un plan de corredor.
+
+    Un tope de cero publicaciones dejaría al corredor sin poder publicar nada
+    —``cupo_del_mes`` compara contra ese número—, y un valor no numérico
+    rompería la comparación del cupo. Se rechazan aquí, antes de guardar.
+    """
+    tope = (post.get("max_publicaciones_mensual") or "").strip()
+    if not tope.isdigit() or int(tope) < 1:
+        return [
+            "El tope de publicaciones por mes debe ser un número entero de 1 o más."
+        ]
+    return []
+
+
+@login_required
+def gestion_planes_corredor(request):
+    """Habilita y ajusta los planes de corredor desde el producto.
+
+    ``permite_representacion`` decide si un corredor puede publicar propiedades
+    de terceros, y ``max_publicaciones_mensual`` acota cuántas representaciones
+    lleva al mes. Los dos se leían en el flujo de publicación, pero sólo se
+    podían cambiar desde el admin de Django: un plan quedaba con
+    ``permite_representacion=False`` —el valor por defecto del campo— y ni la
+    gerencia ni el corredor tenían forma de habilitarlo desde la aplicación.
+    El resultado era una publicación en representación bloqueada sin salida.
+
+    El precio y la comisión no se editan aquí a propósito: mover dinero merece
+    su propia decisión, no un campo más en una pantalla de límites.
+    """
+    if request.user.rol not in ("superadmin", "gerente"):
+        messages.error(request, "No tienes acceso a esta sección.")
+        return redirect("gestion")
+
+    if request.method == "POST":
+        plan = get_object_or_404(
+            PlanSuscripcion, id=request.POST.get("plan_id"), tipo="corredor"
+        )
+        errores = _validar_limites_plan(request.POST)
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+            return redirect("gestion_planes_corredor")
+
+        plan.permite_representacion = (
+            request.POST.get("permite_representacion") == "1"
+        )
+        plan.max_publicaciones_mensual = int(request.POST["max_publicaciones_mensual"])
+        plan.save(
+            update_fields=["permite_representacion", "max_publicaciones_mensual"]
+        )
+        messages.success(
+            request,
+            f"Plan {plan.nombre}: representación "
+            f"{'habilitada' if plan.permite_representacion else 'deshabilitada'} "
+            f"y tope de {plan.max_publicaciones_mensual} publicaciones al mes.",
+        )
+        return redirect("gestion_planes_corredor")
+
+    planes = list(PlanSuscripcion.objects.filter(tipo="corredor").order_by("nombre"))
+    for plan in planes:
+        # Cuántos corredores dependen del plan: el dato que hace pensar dos
+        # veces antes de deshabilitarles la representación.
+        plan.corredores_activos = SuscripcionCorredor.objects.filter(
+            plan=plan, activa=True
+        ).count()
+
+    return render(request, "gestion_planes_corredor.html", {"planes": planes})
+
+
 @login_required
 def gestion_servicios(request):
     if request.user.rol not in ("superadmin", "gerente"):

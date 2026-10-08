@@ -32,6 +32,7 @@ urlpatterns = [
     path('gestion/asignadas/', views.gestion_mis_asignadas, name='gestion_mis_asignadas'),
     path('gestion/favoritas/', views.gestion_favoritas, name='gestion_favoritas'),
     path('gestion/precios/', views.gestion_precios_publicacion, name='gestion_precios_publicacion'),
+    path('gestion/planes/', views.gestion_planes_corredor, name='gestion_planes_corredor'),
     path('gestion/servicios/', views.gestion_servicios, name='gestion_servicios'),
 
     # Confirmación de email

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+<div class="hero-modern">
+    <h1>Planes de corredor</h1>
+    <p>Habilita la publicación en representación y ajusta el tope mensual de cada plan</p>
+</div>
+
+<div class="alert-modern alert-info-modern" style="max-width:800px;margin:0 auto 16px;">
+    <div>
+        <strong>Publicar en representación</strong> permite que un corredor publique la
+        propiedad de un tercero. Al activarlo, el propietario recibe un aviso por correo
+        con copia a la gerencia y un plazo para objetar antes de que la propiedad salga
+        al mercado.
+        <br>
+        El <strong>tope mensual</strong> es cuántas publicaciones puede crear ese corredor
+        en un mes calendario, en total. El precio y la comisión no se editan aquí.
+    </div>
+</div>
+
+{% if planes %}
+{% for plan in planes %}
+<div class="card-modern" style="max-width:800px;margin:0 auto 16px;">
+    <div class="card-modern-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <div>
+                <div class="card-modern-title" style="font-size:1.15rem;">{{ plan.nombre }}</div>
+                <div style="font-size:0.85rem;color:var(--ds-text-secondary);">
+                    ${{ plan.precio|floatformat:0|intcomma }} · {{ plan.duracion_meses }} meses
+                    · comisión del corredor: {{ plan.comision_porcentaje }}%
+                    · máximo {{ plan.max_propiedades_simultaneas }} propiedades simultáneas
+                </div>
+            </div>
+            <div>
+                {% if plan.permite_representacion %}
+                    <span class="badge-modern badge-modern-success">Representación habilitada</span>
+                {% else %}
+                    <span class="badge-modern badge-modern-neutral">Sin representación</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="font-size:0.85rem;color:var(--ds-text-secondary);margin-bottom:14px;">
+            Corredores con este plan activo: <strong>{{ plan.corredores_activos }}</strong>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+
+            <label style="display:flex;gap:10px;align-items:flex-start;font-size:0.9rem;margin-bottom:14px;">
+                <input type="checkbox" name="permite_representacion" value="1"
+                       {% if plan.permite_representacion %}checked{% endif %}
+                       style="margin-top:3px;">
+                <span>
+                    Permitir que los corredores de este plan publiquen en representación
+                    de un propietario.
+                </span>
+            </label>
+
+            <div class="form-group" style="max-width:320px;">
+                <label for="id_tope_{{ plan.id }}">Publicaciones por mes calendario</label>
+                <input type="number" min="1" step="1"
+                       name="max_publicaciones_mensual" id="id_tope_{{ plan.id }}"
+                       value="{{ plan.max_publicaciones_mensual }}">
+                <div class="form-hint">
+                    Cuenta todas las publicaciones del corredor en el mes, no sólo las
+                    que hace en representación.
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar {{ plan.nombre }}</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state-modern" style="max-width:800px;margin:0 auto;">
+    <p>No hay planes de corredor creados todavía.</p>
+    <p style="font-size:0.85rem;">
+        Se crean desde el administrador de Django, en Planes de suscripción.
+    </p>
+</div>
+{% endif %}
+
+<div style="text-align:center;margin-top:20px;">
+    <a href="{% url 'gestion_precios_publicacion' %}" class="btn btn-ghost" style="text-decoration:none;">Precios de publicación</a>
+    <a href="{% url 'gestion' %}" class="btn btn-ghost" style="text-decoration:none;">← Volver a gestión</a>
+</div>
+{% endblock %}
