@@ -1,0 +1,16 @@
+Creating test database for alias 'default'...
+
+..................................................................................................................................................
+----------------------------------------------------------------------
+Ran 146 tests in 98.174s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 146 test(s).
+System check identified no issues (0 silenced).
+[dry-run] Propiedad #1: publicaci¾n #1 en 'publicada' pero la solicitud #1 estß en 'En revisi¾n del corredor'. Se archivarÝa.
+1 publicaci¾n(es) se reconciliarÝan. Ejecuta sin --dry-run para aplicarlo.
+No hay publicaciones fuera de etapa. Nada que reconciliar.
+Propiedad #1: publicaci¾n #1 en 'publicada' pero la solicitud #1 estß en 'En revisi¾n del corredor'. Archivada y devuelta a borrador.
+1 publicaci¾n(es) reconciliada(s).

@@ -1,25 +1,29 @@
-"""Reglas de visibilidad de una publicación en la vitrina.
+"""Reglas de la vitrina y del proceso de publicación.
 
-Una propiedad sólo debe aparecer en el home —y en el buscador, las landing
-pages y el sitemap— cuando su proceso de publicación terminó de verdad.
+Hay dos objetos que dicen cosas distintas sobre una propiedad:
 
-El proceso de cinco etapas vive en ``SolicitudPublicacion``; la ficha que se
-muestra en la vitrina vive en ``PublicacionProp``. Son dos objetos distintos
-y, si nada los mantiene sincronizados, una propiedad puede quedar a la vista
-con su proceso todavía a medio camino. Es exactamente lo que ocurría con las
-propiedades 8 y 9: aparecían en el home mientras su solicitud seguía en el
-paso 3 (el responsable todavía no subía la Orden de Gestión y, en
-representación, tampoco había mandato).
+* ``SolicitudPublicacion`` — el proceso de cinco etapas que lleva a publicar.
+* ``PublicacionProp`` — la ficha que efectivamente se muestra en la vitrina.
 
-Este módulo concentra la regla en un solo lugar para que las superficies que
-muestran propiedades no vuelvan a divergir. La regla es una sola:
+Reparto de responsabilidades
+----------------------------
+El proceso gobierna **el acto de publicar**: ``publicar_solicitud`` y
+``aprobar_publicacion`` no dejan publicar si faltan etapas (responsable,
+Orden de Gestión aprobada, mandato en representación). Para eso está
+``faltantes_para_publicar``.
 
-    una propiedad se muestra si no tiene proceso en curso, o si el proceso
-    en curso ya llegó al estado ``publicada``.
+Una vez publicada, la vitrina se rige por la ``PublicacionProp``: si está en
+estado ``publicada`` y vigente, se muestra. **El proceso no despublica.** Si
+un trámite posterior —una renovación, un segundo intento, una solicitud
+abierta por cualquier motivo— pudiera ocultar la ficha, una propiedad pagada
+y accesible por su URL desaparecería del home, del buscador y del sitemap sin
+que nadie lo hubiera decidido.
 
-Un proceso "caído" (rechazado o cancelado) ya no gobierna la visibilidad: no
-hay etapas pendientes que exigir, así que la propiedad se rige por lo que
-diga su ``PublicacionProp``.
+Las incoherencias reales —una publicación marcada como publicada sin haber
+cumplido nunca las etapas— se corrigen con
+``python manage.py reconciliar_publicaciones``, que archiva la publicación y
+devuelve la propiedad a borrador. Esa decisión se toma a conciencia; la
+vitrina no la adivina.
 """
 
 ESTADO_PUBLICADA = "publicada"
@@ -102,16 +106,20 @@ def ids_con_proceso_inconcluso():
 
 
 def publicaciones_visibles(queryset=None):
-    """Publicaciones en estado ``publicada`` cuya propiedad puede mostrarse.
+    """Publicaciones en estado ``publicada``.
 
     ``queryset`` permite partir de un conjunto ya filtrado (por destacada, por
-    comuna, etc.); si se omite, parte de todas las ``PublicacionProp``.
+    comuna, por vigencia, etc.); si se omite, parte de todas las
+    ``PublicacionProp``.
+
+    No se filtra por el proceso de cinco etapas a propósito: una publicación
+    ya publicada y vigente sigue en la vitrina aunque tenga una solicitud
+    posterior abierta. Ocultarla vaciaba el home de propiedades que el cliente
+    ya había pagado y que seguían accesibles por su ficha.
     """
     from .models import PublicacionProp
     base = queryset if queryset is not None else PublicacionProp.objects.all()
-    return base.filter(estado=ESTADO_PUBLICADA).exclude(
-        propiedad_id__in=ids_con_proceso_inconcluso()
-    )
+    return base.filter(estado=ESTADO_PUBLICADA)
 
 
 def faltantes_para_publicar(solicitud):

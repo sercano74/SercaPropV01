@@ -75,11 +75,18 @@ class ReglaVisibilidadTests(TestCase):
         self.assertTrue(publicacion.proceso_completo(self.propiedad))
         self.assertEqual(publicacion.publicaciones_visibles().count(), 1)
 
-    def test_con_solicitud_a_medio_camino_no_se_ve(self):
+    def test_con_solicitud_a_medio_camino_la_publicacion_sigue_visible(self):
+        """El proceso no despublica lo ya publicado.
+
+        Una solicitud posterior abierta (una renovación, un segundo trámite)
+        no puede sacar de la vitrina una publicación que el cliente ya pagó y
+        que sigue accesible por su ficha. ``proceso_completo`` sigue siendo
+        False: eso es lo que impide volver a publicar sin completar las etapas.
+        """
         self._solicitud("en_revision_corredor")
         _publicacion(self.propiedad, self.corredor)
         self.assertFalse(publicacion.proceso_completo(self.propiedad))
-        self.assertEqual(publicacion.publicaciones_visibles().count(), 0)
+        self.assertEqual(publicacion.publicaciones_visibles().count(), 1)
 
     def test_con_solicitud_publicada_si_se_ve(self):
         self._solicitud("publicada")
@@ -260,7 +267,12 @@ class VitrinaHomeTests(TestCase):
             username="home_cor", email="home_cor@x.cl", password="x", rol="corredor"
         )
 
-    def test_home_excluye_la_publicacion_incoherente(self):
+    def test_home_muestra_la_publicacion_con_proceso_posterior(self):
+        """Una publicación vigente sigue en el home aunque haya un trámite abierto.
+
+        Ocultarla vaciaba la vitrina: la propiedad desaparecía del home, del
+        buscador y del sitemap sin que nadie lo hubiera decidido.
+        """
         propiedad = _propiedad()
         _publicacion(propiedad, self.corredor)
         SolicitudPublicacion.objects.create(
@@ -272,7 +284,7 @@ class VitrinaHomeTests(TestCase):
 
         self.assertEqual(respuesta.status_code, 200)
         visibles = list(respuesta.context["publicadas"])
-        self.assertEqual(visibles, [])
+        self.assertEqual(len(visibles), 1)
 
     def test_home_muestra_la_publicacion_coherente(self):
         propiedad = _propiedad()
