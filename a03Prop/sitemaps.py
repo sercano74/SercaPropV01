@@ -5,6 +5,7 @@ from django.db.models import Count
 from django.utils import timezone
 
 from .models import Propiedad, PublicacionProp
+from . import publicacion as reglas_publicacion
 from a00seg.models import Comuna
 
 
@@ -44,9 +45,12 @@ class PropiedadSitemap(Sitemap):
     priority = 0.8
 
     def items(self):
+        # Sólo las propiedades cuyo proceso de publicación terminó: una
+        # publicación marcada "publicada" con la solicitud a medio camino no
+        # debe llegar a Google.
         return Propiedad.objects.filter(
             estado="publicada",
-            publicaciones__estado="publicada",
+            id__in=reglas_publicacion.publicaciones_visibles().values("propiedad_id"),
         ).distinct()
 
     def lastmod(self, obj):
@@ -81,10 +85,11 @@ class LandingSitemap(Sitemap):
 
     def items(self):
         combos = (
-            PublicacionProp.objects.filter(
-                estado="publicada",
-                expira_at__gte=timezone.now(),
-                propiedad__comuna__isnull=False,
+            reglas_publicacion.publicaciones_visibles(
+                PublicacionProp.objects.filter(
+                    expira_at__gte=timezone.now(),
+                    propiedad__comuna__isnull=False,
+                )
             )
             .values_list(
                 "propiedad__comuna__slug",

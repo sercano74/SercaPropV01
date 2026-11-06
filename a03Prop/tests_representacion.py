@@ -8,11 +8,13 @@ Cubren las tres piezas donde vive la lógica que no se ve en pantalla:
   atascaba el flujo cuando un usuario tenía dos roles.
 """
 
+import tempfile
 from decimal import Decimal
 from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
-from django.test import SimpleTestCase, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -332,6 +334,9 @@ class PuedeRepresentarTests(TestCase):
         permitido, mensaje = representacion.puede_representar(self.corredor)
         self.assertFalse(permitido)
         self.assertIn("Basico", mensaje)
+        # El motivo dice qué hacer y quién puede hacerlo: no basta con
+        # informar el bloqueo, hay que dejar salida.
+        self.assertIn("Planes de corredor", mensaje)
 
     def test_plan_con_permiso_puede(self):
         self._suscribir(self.corredor, self.plan_con)
@@ -814,3 +819,348 @@ class FormularioSolicitarPublicacionTests(TestCase):
 
         self.assertContains(respuesta, 'class="check-declaracion"')
         self.assertContains(respuesta, 'id="id_declara_mandato"')
+# ======================================================================
+# paso 1 con una corredora que representa a un propietario
+# ======================================================================
+#
+# El caso reportado: "la corredora Patricia Méndez no puede publicar en
+# representación". La causa no estaba en el formulario sino en el plan:
+# ``permite_representacion`` nació en ``False`` (migración 0009), nadie lo había
+# habilitado, y la pantalla se limitaba a decir "tu plan no lo permite" como
+# texto genérico. Estas pruebas fijan las dos mitades del arreglo: que el motivo
+# se lea en pantalla y que, con el plan habilitado, el formulario funcione de
+# punta a punta — algo que ninguna prueba cubría.
+#
+# El almacenamiento se cambia a disco local: en producción los archivos van a
+# Cloudinary y una prueba no debe depender de la red.
+
+STORAGES_DE_PRUEBA = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+    },
+}
+
+
+@override_settings(STORAGES=STORAGES_DE_PRUEBA, MEDIA_ROOT=tempfile.mkdtemp())
+class PublicarEnRepresentacionTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.corredora = User.objects.create_user(
+            username="patricia", email="patricia@x.cl", password="x", rol="corredor"
+        )
+        cls.plan = PlanSuscripcion.objects.create(
+            nombre="Metropoli", tipo="corredor", precio=Decimal("120000"),
+            duracion_meses=12, permite_representacion=False,
+            max_publicaciones_mensual=15,
+        )
+
+    def _suscribir(self, plan=None, dias=30):
+        SuscripcionCorredor.objects.update_or_create(
+            corredor=self.corredora,
+            defaults={
+                "plan": plan or self.plan,
+                "fecha_fin": timezone.now() + timezone.timedelta(days=dias),
+                "activa": True,
+            },
+        )
+
+    def _url(self):
+        return reverse("solicitar_publicacion")
+
+    def _post_representacion(self):
+        return {
+            "tipo_publicante": "representante",
+            "propietario_nombre": "Rosa Díaz",
+            "propietario_dni": "12.345.678-9",
+            "propietario_email": "rosa@x.cl",
+            "propietario_celular": "+56912345678",
+            "tipo_mandato": "escrito",
+            "declara_mandato": "1",
+            "mandato_archivo": SimpleUploadedFile(
+                "mandato.pdf", b"mandato firmado",
+                content_type="application/pdf",
+            ),
+            "calle": "Calle de Prueba",
+            "numero_calle": "123",
+            "tipo_prop": "casa",
+            "tipo_accion": "venta",
+            "precio": "100000000",
+            "meses": "1",
+            "fotos": [
+                SimpleUploadedFile("casa.jpg", b"foto", content_type="image/jpeg")
+            ],
+            "comprobante": SimpleUploadedFile(
+                "pago.jpg", b"pago", content_type="image/jpeg"
+            ),
+        }
+
+    # ---------- antes de habilitar el plan ----------
+
+    def test_sin_el_permiso_la_pantalla_dice_el_motivo_concreto(self):
+        """No basta con deshabilitar la opción: hay que decir qué falta.
+
+        El nombre del plan es lo que permite pedir la acción correcta —a la
+        gerencia, que es quien lo habilita— sin abrir un ticket a ciegas.
+        """
+        self._suscribir()
+        self.client.force_login(self.corredora)
+
+        respuesta = self.client.get(self._url())
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Metropoli")
+        self.assertContains(respuesta, "no incluye publicar en representación")
+        # Y la salida concreta, no un "consulta a soporte" a ciegas.
+        self.assertContains(respuesta, "Planes de corredor")
+        # La opción queda marcada como bloqueada, no sólo inservible. La
+        # búsqueda es la clase del elemento —no el nombre del selector, que
+        # también vive en el bloque <style>— para no pasar por casualidad.
+        self.assertContains(
+            respuesta,
+            'class="opcion-publicante opcion-publicante--bloqueada"',
+        )
+
+    def test_sin_suscripcion_lo_dice_y_no_culpa_al_plan(self):
+        self.client.force_login(self.corredora)
+
+        respuesta = self.client.get(self._url())
+
+        self.assertContains(respuesta, "no tiene una suscripción de corredor")
+        self.assertNotContains(respuesta, "Metropoli")
+
+    def test_sin_el_permiso_el_post_tampoco_crea_nada(self):
+        """La interfaz es comodidad; la frontera la pone el servidor."""
+        self._suscribir()
+        self.client.force_login(self.corredora)
+
+        respuesta = self.client.post(self._url(), self._post_representacion())
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(
+            SolicitudPublicacion.objects.filter(usuario=self.corredora).exists()
+        )
+
+    # ---------- con el permiso habilitado ----------
+
+    def test_con_el_plan_habilitado_llega_al_formulario(self):
+        self.plan.permite_representacion = True
+        self.plan.save(update_fields=["permite_representacion"])
+        self._suscribir()
+        self.client.force_login(self.corredora)
+
+        respuesta = self.client.get(self._url())
+
+        self.assertContains(respuesta, "Representaciones este mes")
+        self.assertNotContains(
+            respuesta,
+            'class="opcion-publicante opcion-publicante--bloqueada"',
+        )
+
+    def test_con_el_plan_habilitado_crea_la_solicitud_en_representacion(self):
+        self.plan.permite_representacion = True
+        self.plan.save(update_fields=["permite_representacion"])
+        self._suscribir()
+        self.client.force_login(self.corredora)
+
+        respuesta = self.client.post(self._url(), self._post_representacion())
+
+        solicitud = SolicitudPublicacion.objects.get(usuario=self.corredora)
+        self.assertRedirects(
+            respuesta, reverse("detalle_solicitud", args=[solicitud.id])
+        )
+        self.assertEqual(
+            solicitud.tipo_publicante,
+            SolicitudPublicacion.TipoPublicante.REPRESENTANTE,
+        )
+        self.assertEqual(solicitud.estado, "pago_revision")
+        self.assertEqual(solicitud.tipo_mandato, "escrito")
+        self.assertTrue(solicitud.mandato_archivo)
+
+        propiedad = solicitud.propiedad
+        # El propietario queda fuera de la plataforma: sin cuenta y con sus
+        # datos declarados en la propiedad.
+        self.assertIsNone(propiedad.dueno_id)
+        self.assertEqual(propiedad.representante_id, self.corredora.id)
+        self.assertTrue(propiedad.en_representacion)
+        self.assertEqual(propiedad.propietario_nombre, "Rosa Díaz")
+        self.assertEqual(propiedad.propietario_dni, "12.345.678-9")
+        self.assertEqual(propiedad.propietario_email, "rosa@x.cl")
+
+    def test_la_suscripcion_vencida_bloquea_aunque_el_plan_permita(self):
+        self.plan.permite_representacion = True
+        self.plan.save(update_fields=["permite_representacion"])
+        self._suscribir(dias=-1)
+        self.client.force_login(self.corredora)
+
+        respuesta = self.client.post(self._url(), self._post_representacion())
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(
+            SolicitudPublicacion.objects.filter(usuario=self.corredora).exists()
+        )
+# ======================================================================
+# el defecto del plan: representar es la regla, no la excepción
+# ======================================================================
+
+class DefectoDeRepresentacionTests(TestCase):
+    """Un plan de corredor nuevo nace pudiendo representar.
+
+    Con ``default=False`` cada plan creado después de la migración 0011 volvía
+    a bloquear la representación, y la corredora lo descubría al llegar al paso
+    1 con la opción deshabilitada. Restringir ahora exige desmarcarlo a
+    propósito.
+    """
+
+    def test_un_plan_nuevo_permite_representar(self):
+        plan = PlanSuscripcion.objects.create(
+            nombre="Recién creado", tipo="corredor", precio=Decimal("50000"),
+            duracion_meses=1,
+        )
+        self.assertTrue(plan.permite_representacion)
+
+    def test_desmarcarlo_sigue_siendo_posible(self):
+        plan = PlanSuscripcion.objects.create(
+            nombre="Restringido", tipo="corredor", precio=Decimal("50000"),
+            duracion_meses=1, permite_representacion=False,
+        )
+        self.assertFalse(plan.permite_representacion)
+
+
+class MotivosDeBloqueoTests(TestCase):
+    """Cada motivo nombra la acción y a quién pedírsela.
+
+    El mensaje anterior —"tu cuenta o tu plan actual no permiten publicar en
+    representación de terceros"— obligaba a adivinar cuál de las dos cosas era
+    y no decía qué hacer. Estos casos cubren las cinco formas de quedar fuera.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.corredor = User.objects.create_user(
+            username="mot_cor", email="mot_cor@x.cl", password="x", rol="corredor"
+        )
+
+    def _plan(self, **extra):
+        datos = {
+            "nombre": "Metropoli", "tipo": "corredor",
+            "precio": Decimal("120000"), "duracion_meses": 12,
+        }
+        datos.update(extra)
+        return PlanSuscripcion.objects.create(**datos)
+
+    def _suscribir(self, plan, activa=True, dias=30):
+        return SuscripcionCorredor.objects.create(
+            corredor=self.corredor, plan=plan, activa=activa,
+            fecha_fin=timezone.now() + timezone.timedelta(days=dias),
+        )
+
+    def test_sin_suscripcion_lo_dice_sin_culpar_al_plan(self):
+        mensaje = representacion.motivo_no_representar(self.corredor)
+        self.assertIn("no tiene una suscripción", mensaje)
+        self.assertNotIn("Metropoli", mensaje)
+
+    def test_suscripcion_desactivada_lo_dice(self):
+        self._suscribir(self._plan(), activa=False)
+        mensaje = representacion.motivo_no_representar(self.corredor)
+        self.assertIn("desactivada", mensaje)
+
+    def test_suscripcion_vencida_da_la_fecha(self):
+        self._suscribir(self._plan(), dias=-2)
+        mensaje = representacion.motivo_no_representar(self.corredor)
+        self.assertIn("venció el", mensaje)
+        # La fecha concreta: "venció" a secas no dice si fue ayer o hace un año.
+        vencimiento = timezone.localtime(
+            timezone.now() - timezone.timedelta(days=2)
+        )
+        self.assertIn(f"{vencimiento:%d-%m-%Y}", mensaje)
+
+    def test_plan_inactivo_lo_dice(self):
+        self._suscribir(self._plan(activo=False))
+        mensaje = representacion.motivo_no_representar(self.corredor)
+        self.assertIn("no está disponible", mensaje)
+
+    def test_plan_sin_el_permiso_nombra_el_plan_y_la_salida(self):
+        self._suscribir(self._plan(permite_representacion=False))
+        mensaje = representacion.motivo_no_representar(self.corredor)
+        self.assertIn("Metropoli", mensaje)
+        self.assertIn("Planes de corredor", mensaje)
+
+    def test_la_gerencia_no_tiene_motivo(self):
+        gerente = User.objects.create_user(
+            username="mot_ger", email="mot_ger@x.cl", password="x", rol="gerente"
+        )
+        self.assertEqual(representacion.motivo_no_representar(gerente), "")
+
+    def test_la_tupla_sigue_siendo_lo_que_esperan_los_llamadores(self):
+        self._suscribir(self._plan())
+        permitido, mensaje = representacion.puede_representar(self.corredor)
+        self.assertTrue(permitido)
+        self.assertEqual(mensaje, "")
+
+
+# ======================================================================
+# el diagnóstico por consola
+# ======================================================================
+
+class RevisarRepresentacionCommandTests(TestCase):
+    """El comando con que se revisa producción sin abrir el admin."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.corredor = User.objects.create_user(
+            username="cmd_cor", email="cmd_cor@x.cl", password="x", rol="corredor"
+        )
+        cls.plan = PlanSuscripcion.objects.create(
+            nombre="Barrio", tipo="corredor", precio=Decimal("60000"),
+            duracion_meses=1, permite_representacion=False,
+            max_publicaciones_mensual=5,
+        )
+        SuscripcionCorredor.objects.create(
+            corredor=cls.corredor, plan=cls.plan,
+            fecha_fin=timezone.now() + timezone.timedelta(days=30),
+        )
+
+    def _correr(self, *args):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        salida = StringIO()
+        call_command("revisar_representacion", *args, stdout=salida)
+        return salida.getvalue()
+
+    def test_informa_el_motivo_del_bloqueo(self):
+        salida = self._correr()
+        self.assertIn("Barrio", salida)
+        self.assertIn("no incluye publicar en representación", salida)
+
+    def test_filtra_por_usuario(self):
+        salida = self._correr("--usuario", "cmd_cor@x.cl")
+        self.assertIn("cmd_cor@x.cl", salida)
+        self.assertNotIn("(sin coincidencias)", salida)
+
+    def test_corregir_habilita_el_plan(self):
+        self._correr("--corregir")
+        self.plan.refresh_from_db()
+        self.assertTrue(self.plan.permite_representacion)
+        # Y con el plan habilitado, la corredora puede.
+        permitido, mensaje = representacion.puede_representar(self.corredor)
+        self.assertTrue(permitido, mensaje)
+
+    def test_corregir_no_toca_los_planes_inactivos(self):
+        self.plan.activo = False
+        self.plan.save(update_fields=["activo"])
+        self._correr("--corregir")
+        self.plan.refresh_from_db()
+        self.assertFalse(self.plan.permite_representacion)
+
+    def test_corregir_no_toca_los_planes_de_vendedor(self):
+        vendedor = PlanSuscripcion.objects.create(
+            nombre="Vendedor", tipo="vendedor", precio=Decimal("30000"),
+            duracion_meses=1, permite_representacion=False,
+        )
+        self._correr("--corregir")
+        vendedor.refresh_from_db()
+        self.assertFalse(vendedor.permite_representacion)

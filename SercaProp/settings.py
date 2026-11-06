@@ -1,52 +1,57 @@
 """
 Django settings for SercaProp project.
+
+Las credenciales NO viven aquí. Están en .env (desarrollo) o en las variables
+de entorno del servidor (producción). Ver .env.example para la lista completa
+de claves que hay que definir.
+
+Arranque local:
+    venv\\Scripts\\activate
+    python manage.py runserver
+
+Las cuentas de prueba se crean con `python manage.py createsuperuser` o con
+`python scripts/crear_superuser.py`; no se documentan contraseñas en el código.
 """
-# ==================================================
-# ====================  ACCESO =====================
-# ==================================================
-# En CMD entrar al:
-#* venv\scripts\activate
-#* python manage.py runserver
-# ==================================================
-# rol       : superuser
-# usuario   : admin
-# email     : ordered.dev.01@gmail.com
-# kw        : 123
-# ==================================================
-# rol       : gerente
-# usuario   : Gerente
-# email     : sercapropgerente@gmail.com
-# kw        : 123
-# ==================================================
-# rol       : corredor
-# usuario   : Danna Smith
-# email     : cannobbiosergio9@gmail.com
-# kw        : 123
-# ==================================================
-# rol       : usuario base
-# usuario   : Luis Pitersen
-# email     : sergiocannobbio@libertarios6r.lat
-# kw        : 123
-# ==================================================
-# rol       : usuario base
-# usuario   : Sergio Cannobbio
-# email     : sergio.cannobbio@gmail.com
-# kw        : 123
-# ==================================================
 
 
+import logging
 import os
+import socket
+import warnings
 from pathlib import Path
+from urllib.parse import urlsplit
+
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ── Variables de entorno ───────────────────────────
+# Todo lo sensible (claves de Django, Cloudinary, correo, base de datos) vive
+# en .env o en las variables del servidor, nunca en este archivo.
+# override=False es deliberado: en Railway las variables las inyecta la
+# plataforma y deben ganar sobre el .env local, que solo rellena lo que falte.
+load_dotenv(BASE_DIR / '.env', override=False)
+
+
 # ── Seguridad ──────────────────────────────────────
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-_)doxtosak_g=*ilerp#=6pkm=s_5%ycju13=#lps-hl%v0gaf'
-)
+# Sin SECRET_KEY no hay sesiones ni tokens válidos. Se exige en producción.
+# La clave de emergencia se mantiene solo para que un despliegue antiguo sin
+# la variable definida no se caiga, pero avisa en los logs para que se corrija.
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+
+_SECRET_KEY_EMERGENCIA = 'django-insecure-_)doxtosak_g=*ilerp#=6pkm=s_5%ycju13=#lps-hl%v0gaf'
+_SECRET_KEY_ENV = os.environ.get('DJANGO_SECRET_KEY')
+SECRET_KEY = _SECRET_KEY_ENV or _SECRET_KEY_EMERGENCIA
+if not _SECRET_KEY_ENV:
+    warnings.warn(
+        'DJANGO_SECRET_KEY no está definida: se usa la clave de emergencia, '
+        'que es pública. Define DJANGO_SECRET_KEY en el servidor.',
+        RuntimeWarning,
+    )
+    logging.getLogger(__name__).warning(
+        'DJANGO_SECRET_KEY no definida: usando la clave de emergencia pública.'
+    )
 
 ALLOWED_HOSTS = os.environ.get(
     'DJANGO_ALLOWED_HOSTS',
@@ -180,6 +185,32 @@ WSGI_APPLICATION = 'SercaProp.wsgi.application'
 # si el Postgres está vinculado al servicio web.
 # Local: SQLite.
 DATABASE_URL = os.environ.get('DATABASE_URL')
+
+
+def _host_interno_inalcanzable(url):
+    """¿La URL apunta a un dominio .railway.internal que aquí no resuelve?
+
+    Railway entrega DATABASE_URL con el host interno (postgres.railway.internal),
+    que solo existe dentro de su red. Cuando se ejecuta un comando desde el PC
+    con `railway run`, ese nombre no resuelve y la conexión falla. En ese caso
+    hay que usar DATABASE_PUBLIC_URL, que Railway publica cuando el Postgres
+    tiene el TCP Proxy habilitado. Dentro de Railway el nombre sí resuelve y se
+    sigue usando la URL interna, que es la vía rápida y no sale a internet.
+    """
+    host = urlsplit(url).hostname or ''
+    if not host.endswith('.railway.internal'):
+        return False
+    try:
+        socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return True
+    return False
+
+
+DATABASE_PUBLIC_URL = os.environ.get('DATABASE_PUBLIC_URL')
+if DATABASE_URL and DATABASE_PUBLIC_URL and _host_interno_inalcanzable(DATABASE_URL):
+    DATABASE_URL = DATABASE_PUBLIC_URL
+
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
@@ -225,15 +256,33 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # ── Archivos subidos por usuarios (Cloudinary) ───
-CLOUDINARY_URL = os.environ.get(
-    'CLOUDINARY_URL',
-    'cloudinary://914777239115561:FFFOUSftuKP_Z6Z4MieCBbIaIRY@dtcskupwr'
-)
+# Sin credenciales en el código: salen del .env (o de las variables del
+# servidor). Se admiten las tres partes por separado o la CLOUDINARY_URL ya
+# armada; si solo vienen las partes, la URL se compone aquí.
+CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
+CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
+
+CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '')
+
+if CLOUDINARY_URL:
+    # Con solo la URL ya se pueden rellenar las tres partes: el formato es
+    # cloudinary://API_KEY:API_SECRET@CLOUD_NAME. Así CLOUDINARY_STORAGE queda
+    # completo aunque el servidor solo defina CLOUDINARY_URL.
+    _partes_cloudinary = urlsplit(CLOUDINARY_URL)
+    CLOUDINARY_CLOUD_NAME = CLOUDINARY_CLOUD_NAME or (_partes_cloudinary.hostname or '')
+    CLOUDINARY_API_KEY = CLOUDINARY_API_KEY or (_partes_cloudinary.username or '')
+    CLOUDINARY_API_SECRET = CLOUDINARY_API_SECRET or (_partes_cloudinary.password or '')
+elif all((CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)):
+    CLOUDINARY_URL = (
+        f'cloudinary://{CLOUDINARY_API_KEY}:{CLOUDINARY_API_SECRET}'
+        f'@{CLOUDINARY_CLOUD_NAME}'
+    )
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dtcskupwr',
-    'API_KEY': '914777239115561',
-    'API_SECRET': 'FFFOUSftuKP_Z6Z4MieCBbIaIRY',
+    'CLOUD_NAME': CLOUDINARY_CLOUD_NAME,
+    'API_KEY': CLOUDINARY_API_KEY,
+    'API_SECRET': CLOUDINARY_API_SECRET,
 }
 
 # Almacenamiento de medios en Cloudinary para persistencia en Railway
@@ -287,9 +336,9 @@ else:
 EMAIL_HOST = _EMAIL_HOST
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'ordered.dev.01@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'lulicoglmtgsfeed')
-EMAIL_DEFAULT_FROM = os.environ.get('EMAIL_DEFAULT_FROM', 'sercaprop <ordered.dev.01@gmail.com>')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_DEFAULT_FROM = os.environ.get('EMAIL_DEFAULT_FROM', 'Serca Propiedades <noreply@serca.online>')
 DEFAULT_FROM_EMAIL = EMAIL_DEFAULT_FROM
 # Remitente "no-reply" para correos transaccionales (visitas, avisos, notificaciones).
 # Usa el dominio verificado en Resend (noreply@serca.online) y hace fallback al DEFAULT_FROM_EMAIL.

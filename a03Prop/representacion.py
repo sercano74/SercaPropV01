@@ -72,27 +72,64 @@ def suscripcion_vigente(user):
     return suscripcion
 
 
+def motivo_no_representar(user):
+    """Por qué ``user`` no puede publicar en representación. ``''`` si puede.
+
+    Cada motivo pide una acción distinta y de una persona distinta: renovar la
+    suscripción la hace el corredor, habilitar el plan lo hace la gerencia.
+    Por eso el texto nombra la acción y a quién pedírsela, en vez de un
+    "tu cuenta o tu plan no lo permiten" que obliga a abrir un ticket para
+    averiguar cuál de las dos cosas era.
+    """
+    if es_gerencia(user):
+        return ""
+
+    suscripcion = getattr(user, "suscripcion", None)
+    if not suscripcion:
+        return (
+            "Tu cuenta no tiene una suscripción de corredor. La representación "
+            "de terceros requiere un plan activo: pídeselo a la gerencia."
+        )
+    if not suscripcion.activa:
+        return (
+            "Tu suscripción está desactivada, así que no puedes publicar en "
+            "representación. Pídele a la gerencia que la reactive."
+        )
+    if suscripcion.fecha_fin and suscripcion.fecha_fin <= timezone.now():
+        return (
+            "Tu suscripción venció el "
+            f"{timezone.localtime(suscripcion.fecha_fin):%d-%m-%Y}. Renuévala "
+            "para volver a publicar en representación."
+        )
+    plan = suscripcion.plan
+    if not plan:
+        return (
+            "Tu suscripción no tiene un plan asignado. Pídele a la gerencia "
+            "que lo defina."
+        )
+    if not plan.activo:
+        return (
+            f"Tu plan {plan.nombre} ya no está disponible en la plataforma. "
+            "Pídele a la gerencia que te asigne uno vigente."
+        )
+    if not plan.permite_representacion:
+        return (
+            f"Tu plan {plan.nombre} no incluye publicar en representación de "
+            "terceros. La gerencia puede habilitarlo en Gestión → Planes de "
+            "corredor; mientras tanto puedes publicar tus propias propiedades."
+        )
+    return ""
+
+
 def puede_representar(user):
     """``(permitido, mensaje)``.
 
-    El mensaje viene listo para mostrar cuando no se permite, porque cada
-    motivo pide una acción distinta del usuario.
+    El mensaje viene listo para mostrar cuando no se permite. Se mantiene la
+    forma de tupla porque la usan la vista del paso 1 y el diagnóstico por
+    consola, y ambas esperan poder mostrar el motivo tal cual.
     """
-    if es_gerencia(user):
-        return True, ""
-
-    suscripcion = suscripcion_vigente(user)
-    if not suscripcion:
-        return False, (
-            "Necesitas una suscripción vigente para publicar en representación "
-            "de un propietario. Revísala en tu perfil."
-        )
-    if not suscripcion.plan.permite_representacion:
-        return False, (
-            f"Tu plan {suscripcion.plan.nombre} no permite publicar en "
-            "representación de terceros. Escríbenos si quieres habilitarlo."
-        )
-    return True, ""
+    motivo = motivo_no_representar(user)
+    return (not motivo), motivo
 
 
 def publicaciones_del_mes(user, hoy=None):

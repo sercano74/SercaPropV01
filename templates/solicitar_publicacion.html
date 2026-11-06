@@ -63,8 +63,16 @@
                 Requiere mandato del propietario y un plan que lo permita.
             </div>
             {% else %}
-            <div class="form-hint">
-                Tu cuenta o tu plan actual no permiten publicar en representación de terceros.
+            {# Sin texto de reserva: el motivo concreto lo arma el servidor y #}
+            {# decir "tu cuenta o tu plan" obliga a adivinar cuál de los dos es. #}
+            <div class="form-hint alerta-representacion" role="status">
+                {% if motivo_representacion %}
+                    {{ motivo_representacion }}
+                {% else %}
+                    No podemos confirmar tu permiso para representar en este
+                    momento. Vuelve a cargar la página; si persiste, la
+                    gerencia puede revisarlo en Gestión → Planes de corredor.
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -428,6 +436,18 @@
     opacity: 0.6;
     cursor: not-allowed;
     background: var(--ds-bg-secondary);
+}
+/* El motivo del bloqueo se lee como una advertencia, no como una nota al pie
+   gris: es la única explicación de por qué no puede elegir la opción. */
+.form-modern .alerta-representacion {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-left: 4px solid var(--ds-warning, #d97706);
+    border-radius: 6px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.85rem;
+    line-height: 1.45;
 }
 
 /* La declaración jurada lleva un check redondo. El diseño global quita la

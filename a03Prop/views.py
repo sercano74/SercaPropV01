@@ -33,6 +33,7 @@ from a00seg.uploads import validar_archivo_documento
 from decimal import Decimal, InvalidOperation
 
 from . import comisiones, orden_gestion, representacion
+from . import publicacion as reglas_publicacion
 from .notificaciones import enviar_aviso_propietario
 
 logger = logging.getLogger(__name__)
@@ -116,14 +117,19 @@ def vista_xid(request):
 
             if propiedad is not None:
                 ahora = timezone.now()
+                # Misma regla que la vitrina: no basta con que la publicación
+                # diga "publicada"; el proceso de la propiedad debe haber
+                # terminado. El respaldo por ``estado`` también la respeta.
                 es_publica = (
-                    PublicacionProp.objects.filter(
-                        propiedad=propiedad,
-                        estado="publicada",
+                    reglas_publicacion.publicaciones_visibles(
+                        PublicacionProp.objects.filter(propiedad=propiedad)
                     ).filter(
                         Q(expira_at__isnull=True) | Q(expira_at__gte=ahora)
                     ).exists()
-                    or propiedad.estado == "publicada"
+                    or (
+                        propiedad.estado == "publicada"
+                        and reglas_publicacion.proceso_completo(propiedad)
+                    )
                 )
                 if es_publica:
                     slug = propiedad.slug or f"propiedad-{propiedad.id}"
@@ -161,7 +167,12 @@ def detalle_propiedad(request, prop_id, prop_slug=None):
         )
 
     fotos = propiedad.fotos.all()
-    publicacion = propiedad.publicaciones.filter(estado="publicada").first()
+    # Sólo se muestra como "publicada" si el proceso de la propiedad llegó al
+    # final. Con una solicitud a medio camino la vitrina no debe mostrarla: era
+    # la contradicción de las propiedades 8 y 9.
+    publicacion = reglas_publicacion.publicaciones_visibles(
+        propiedad.publicaciones.all()
+    ).first()
 
     solicitud = SolicitudPublicacion.objects.filter(
         propiedad=propiedad
@@ -404,6 +415,22 @@ def aprobar_publicacion(request, pub_id):
         return redirect("home")
 
     publicacion = get_object_or_404(PublicacionProp, id=pub_id)
+
+    # No se puede publicar por esta vía si la propiedad tiene un proceso de
+    # cinco pasos a medio camino: la vitrina quedaría mostrando una propiedad
+    # cuya solicitud todavía no cumplió sus etapas. Fue exactamente la
+    # contradicción de las propiedades 8 y 9.
+    solicitud_en_curso = reglas_publicacion.solicitud_activa(publicacion.propiedad)
+    if solicitud_en_curso and solicitud_en_curso.estado != "publicada":
+        messages.error(
+            request,
+            "Esta propiedad tiene un proceso de publicación en curso "
+            f"(solicitud #{solicitud_en_curso.id}: "
+            f"{solicitud_en_curso.get_estado_display()}). Complétalo desde la "
+            "solicitud antes de publicarla por esta vía.",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud_en_curso.id)
+
     meses = publicacion.meses
 
     publicacion.estado = "publicada"
@@ -521,16 +548,17 @@ def buscar_propiedades_api(request):
 
     treinta_dias_atras = timezone.now() - timezone.timedelta(days=30)
 
-    publicadas = PublicacionProp.objects.filter(
-        estado="publicada", expira_at__gte=timezone.now()
+    publicadas = reglas_publicacion.publicaciones_visibles(
+        PublicacionProp.objects.filter(expira_at__gte=timezone.now())
     ).select_related("propiedad")
 
     # Incluir propiedades cerradas dentro de los últimos 30 días (NO destacadas)
-    cerradas_recientes = PublicacionProp.objects.filter(
-        estado="publicada",
-        es_destacada=False,  # excluir destacadas → la propiedad ya no destaca tras cierre
-        propiedad__tipo_cierre__isnull=False,
-        propiedad__fecha_cierre__gte=treinta_dias_atras,
+    cerradas_recientes = reglas_publicacion.publicaciones_visibles(
+        PublicacionProp.objects.filter(
+            es_destacada=False,
+            propiedad__tipo_cierre__isnull=False,
+            propiedad__fecha_cierre__gte=treinta_dias_atras,
+        )
     ).select_related("propiedad")
     publicadas = (publicadas | cerradas_recientes).distinct()
 
@@ -591,12 +619,13 @@ def landing_propiedades(request, accion, tipo_prop, comuna_slug):
     if accion not in acciones_validas or tipo_prop not in tipos_validos:
         raise Http404("Combinación de acción/tipo/comuna no válida.")
 
-    publicadas = PublicacionProp.objects.filter(
-        estado="publicada",
-        expira_at__gte=timezone.now(),
-        propiedad__comuna=comuna,
-        propiedad__tipo_accion=accion,
-        propiedad__tipo_prop=tipo_prop,
+    publicadas = reglas_publicacion.publicaciones_visibles(
+        PublicacionProp.objects.filter(
+            expira_at__gte=timezone.now(),
+            propiedad__comuna=comuna,
+            propiedad__tipo_accion=accion,
+            propiedad__tipo_prop=tipo_prop,
+        )
     ).select_related("propiedad").prefetch_related("propiedad__fotos").order_by("-es_destacada", "-inicia_at")
 
     return render(request, "landing_propiedades.html", {
@@ -1068,12 +1097,26 @@ def _render_solicitar_publicacion(request, config_pago, comunas, regiones, datos
     el POST falla, para no obligarlo a reescribir el formulario completo.
     """
     usadas, limite = representacion.cupo_del_mes(request.user)
+    puede_representar, motivo_representacion = representacion.puede_representar(
+        request.user
+    )
+    # Nunca se manda un motivo vacío: la plantilla lo mostraría como un "tu
+    # cuenta o tu plan no lo permiten" que no dice cuál de las dos cosas es.
+    if not puede_representar and not motivo_representacion:
+        motivo_representacion = (
+            "No pudimos determinar qué te falta para publicar en "
+            "representación. Contacta a la gerencia para revisar tu plan."
+        )
     origen = datos if datos is not None else request.POST
     return render(request, "solicitar_publicacion.html", {
         "config_pago": config_pago,
         "comunas": comunas,
         "regiones": regiones,
-        "puede_representar": representacion.puede_representar(request.user)[0],
+        "puede_representar": puede_representar,
+        # El motivo concreto y no un texto genérico: quien queda bloqueado —y
+        # quien le presta soporte— necesita saber si le falta la suscripción o
+        # si su plan no habilita la representación.
+        "motivo_representacion": motivo_representacion,
         # El mandato verbal no deja rastro: sólo lo admite la gerencia.
         "puede_mandato_verbal": representacion.es_gerencia(request.user),
         "cupo_usadas": usadas,
@@ -1936,6 +1979,17 @@ def publicar_solicitud(request, solicitud_id):
         messages.error(request, "Debes aprobar la validación antes de publicar.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
 
+    # Las cinco etapas se exigen aquí, en el único punto que pone una propiedad
+    # en la vitrina. Sin esta guarda, un cambio futuro podría publicar sin OG o
+    # sin mandato y la contradicción de las propiedades 8 y 9 volvería.
+    faltantes = reglas_publicacion.faltantes_para_publicar(solicitud)
+    if faltantes:
+        messages.error(
+            request,
+            "No se puede publicar todavía: falta " + ", ".join(faltantes) + ".",
+        )
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
     if solicitud.objetada:
         messages.error(
             request,
@@ -1960,6 +2014,13 @@ def publicar_solicitud(request, solicitud_id):
     if not propiedad.fotos.exists():
         messages.error(request, "La propiedad debe tener al menos una foto.")
         return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    # Una sola publicación visible por propiedad: si quedó alguna anterior
+    # —por ejemplo de una renovación aprobada por la vía antigua—, se archiva
+    # para que la vitrina no muestre duplicados ni estados viejos.
+    PublicacionProp.objects.filter(
+        propiedad=propiedad, estado="publicada"
+    ).update(estado="archivada")
 
     pub = PublicacionProp.objects.create(
         propiedad=propiedad,

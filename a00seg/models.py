@@ -196,10 +196,18 @@ class PlanSuscripcion(models.Model):
         )
     )
     # ===== Publicación en representación =====
+    # Nace habilitada a propósito. Publicar propiedades de terceros es el
+    # trabajo del corredor: un plan de corredor que no lo permita es la
+    # excepción, no el punto de partida. Con ``default=False`` cada plan nuevo
+    # nacía bloqueando la representación y el corredor sólo lo descubría al
+    # intentar publicar, con un mensaje que no decía qué faltaba.
     permite_representacion = models.BooleanField(
-        default=False,
+        default=True,
         verbose_name="Permite publicar en representación",
-        help_text="Habilita que un corredor publique propiedades de terceros.",
+        help_text=(
+            "Desmárcalo sólo si quieres restringir este plan. La gerencia lo "
+            "administra en Gestión → Planes de corredor."
+        ),
     )
     max_publicaciones_mensual = models.PositiveSmallIntegerField(
         default=5,

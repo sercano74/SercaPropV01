@@ -13,6 +13,7 @@ from a01Com.models import Communication, SourceTypeChoices
 from .models import *
 from .email_utils import send_confirmation_email, email_token_generator
 from a03Prop.models import Propiedad, PublicacionProp, FotosPropiedad, ServiciosProp, ConfiguracionPagoPubli, CierreEconomico
+from a03Prop import publicacion as reglas_publicacion
 
 
 
@@ -20,13 +21,19 @@ def home(request):
     """Home del sitio con vitrina de propiedades, aside de destacadas y publicidad."""
     treinta_dias_atras = timezone.now() - timezone.timedelta(days=30)
 
-    destacadas = PublicacionProp.objects.filter(
-        estado="publicada", es_destacada=True, expira_at__gte=timezone.now()
+    # Sólo salen a la vitrina las propiedades cuyo proceso de publicación
+    # terminó de verdad. Una publicación marcada como "publicada" mientras su
+    # solicitud sigue a medio camino —el caso de las propiedades 8 y 9— no se
+    # muestra: la regla vive en a03Prop/publicacion.py.
+    destacadas = reglas_publicacion.publicaciones_visibles(
+        PublicacionProp.objects.filter(
+            es_destacada=True, expira_at__gte=timezone.now()
+        )
     ).select_related("propiedad")[:5]
 
     # Vitrina: publicaciones activas vigentes + cerradas recientes (hasta 30 días)
-    publicadas = PublicacionProp.objects.filter(
-        estado="publicada"
+    publicadas = reglas_publicacion.publicaciones_visibles(
+        PublicacionProp.objects.all()
     ).filter(
         Q(expira_at__gte=timezone.now()) |
         Q(propiedad__tipo_cierre__isnull=False, propiedad__fecha_cierre__gte=treinta_dias_atras)
@@ -76,10 +83,11 @@ def home(request):
     comunas = Comuna.objects.all().order_by("nombre")
 
     # Comunas con al menos una publicación activa → enlaces a landing pages
-    comunas_con_inventario = PublicacionProp.objects.filter(
-        estado="publicada",
-        expira_at__gte=timezone.now(),
-        propiedad__comuna__isnull=False,
+    comunas_con_inventario = reglas_publicacion.publicaciones_visibles(
+        PublicacionProp.objects.filter(
+            expira_at__gte=timezone.now(),
+            propiedad__comuna__isnull=False,
+        )
     ).values_list("propiedad__comuna_id", flat=True).distinct()
     comunas_landing = Comuna.objects.filter(
         id__in=comunas_con_inventario

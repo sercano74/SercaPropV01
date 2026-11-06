@@ -140,11 +140,15 @@ class GestionPlanesCorredorTests(TestCase):
             permite_representacion=False,
             max_publicaciones_mensual=5,
         )
+        # ``permite_representacion=False`` explícito: la prueba comprueba que
+        # el POST del panel no lo cambia, así que el valor de partida tiene que
+        # estar fijado aquí y no depender del valor por defecto del campo.
         cls.plan_vendedor = PlanSuscripcion.objects.create(
             nombre="Vendedor Base",
             tipo="vendedor",
             precio=Decimal("50000"),
             duracion_meses=6,
+            permite_representacion=False,
         )
         SuscripcionCorredor.objects.create(
             corredor=cls.corredor,
